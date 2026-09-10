@@ -22,10 +22,11 @@ const fmt = (d?: Date) => (d ? d.toISOString().slice(0, 10) : '');
   {summits.length ? (
     <div class="scroll">
       <table>
-        <thead><tr><th>Summit</th><th class="num">m</th>{anyDate && <th>Date</th>}<th>Where</th><th>Note</th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Summit</th><th class="num">m</th>{anyDate && <th>Date</th>}<th>Where</th><th>Note</th></tr></thead>
         <tbody>
-          {summits.map((s) => (
+          {summits.map((s, i) => (
             <tr>
+              <td class="num">{i + 1}</td>
               <td>{s.data.name}</td>
               <td class="num">{s.data.elevation}</td>
               {anyDate && <td class="num">{fmt(s.data.date)}</td>}

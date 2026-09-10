@@ -1,0 +1,122 @@
+# One entry per paper. status: published | review | writing. Link: doi preferred, url for arXiv/preprint.
+- id: life-on-graphs
+  title: "Essential metrics for Life on graphs"
+  authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
+  venue: "Physica D: Nonlinear Phenomena 483, 134950"
+  year: 2025
+  type: A1
+  doi: 10.1016/j.physd.2025.134950
+  summary: "Take Conway's Game of Life off the grid and put it on an arbitrary network. Which few numbers still tell you how it will behave?"
+- id: ca-taxonomy
+  title: "A comprehensive taxonomy of cellular automata"
+  authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"
+  venue: "Communications in Nonlinear Science and Numerical Simulation 140, 108362"
+  year: 2025
+  type: A1
+  doi: 10.1016/j.cnsns.2024.108362
+  url: https://arxiv.org/abs/2401.08408
+  summary: "A field guide to the zoo of cellular automaton families, so that people stop reinventing each other's models under new names."
+- id: cnn-classification
+  title: "Convolutional neural networks for automated cellular automaton classification"
+  authors: "M. Rollier, A. J. Daly, J. M. Baetens"
+  venue: "Advances in Cellular Automata, vol. 2 (Springer), pp. 49–70"
+  year: 2025
+  type: B2
+  doi: 10.1007/978-3-031-81097-8_3
+  url: https://arxiv.org/abs/2409.02740
+  summary: "Can a small CNN look at a space-time diagram and tell you which behavioural class it belongs to? Mostly yes, and the failures are instructive."
+- id: cnn-nonuniform
+  title: "Efficient simulation of non-uniform cellular automata with a convolutional neural network"
+  authors: "M. Rollier, A. J. Daly, O. M. Bruno, J. M. Baetens"
+  venue: "Cellular Automata (ACRI 2024, Springer), pp. 121–131"
+  year: 2024
+  type: P1
+  doi: 10.1007/978-3-031-71552-5_11
+  url: https://arxiv.org/abs/2409.02722
+  summary: "A cellular automaton is a convolution followed by a lookup. So build it as one, on a GPU, and simulate rule mixtures fast."
+- id: seiqrd-vocs
+  title: "A stochastic mobility-driven spatially explicit SEIQRD COVID-19 model with VOCs, seasonality, and vaccines"
+  authors: "T. W. Alleman, M. Rollier, J. Vergeynst, J. M. Baetens"
+  venue: "Applied Mathematical Modelling, pp. 507–525"
+  year: 2023
+  type: A1
+  summary: "The Belgian pandemic model with variants, seasons and vaccination added, run per municipality."
+- id: mobility-belgium
+  title: "Mobility and the spatial spread of SARS-CoV-2 in Belgium"
+  authors: "M. Rollier, G. H. B. Miranda, J. Vergeynst, J. Meys, T. W. Alleman, J. M. Baetens"
+  venue: "Mathematical Biosciences 360, 108957"
+  year: 2023
+  type: A1
+  doi: 10.1016/j.mbs.2022.108957
+  url: https://arxiv.org/abs/2202.11528
+  summary: "How much of where the virus went can telecom mobility data explain? Quite a lot, with caveats."
+- id: npi-belgium
+  title: "Assessing the effects of non-pharmaceutical interventions on SARS-CoV-2 transmission in Belgium by means of an extended SEIQRD model and public mobility data"
+  authors: "T. W. Alleman, J. Vergeynst, L. De Visscher, M. Rollier, E. Torfs, I. Nopens, J. M. Baetens, Belgian Collaborative Group on COVID-19 Hospital Surveillance"
+  venue: "Epidemics 37, 100505"
+  year: 2021
+  type: A1
+  doi: 10.1016/j.epidem.2021.100505
+  summary: "The model that fed into Belgian government advice during the first waves."
+- id: gw-echoes
+  title: "A morphology-independent data analysis method for detecting and characterizing gravitational wave echoes"
+  authors: "K. W. Tsang, M. Rollier, A. Ghosh, A. Samajdar, M. Agathos, K. Chatziioannou, V. Cardoso, G. Khanna, C. Van Den Broeck"
+  venue: "Physical Review D 98, 024023"
+  year: 2018
+  type: A1
+  doi: 10.1103/PhysRevD.98.024023
+  summary: "If black holes had a surface, merger signals would echo. A way to look for echoes without assuming what they look like."
+- id: node-importance
+  title: "Probing dynamical importance of network nodes under maximal agnosticism"
+  authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
+  venue: "Under review"
+  year: 2026
+  type: A1
+  status: review
+  summary: "Which node matters most when you know nothing about the dynamics except that they are local and deterministic?"
+- id: shape-irregularity
+  title: "Shape irregularity of Life-Like Network Automaton rules as an indicator of classification performance"
+  authors: "L. C. de Oliveira, M. Rollier, J. M. Baetens, O. M. Bruno"
+  venue: "Under review"
+  year: 2026
+  type: A1
+  status: review
+- id: lyapunov-spectra
+  title: "Exact Lyapunov spectra of affine cellular automata and the parity rule on networks"
+  authors: "M. Rollier, J. M. Baetens"
+  venue: "Under review"
+  year: 2026
+  type: A1
+  status: review
+  url: https://github.com/mrollier/exact-lyapunov-spectra
+  summary: "For a linear rule you can write the whole chaos spectrum down by hand. Code to reproduce every figure is public."
+- id: acri-2026
+  title: "Cellular Automata: 17th International Conference on Cellular Automata for Research and Industry, ACRI 2026, Ghent, Proceedings"
+  authors: "J. Baetens, D. Falkiewicz, A. Nenca, M. Rollier, W. Vervust, B. Wolnik (eds.)"
+  venue: "Lecture Notes in Computer Science, Springer"
+  year: 2026
+  type: B3
+  status: review
+- id: macca-gw
+  title: "The MACCA-GW groundwater flow model: application to De Wilde Landen, the Netherlands"
+  authors: "M. Rollier, L. Landuyt, J. M. Baetens"
+  venue: "Cellular Automata (ACRI 2026, Springer)"
+  year: 2026
+  type: P1
+  status: review
+- id: still-life-sat
+  title: "Exhaustive enumeration of symmetric still-life tiles in Life-like cellular automata via orbit-reduced SAT solving"
+  authors: "M. Rollier"
+  venue: "In preparation"
+  year: 2026
+  type: A1
+  status: writing
+  summary: "The still lifes behind the mosaics on this site, counted properly."
+- id: ml-vs-simulation
+  title: "Machine learning loses to simulation: rule reconstruction as the benchmark for reading cellular-automaton damage response"
+  authors: "M. Rollier"
+  venue: "In preparation"
+  year: 2026
+  type: A1
+  status: writing
+  summary: "A negative result: the learned model never beat just running the thing."

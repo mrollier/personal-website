@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+const projects = (await getCollection('projects')).sort((a, b) => b.data.year - a.data.year);
+const label: Record<string, string> = { live: 'live', code: 'code only', private: 'private', offline: 'offline' };
+---
+<Base title="Projects" description="Tools, research code and vibe-coded apps, each with an honest status badge." wide>
+  <div class="measure">
+    <h1>Projects</h1>
+    <p>
+      Research code, small tools, and things I built with an AI pair programmer because I wanted them to
+      exist. The badge says whether you can actually open it today.
+    </p>
+  </div>
+  <ul class="grid">
+    {projects.map((p) => (
+      <li class="card">
+        <span class="badge" data-s={p.data.status}>{label[p.data.status]}</span>
+        <h3>{p.data.url ? <a href={p.data.url}>{p.data.name}</a> : p.data.name}</h3>
+        <p>{p.data.blurb}</p>
+        <div class="links">
+          {p.data.url && <a href={p.data.url}>open</a>}
+          {p.data.repo && <a href={p.data.repo}>source</a>}
+          <span class="meta">{p.data.year} · {p.data.tags.join(', ')}</span>
+        </div>
+      </li>
+    ))}
+  </ul>
+</Base>

@@ -1,0 +1,10 @@
+# One entry per summit. date as YYYY-MM-DD. lat/lon in decimal degrees.
+# - id: example
+#   name: Example Peak
+#   elevation: 4000
+#   date: 2025-08-06
+#   country: CH
+#   lat: 45.94
+#   lon: 7.75
+#   note: One line.
+[]

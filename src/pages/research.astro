@@ -1,0 +1,70 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+const pubs = await getCollection('publications');
+const groups: [string, string][] = [
+  ['published', 'Published'],
+  ['review', 'Under review'],
+  ['writing', 'In progress'],
+];
+const by = (s: string) => pubs.filter((p) => p.data.status === s).sort((a, b) => b.data.year - a.data.year);
+const bold = (a: string) => a.replace('M. Rollier', '<strong>M. Rollier</strong>');
+const link = (p: (typeof pubs)[number]) => (p.data.doi ? `https://doi.org/${p.data.doi}` : p.data.url);
+const talks = [
+  ['2026', 'ACRI & AUTOMATA, Ghent (co-organiser, proceedings co-editor)', 'The MACCA-GW groundwater flow model'],
+  ['2025', 'Conference on Complex Systems, Siena', 'Impact maximisation: a network automaton perspective'],
+  ['2025', 'AUTOMATA, Lille', 'Small changes with maximal impact'],
+  ['2025', 'CompleNet, Fortaleza', 'Small changes with maximal impact'],
+  ['2024', 'ACRI, Florence', 'Bridging the gap between cellular automata and deep learning'],
+  ['2024', 'Conference on Complex Systems, Exeter', 'Classifying cellular automata: a deep learning approach'],
+  ['2023', 'Summer Solstice, Florence', 'Pattern recognition for noisy 1D cellular automata with CNNs'],
+];
+---
+<Base title="Research" description="Publications on cellular automata, network automata, epidemic modelling and gravitational waves.">
+  <h1>Research</h1>
+  <p>
+    Most of this is about cellular automata and their cousins on networks: fully discrete systems where a
+    handful of local rules produce behaviour that ranges from dead to chaotic, and where the interesting
+    question is usually how to tell those regimes apart before you run the thing. Earlier detours went
+    through epidemic modelling during the pandemic and gravitational-wave data analysis before that.
+  </p>
+  <p class="meta">
+    <a href="https://scholar.google.com/citations?user=KK8sv4IAAAAJ">Google Scholar</a> ·
+    <a href="https://orcid.org/0000-0001-8467-734X">ORCID</a> ·
+    <a href="https://github.com/mrollier">GitHub</a>
+  </p>
+  {groups.map(([s, label]) => {
+    const list = by(s);
+    return list.length ? (
+      <section>
+        <h2>{label}</h2>
+        <ul class="pubs">
+          {list.map((p) => (
+            <li>
+              {link(p) ? <a href={link(p)}>{p.data.title}</a> : p.data.title}
+              <div class="meta" set:html={bold(p.data.authors)} />
+              <div class="meta">
+                {p.data.venue}, {p.data.year}
+                {p.data.doi && p.data.url && <> · <a href={p.data.url}>preprint</a></>}
+              </div>
+              {p.data.summary && <p>{p.data.summary}</p>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
+  })}
+  <section>
+    <h2>Talks</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Year</th><th>Where</th><th>Title</th></tr></thead>
+        <tbody>
+          {talks.map(([y, where, title]) => (
+            <tr><td class="num">{y}</td><td>{where}</td><td>{title}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</Base>

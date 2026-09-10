@@ -1,0 +1,63 @@
+# status: live (a thing you can open) | code (public repo, no app) | private (described, not public) | offline (was live, now down)
+- id: game-of-life-mosaics
+  name: Game of Life mosaics
+  blurb: Turns a photo into a mosaic built entirely from Game of Life still lifes, with an elementary cellular automaton as backdrop. Python package plus a Gradio app you can use in the browser.
+  year: 2026
+  repo: https://github.com/mrollier/game-of-life-mosaics
+  url: https://huggingface.co/spaces/mrollier/game-of-life-mosaics
+  status: live
+  tags: [creative, tool]
+- id: ea-benelux-map
+  name: EA Benelux map
+  blurb: Interactive map of every EA-aligned organisation in Belgium, the Netherlands and Luxembourg. Plain HTML and Leaflet, no build step, maintained from one JSON file.
+  year: 2026
+  repo: https://github.com/mrollier/ea-benelux-map
+  url: https://mrollier.github.io/ea-benelux-map/
+  status: live
+  tags: [ea, tool, vibe-coded]
+- id: exact-lyapunov-spectra
+  name: Exact Lyapunov spectra
+  blurb: Reproducibility package for the paper of the same name. Pinned dependencies, one script regenerates every figure, CI checks that it still does.
+  year: 2026
+  repo: https://github.com/mrollier/exact-lyapunov-spectra
+  status: code
+  tags: [research]
+- id: visualise-dj-tracklists
+  name: Visualise DJ tracklists
+  blurb: TypeScript app for managing a record collection and looking at the shape of DJ sets over time.
+  year: 2026
+  repo: https://github.com/mrollier/visualise-dj-tracklists
+  status: code
+  tags: [creative, vibe-coded]
+- id: reasoning-prep
+  name: Reasoning prep
+  blurb: Offline practice app for timed numerical, probabilistic and spatial reasoning tests of the kind AI safety fellowships use. 518 generated questions; every answer key is re-derived by an independent verifier before it ships.
+  year: 2026
+  status: private
+  tags: [ai-safety, vibe-coded]
+- id: immo-agent
+  name: Immo agent
+  blurb: Daily scraper of Belgian property sites, deduplicated in SQLite, filtered, and mailed as a digest. Runs on a GitHub Actions cron. Built to find a house, then kept because it works.
+  year: 2026
+  status: private
+  tags: [tool, vibe-coded]
+- id: caspectra
+  name: Caspectra
+  blurb: Attempt to build a behavioural taxonomy of cellular automata from label-free dynamical invariants. The self-supervised angle did not work, and the write-up says so.
+  year: 2026
+  status: private
+  tags: [research]
+- id: essential-metrics-life-on-graphs
+  name: Life on graphs
+  blurb: Scripts and data behind the Physica D paper on Game of Life dynamics on networks.
+  year: 2025
+  repo: https://github.com/mrollier/essential-metrics-life-on-graphs
+  status: code
+  tags: [research]
+- id: emulating-and-learning-CAs
+  name: Emulating and learning CAs
+  blurb: Small neural networks that emulate one-dimensional cellular automata exactly, and what happens when you ask them to learn the rule instead.
+  year: 2024
+  repo: https://github.com/mrollier/emulating-and-learning-CAs
+  status: code
+  tags: [research]

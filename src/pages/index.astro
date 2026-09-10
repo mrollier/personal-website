@@ -1,0 +1,42 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import banner from '../assets/mosaics/banner1-eca.png';
+const teaser = (await getCollection('gallery')).slice(0, 3);
+---
+<Base title="Michiel Rollier" wide>
+  <figure class="hero">
+    <img src={banner.src} width={banner.width} height={banner.height} alt="A mountain ridge drawn by an elementary cellular automaton, the sky filled with Game of Life still lifes" />
+  </figure>
+  <section class="measure">
+    <h1>Simple rules, rich landscapes.</h1>
+    <p>
+      I'm Michiel, a physicist from Belgium. I spent a PhD watching what happens when you iterate a
+      simple local rule on a grid or a network, and learning how much of the result you can predict
+      without running it. Usually less than you'd hope. I find that a useful habit of mind for thinking
+      about systems that are far more capable and far less inspectable than a cellular automaton.
+    </p>
+    <p class="now"><a href="/ai-safety/">Now: PhD done, looking for a role or fellowship in AI safety.</a></p>
+  </section>
+  <section aria-labelledby="gallery-h">
+    <h2 id="gallery-h"><a href="/gallery/">Gallery</a></h2>
+    <ul class="grid">
+      {teaser.map((e) => (
+        <li>
+          <a href="/gallery/">
+            <figure>
+              <img src={e.data.image.src} width={e.data.image.width} height={e.data.image.height} alt={e.data.title} loading="lazy" decoding="async" />
+              <figcaption>{e.data.title}</figcaption>
+            </figure>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+  <p class="quests">
+    <span>Side quests:</span>
+    <a href="/mountains/">Mountains</a>
+    <a href="/dj/">DJ sets</a>
+    <a href="/ventures/">BHL440 &amp; ventures</a>
+  </p>
+</Base>

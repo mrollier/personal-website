@@ -1,0 +1,41 @@
+---
+import Base from '../layouts/Base.astro';
+import { Image } from 'astro:assets';
+import { getCollection } from 'astro:content';
+import MountainMap from '../components/MountainMap.astro';
+import alps from '../assets/photos/alps-matterhorn.jpg';
+import dolomites from '../assets/photos/dolomites.jpg';
+import cliff from '../assets/photos/cliff.jpg';
+const summits = (await getCollection('mountains')).sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+const fmt = (d: Date) => d.toISOString().slice(0, 10);
+---
+<Base title="Mountains" description="Summits, with dates and a map.">
+  <h1>Mountains</h1>
+  <p>Places I have stood on top of, in reverse order. Nothing heroic, just a habit.</p>
+  <div class="photos">
+    <Image src={alps} alt="On a snowy summit ridge with the Matterhorn in the distance" width={800} />
+    <Image src={dolomites} alt="Standing in a narrow limestone gully in the Dolomites, climbing helmet on" width={800} />
+    <Image src={cliff} alt="On a volcanic ridge above the Atlantic" width={800} />
+  </div>
+  <MountainMap points={summits.map((s) => s.data)} />
+  {summits.length ? (
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Summit</th><th class="num">m</th><th>Date</th><th>Where</th><th>Note</th></tr></thead>
+        <tbody>
+          {summits.map((s) => (
+            <tr>
+              <td>{s.data.name}</td>
+              <td class="num">{s.data.elevation}</td>
+              <td class="num">{fmt(s.data.date)}</td>
+              <td>{s.data.country}</td>
+              <td>{s.data.note}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p class="meta">Summit list on its way.</p>
+  )}
+</Base>

@@ -1,0 +1,17 @@
+{
+  "name": "personal-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|10.1103|cv.pdf'"
+  },
+  "dependencies": {
+    "astro": "^7.3.2"
+  },
+  "devDependencies": {
+    "linkinator": "^6.1.0"
+  }
+}

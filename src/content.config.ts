@@ -39,7 +39,7 @@ export const collections = {
       id: z.string(),
       name: z.string(),
       elevation: z.number(),
-      date: z.coerce.date(),
+      date: z.coerce.date().optional(),
       country: z.string(),
       lat: z.number(),
       lon: z.number(),

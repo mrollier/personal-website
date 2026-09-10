@@ -8,9 +8,10 @@ description: BHL440 co-housing, EA Ghent events, and a decade of putting on part
 
 ## BHL440
 
-A co-housing community in Ghent that I started in 2021 and still run. That means the boring
-parts: contracts, plumbing, the shared budget, and the occasional house meeting that runs long.
-It is also the best decision I made that year.
+A co-housing in Ghent that I bought, founded and have run since 2021. Part of that is
+practical: fixing the shower, doing the finances. Most of it is building the structures that
+make people live together rather than next to each other: house meetings, sharing circles, the
+small rituals that keep a group of adults a community.
 
 ## Effective Altruism Ghent
 

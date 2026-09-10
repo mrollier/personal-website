@@ -1,10 +1,29 @@
-# One entry per summit. date as YYYY-MM-DD. lat/lon in decimal degrees.
-# - id: example
-#   name: Example Peak
-#   elevation: 4000
-#   date: 2025-08-06
-#   country: CH
-#   lat: 45.94
-#   lon: 7.75
-#   note: One line.
-[]
+# One entry per summit. elevation in m, lat/lon decimal degrees. date (YYYY-MM-DD) optional.
+- id: kazbek
+  name: Mount Kazbek
+  elevation: 5054
+  country: Georgia
+  lat: 42.699
+  lon: 44.518
+  note: Dormant stratovolcano on the Georgia–Russia border. Highest I've been.
+- id: kyanjin-ri
+  name: Kyanjin Ri
+  elevation: 4773
+  country: Nepal
+  lat: 28.22
+  lon: 85.57
+  note: Above Kyanjin Gompa in the Langtang valley.
+- id: signalkuppe
+  name: Signalkuppe
+  elevation: 4554
+  country: Switzerland / Italy
+  lat: 45.927
+  lon: 7.877
+  note: Monte Rosa. The Capanna Margherita on top is the highest building in Europe.
+- id: annapurna-bc
+  name: Annapurna Base Camp
+  elevation: 4130
+  country: Nepal
+  lat: 28.531
+  lon: 83.820
+  note: Not a summit, but the amphitheatre is worth bending the rules for.

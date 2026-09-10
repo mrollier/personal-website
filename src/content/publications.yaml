@@ -6,7 +6,8 @@
   year: 2025
   type: A1
   doi: 10.1016/j.physd.2025.134950
-  summary: "Take Conway's Game of Life off the grid and put it on an arbitrary network. Which few numbers still tell you how it will behave?"
+  url: https://arxiv.org/abs/2506.21226
+  summary: "The Game of Life generalised to arbitrary networks. A few simple metrics predict how it behaves, well enough to synchronise a firing squad nine times out of ten."
 - id: ca-taxonomy
   title: "A comprehensive taxonomy of cellular automata"
   authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"
@@ -15,7 +16,7 @@
   type: A1
   doi: 10.1016/j.cnsns.2024.108362
   url: https://arxiv.org/abs/2401.08408
-  summary: "A field guide to the zoo of cellular automaton families, so that people stop reinventing each other's models under new names."
+  summary: "Five families of cellular automata defined in one place, with a map of which exotic-sounding variants are the same thing wearing a different hat."
 - id: cnn-classification
   title: "Convolutional neural networks for automated cellular automaton classification"
   authors: "M. Rollier, A. J. Daly, J. M. Baetens"
@@ -24,7 +25,7 @@
   type: B2
   doi: 10.1007/978-3-031-81097-8_3
   url: https://arxiv.org/abs/2409.02740
-  summary: "Can a small CNN look at a space-time diagram and tell you which behavioural class it belongs to? Mostly yes, and the failures are instructive."
+  summary: "Earlier networks that sorted cellular automata by behaviour were quietly cheating by learning the local rule. Ours looks at the actual pattern and still gets it right nearly always."
 - id: cnn-nonuniform
   title: "Efficient simulation of non-uniform cellular automata with a convolutional neural network"
   authors: "M. Rollier, A. J. Daly, O. M. Bruno, J. M. Baetens"
@@ -33,14 +34,16 @@
   type: P1
   doi: 10.1007/978-3-031-71552-5_11
   url: https://arxiv.org/abs/2409.02722
-  summary: "A cellular automaton is a convolution followed by a lookup. So build it as one, on a GPU, and simulate rule mixtures fast."
+  summary: "Non-uniform cellular automata are secretly convolutional neural networks, so we ran them in TensorFlow and simulated many large automata at once, fast."
 - id: seiqrd-vocs
   title: "A stochastic mobility-driven spatially explicit SEIQRD COVID-19 model with VOCs, seasonality, and vaccines"
   authors: "T. W. Alleman, M. Rollier, J. Vergeynst, J. M. Baetens"
-  venue: "Applied Mathematical Modelling, pp. 507–525"
+  venue: "Applied Mathematical Modelling 123, pp. 507–525"
   year: 2023
   type: A1
-  summary: "The Belgian pandemic model with variants, seasons and vaccination added, run per municipality."
+  doi: 10.1016/j.apm.2023.06.027
+  url: https://arxiv.org/abs/2207.03717
+  summary: "A province-level COVID model with variants, vaccines and phone-tracked mobility. Travel between provinces barely mattered; cutting social contact beat restricting movement."
 - id: mobility-belgium
   title: "Mobility and the spatial spread of SARS-CoV-2 in Belgium"
   authors: "M. Rollier, G. H. B. Miranda, J. Vergeynst, J. Meys, T. W. Alleman, J. M. Baetens"
@@ -49,7 +52,7 @@
   type: A1
   doi: 10.1016/j.mbs.2022.108957
   url: https://arxiv.org/abs/2202.11528
-  summary: "How much of where the virus went can telecom mobility data explain? Quite a lot, with caveats."
+  summary: "Early in the pandemic Belgians moved less as cases rose, and how connected your district was to the first outbreaks predicted its excess deaths six weeks later."
 - id: npi-belgium
   title: "Assessing the effects of non-pharmaceutical interventions on SARS-CoV-2 transmission in Belgium by means of an extended SEIQRD model and public mobility data"
   authors: "T. W. Alleman, J. Vergeynst, L. De Visscher, M. Rollier, E. Torfs, I. Nopens, J. M. Baetens, Belgian Collaborative Group on COVID-19 Hospital Surveillance"
@@ -57,7 +60,7 @@
   year: 2021
   type: A1
   doi: 10.1016/j.epidem.2021.100505
-  summary: "The model that fed into Belgian government advice during the first waves."
+  summary: "Mobility data plus hospital records showed that under lockdown, homes and schools drove transmission, and reopening schools could push R back above one."
 - id: gw-echoes
   title: "A morphology-independent data analysis method for detecting and characterizing gravitational wave echoes"
   authors: "K. W. Tsang, M. Rollier, A. Ghosh, A. Samajdar, M. Agathos, K. Chatziioannou, V. Cardoso, G. Khanna, C. Van Den Broeck"
@@ -65,7 +68,8 @@
   year: 2018
   type: A1
   doi: 10.1103/PhysRevD.98.024023
-  summary: "If black holes had a surface, merger signals would echo. A way to look for echoes without assuming what they look like."
+  url: https://arxiv.org/abs/1804.04877
+  summary: "Without assuming what an echo looks like, a wavelet-based search can still pick gravitational-wave echoes out of detector noise and measure their spacing and decay."
 - id: node-importance
   title: "Probing dynamical importance of network nodes under maximal agnosticism"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"

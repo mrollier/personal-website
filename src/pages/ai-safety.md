@@ -8,19 +8,36 @@ description: Why I'm moving from cellular automata to AI safety, what I've done 
 
 ## Why
 
-My PhD was about a small, stubborn question: given a rule, what can you say about the
-behaviour it produces without running it? For cellular automata the honest answer is often
-"not much", and the gap between the simplicity of the rule and the richness of the result is
-the whole point of the field. I don't think that lesson stays in the toy box. The systems now
-being trained are far more capable than any automaton and far harder to inspect, and the people
-building them are, reasonably, more interested in what those systems do than in why. I'd like
-to spend the next years on the why, and on making sure the answer is one we can live with.
+We are living through the strangest period in human history, and the line between reality and
+science fiction gets thinner every quarter. We are racing towards systems more capable than us
+without proper guardrails and without any deep understanding of what these alien minds want or
+think. That is a safety problem of a size we have not faced before.
+
+I did not start my PhD worried about this. My research was not about AI safety and I won't
+pretend it was. But I watched the field's capabilities grow at close range while training
+networks to emulate cellular automata, and I made deliberate choices to stay close to the state
+of the art. The actual pull came from two good friends who had read MacAskill and could not stop
+radiating effective altruism at me. I have a strong sense of justice, and the movement's habit
+of asking "does this actually help?" resonated. Once I noticed that AI safety was both the
+problem that world considers most pressing and the one my background lets me contribute to,
+the choice was more or less made for me.
+
+So I joined formally, helped build EA Ghent, went to the conferences, read the books. Near the
+end of my PhD I took the next steps seriously: the BlueDot Technical AI Safety course, and a
+place in the Iliad Intensive in San Francisco. I'm excited about what's next.
+
+## Interests
+
+Interpretability and control, mainly. Field building locally. Not governance as a career, but
+I want to keep strong ties with that side: Brussels is half an hour away by train and that
+proximity is worth using.
 
 ## So far
 
 - Board member of [Effective Altruism Ghent](https://eabelgium.org/groups/ghent/) since 2025, where I host and organise
   events including *Powerful AI is coming. How do we get it right?* and *Your Career as a Force for Good*.
 - Cohort student in the [BlueDot](https://bluedot.org/) Technical AI Safety course, August to September 2026.
+- Accepted into the Iliad Intensive, San Francisco.
 - EA Summit Brussels 2026 and EAGxAmsterdam 2025.
 - A [practice app](/projects/) for the kind of timed reasoning tests fellowship programmes use, mostly to
   learn what they measure.
@@ -36,6 +53,6 @@ to spend the next years on the why, and on making sure the answer is one we can 
 
 ## Looking for
 
-A research role or fellowship in AI safety from late 2026. Interpretability and evaluations are the
-areas where my background maps most directly, but I'm open to being told otherwise. Based in Ghent,
-happy to relocate.
+Right now, a series of short, strong experiences: courses, short fellowships, research sprints.
+Longer term, joining an existing organisation, remote or in Belgium, or, better, founding one
+here in Ghent.

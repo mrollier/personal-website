@@ -129,6 +129,9 @@ main.wide .measure { padding-inline: 0; margin-inline: 0; }
 .meta strong { color: var(--ink); }
 .pubs p { margin: 0.3rem 0 0; }
 
+/* embeds */
+iframe { display: block; width: 100%; border: 0; margin-bottom: 1rem; }
+
 /* tables */
 .scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }

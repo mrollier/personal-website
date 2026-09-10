@@ -51,6 +51,7 @@ export const collections = {
     schema: ({ image }) =>
       z.object({
         id: z.string(),
+        order: z.number(),
         title: z.string(),
         image: image(),
         caption: z.string().optional(),

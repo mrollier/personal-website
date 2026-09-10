@@ -1,37 +1,46 @@
 # Images live in src/assets/mosaics/. Paths are relative to this file. Order = display order; first three show on the home page.
 - id: john-conway
+  order: 1
   title: John Conway
   image: ../assets/mosaics/john_conway.png
   caption: Portrait built from Game of Life still lifes on a rule-30 background.
 - id: beyond-tiles-art
+  order: 2
   title: Beyond tiles (art)
   image: ../assets/mosaics/beyond_tiles_art.png
   caption: Still lifes as brush strokes, three colours.
 - id: playground
+  order: 3
   title: Playground
   image: ../assets/mosaics/playground.png
   caption: Testing ground for the mosaic pipeline.
 - id: beyond-tiles-mosaic
+  order: 4
   title: Beyond tiles (mosaic)
   image: ../assets/mosaics/beyond_tiles_mosaic.png
   caption: Same source image, tile-by-tile reconstruction.
 - id: quickstart
+  order: 5
   title: Quickstart
   image: ../assets/mosaics/quickstart_mosaic.png
   caption: The example that ships with the package.
 - id: marilyn-diptych
+  order: 6
   title: Marilyn diptych
   image: ../assets/mosaics/marilyn_diptych.png
   caption: Two passes of the same pipeline with different still-life sets.
 - id: banner-eca
+  order: 7
   title: Banner, elementary CA
   image: ../assets/mosaics/banner1-eca.png
   caption: Mountain ridge from an elementary cellular automaton, sky in still lifes.
 - id: banner-agar
+  order: 8
   title: Banner, agar
   image: ../assets/mosaics/banner1-agar.png
   caption: Same ridge, agar fill.
 - id: banner-scatter
+  order: 9
   title: Banner, scatter
   image: ../assets/mosaics/banner1-filled-l3-scatter.png
   caption: Same ridge, scattered still lifes.

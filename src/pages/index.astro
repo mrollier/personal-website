@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { getCollection } from 'astro:content';
 import banner from '../assets/mosaics/banner1-eca.png';
-const teaser = (await getCollection('gallery')).slice(0, 3);
+const teaser = (await getCollection('gallery')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 ---
 <Base title="Michiel Rollier" wide>
   <figure class="hero">

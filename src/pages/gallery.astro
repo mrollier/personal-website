@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { getCollection } from 'astro:content';
-const items = await getCollection('gallery');
+const items = (await getCollection('gallery')).sort((a, b) => a.data.order - b.data.order);
 ---
 <Base title="Gallery" description="Mosaics built from Game of Life still lifes." wide>
   <div class="measure">

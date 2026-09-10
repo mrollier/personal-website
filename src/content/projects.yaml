@@ -24,17 +24,12 @@
   tags: [research]
 - id: visualise-dj-tracklists
   name: Visualise DJ tracklists
-  blurb: TypeScript app for managing a record collection and looking at the shape of DJ sets over time.
+  blurb: Web app for managing a record collection and looking at the shape of DJ sets over time. Live as Zodiac tracker.
   year: 2026
+  url: https://zodiac-tracker.michielrollier.workers.dev/
   repo: https://github.com/mrollier/visualise-dj-tracklists
-  status: code
+  status: live
   tags: [creative, vibe-coded]
-- id: reasoning-prep
-  name: Reasoning prep
-  blurb: Offline practice app for timed numerical, probabilistic and spatial reasoning tests of the kind AI safety fellowships use. 518 generated questions; every answer key is re-derived by an independent verifier before it ships.
-  year: 2026
-  status: private
-  tags: [ai-safety, vibe-coded]
 - id: immo-agent
   name: Immo agent
   blurb: Daily scraper of Belgian property sites, deduplicated in SQLite, filtered, and mailed as a digest. Runs on a GitHub Actions cron. Built to find a house, then kept because it works.

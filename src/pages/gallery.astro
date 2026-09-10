@@ -1,26 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getCollection } from 'astro:content';
-const items = (await getCollection('gallery')).sort((a, b) => a.data.order - b.data.order);
 ---
-<Base title="Gallery" description="Mosaics built from Game of Life still lifes." wide>
-  <div class="measure">
-    <h1>Gallery</h1>
-    <p>
-      Every tile in these images is a still life: a pattern that Conway's Game of Life leaves alone
-      forever. Pick a photo, quantise it, and for each block find the still life whose density matches
-      best. The backgrounds are one-dimensional cellular automata run downward. You can make your own
-      with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.
-    </p>
-  </div>
-  <ul class="grid">
-    {items.map((e) => (
-      <li>
-        <figure>
-          <img src={e.data.image.src} width={e.data.image.width} height={e.data.image.height} alt={e.data.title} loading="lazy" decoding="async" />
-          <figcaption>{e.data.title}{e.data.caption && ` — ${e.data.caption}`}</figcaption>
-        </figure>
-      </li>
-    ))}
-  </ul>
+<Base title="Gallery" description="Mosaics built from Game of Life still lifes. Under construction.">
+  <h1>Gallery</h1>
+  <p>Under construction. Mosaics built from Game of Life still lifes will go here.</p>
+  <p>Meanwhile, make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
 </Base>

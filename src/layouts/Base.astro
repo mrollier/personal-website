@@ -37,18 +37,14 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title === 'Michiel Rollier' ? title : `${title} · Michiel Rollier`}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
+    <script is:inline>try { if (localStorage.theme === 'dark') document.documentElement.dataset.theme = 'dark'; } catch {}</script>
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
   </head>
   <body>
-    <canvas id="life" aria-hidden="true"></canvas>
+    <canvas id="life" class:list={[path === '' && 'play']} aria-hidden="true"></canvas>
     <header class="wrap site-header">
-      <a class="brand" href="/">
-        <svg viewBox="0 0 3 3" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor">
-          <rect x="1" y="0" width="1" height="1" /><rect x="2" y="1" width="1" height="1" /><rect x="0" y="2" width="3" height="1" />
-        </svg>
-        Michiel Rollier
-      </a>
+      <a class="brand" href="/">Michiel Rollier</a>
       <nav aria-label="Main">
         <ul>
           {nav.map(([href, label]) => (
@@ -56,6 +52,7 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
           ))}
         </ul>
       </nav>
+      <button id="theme" class="theme" type="button" title="Switch theme">dark</button>
     </header>
     <main class:list={['wrap', wide ? 'wide' : 'measure']}>
       <slot />
@@ -104,11 +101,52 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
         ctx.fillStyle = getComputedStyle(c).color;
         for (let i = 0; i < g.length; i++) if (g[i]) ctx.fillRect((i % W) * S, Math.floor(i / W) * S, S - 1, S - 1);
       }
+      let run = !matchMedia('(prefers-reduced-motion: reduce)').matches;
       init(); draw();
       addEventListener('resize', () => { init(); draw(); });
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        setInterval(() => { if (!document.hidden) { step(); draw(); } }, 250);
+      setInterval(() => { if (run && !document.hidden) { step(); draw(); } }, 250);
+
+      // Home playground: buttons and painting with the pointer.
+      const pause = document.querySelector<HTMLButtonElement>('[data-life=pause]');
+      const label = () => { if (pause) pause.textContent = run ? 'pause' : 'play'; };
+      label();
+      document.querySelectorAll<HTMLButtonElement>('[data-life]').forEach((b) => b.addEventListener('click', () => {
+        const k = b.dataset.life;
+        if (k === 'pause') run = !run;
+        else if (k === 'step') step();
+        else if (k === 'clear') g.fill(0);
+        else if (k === 'seed') init();
+        label(); draw();
+      }));
+      if (c.classList.contains('play')) {
+        let down = false;
+        const paint = (e: PointerEvent) => {
+          const x = Math.floor(e.clientX / S), y = Math.floor(e.clientY / S);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx, yy = y + dy;
+            if (xx >= 0 && yy >= 0 && xx < W && yy < H && Math.random() < 0.6) g[yy * W + xx] = 1;
+          }
+          draw();
+        };
+        addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 || (e.target as Element).closest('a, button')) return;
+          down = true; paint(e); e.preventDefault();
+        });
+        addEventListener('pointermove', (e) => { if (down) paint(e); });
+        addEventListener('pointerup', () => { down = false; });
+        addEventListener('pointercancel', () => { down = false; });
       }
+
+      // Theme toggle. Light is the default; the choice is remembered per browser.
+      const t = document.getElementById('theme')!;
+      const setLabel = () => { t.textContent = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; };
+      setLabel();
+      t.addEventListener('click', () => {
+        const dark = document.documentElement.dataset.theme !== 'dark';
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        try { localStorage.theme = dark ? 'dark' : 'light'; } catch {}
+        setLabel(); draw();
+      });
     </script>
   </body>
 </html>

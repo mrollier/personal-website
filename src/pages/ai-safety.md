@@ -24,7 +24,7 @@ the choice was more or less made for me.
 
 So I joined formally, helped build EA Ghent, went to the conferences, read the books. Near the
 end of my PhD I took the next steps seriously: the BlueDot Technical AI Safety course, and a
-place in the Iliad Intensive in San Francisco. I'm excited about what's next.
+place in the [Iliad Intensive](https://www.iliad.ac/intensive) in San Francisco. I'm excited about what's next.
 
 ## Interests
 
@@ -37,10 +37,8 @@ proximity is worth using.
 - Board member of [Effective Altruism Ghent](https://eabelgium.org/groups/ghent/) since 2025, where I host and organise
   events including *Powerful AI is coming. How do we get it right?* and *Your Career as a Force for Good*.
 - Cohort student in the [BlueDot](https://bluedot.org/) Technical AI Safety course, August to September 2026.
-- Accepted into the Iliad Intensive, San Francisco.
+- Accepted into the [Iliad Intensive](https://www.iliad.ac/intensive), San Francisco.
 - EA Summit Brussels 2026 and EAGxAmsterdam 2025.
-- A [practice app](/projects/) for the kind of timed reasoning tests fellowship programmes use, mostly to
-  learn what they measure.
 
 ## What I bring
 

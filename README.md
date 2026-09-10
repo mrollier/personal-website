@@ -17,7 +17,7 @@ npm run check    # build + link check
 |---|---|
 | Publications | `src/content/publications.yaml` |
 | Projects | `src/content/projects.yaml` |
-| Mountains | `src/content/mountains.yaml` |
+| Mountains | `src/content/mountains.yaml` (map outline: `src/data/ne_110m_land.json`, Natural Earth, public domain) |
 | Gallery | `src/content/gallery.yaml` + image in `src/assets/mosaics/` |
 | About, AI safety, Ventures, DJ, CV | `src/pages/*.md` |
 | Home intro and "now" line | `src/pages/index.astro` |

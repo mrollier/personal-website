@@ -27,3 +27,38 @@
   lat: 28.531
   lon: 83.820
   note: Not a summit, but the amphitheatre is worth bending the rules for.
+- id: ak-baital
+  name: Ak-Baital Pass
+  elevation: 4655
+  country: Tajikistan
+  lat: 38.561
+  lon: 73.598
+  note: Highest point of the Pamir Highway. A pass, not a summit, but the air doesn't know that.
+- id: ala-kul
+  name: Ala-Kul Pass
+  elevation: 3860
+  country: Kyrgyzstan
+  lat: 42.318
+  lon: 78.536
+  note: Above the turquoise Ala-Kul lake (3532 m) in the Terskey Alatau, near Karakol.
+- id: vesuvius
+  name: Mount Vesuvius
+  elevation: 1281
+  country: Italy
+  lat: 40.821
+  lon: 14.426
+  note: Still active. Naples keeps an eye on it.
+- id: los-gigantes
+  name: Los Gigantes
+  elevation: 600
+  country: Spain (Tenerife)
+  lat: 28.244
+  lon: -16.840
+  note: Basalt sea cliffs straight out of the Atlantic. Elevation is the cliff top, give or take.
+- id: mamangua
+  name: Sugarloaf Peak (Mamanguá)
+  elevation: 425
+  country: Brazil
+  lat: -23.29
+  lon: -44.61
+  note: Pão de Açúcar do Mamanguá near Paraty. Short, steep, and a 360° view of the Atlantic Forest.

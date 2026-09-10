@@ -1,15 +1,26 @@
 ---
+// Natural Earth 1:110m land (public domain), equirectangular at K px per degree.
+// The viewBox crops the world to the summits' extent, so adding a far-away peak just zooms out.
+import land from '../data/ne_110m_land.json';
 type Pt = { name: string; lat: number; lon: number };
 const { points } = Astro.props as { points: Pt[] };
-const P = 4;
+const K = 4, P = 6;
+const X = (lon: number) => (lon + 180) * K;
+const Y = (lat: number) => (90 - lat) * K;
 const lons = points.map((p) => p.lon), lats = points.map((p) => p.lat);
-const x0 = Math.min(...lons) - P, x1 = Math.max(...lons) + P;
-const y0 = Math.min(...lats) - P, y1 = Math.max(...lats) + P;
-const X = (lon: number) => ((lon - x0) / (x1 - x0)) * 600;
-const Y = (lat: number) => ((y1 - lat) / (y1 - y0)) * 300;
+const vx = X(Math.min(...lons) - P), vy = Y(Math.max(...lats) + P);
+const vw = X(Math.max(...lons) + P) - vx, vh = Y(Math.min(...lats) - P) - vy;
+const rings: number[][][] = (land as any).features.flatMap((f: any) =>
+  f.geometry.type === 'Polygon' ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((p: any) => p[0]),
+);
+const d = rings
+  .filter((r) => r.some(([, lat]) => lat > -60)) // skip Antarctica
+  .map((r) => 'M' + r.map(([lon, lat]) => `${X(lon).toFixed(1)} ${Y(lat).toFixed(1)}`).join('L') + 'Z')
+  .join('');
 ---
 {points.length > 0 && (
-  <svg class="map" viewBox="0 0 600 300" role="img" aria-label={`Map of ${points.length} summits, numbered as in the table below`}>
+  <svg class="map" viewBox={`${vx} ${vy} ${vw} ${vh}`} role="img" aria-label={`Map of ${points.length} summits, numbered as in the table below`}>
+    <path d={d} fill="var(--bg)" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke" />
     {points.map((p, i) => (
       <>
         <rect x={X(p.lon) - 3} y={Y(p.lat) - 3} width="6" height="6" fill="var(--accent)" />

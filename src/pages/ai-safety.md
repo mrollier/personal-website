@@ -34,10 +34,11 @@ proximity is worth using.
 
 ## So far
 
+- Accepted into the [Iliad Intensive](https://www.iliad.ac/intensive), a full-time taught course on
+  foundational alignment research, in October in San Francisco.
 - Board member of [Effective Altruism Ghent](https://eabelgium.org/groups/ghent/) since 2025, where I host and organise
   events including *Powerful AI is coming. How do we get it right?* and *Your Career as a Force for Good*.
 - Cohort student in the [BlueDot](https://bluedot.org/) Technical AI Safety course, August to September 2026.
-- Accepted into the [Iliad Intensive](https://www.iliad.ac/intensive), San Francisco.
 - EA Summit Brussels 2026 and EAGxAmsterdam 2025.
 
 ## What I bring

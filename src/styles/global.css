@@ -95,7 +95,7 @@ main.wide .measure { padding-inline: 0; margin-inline: 0; }
   color: var(--accent);
   image-rendering: pixelated;
 }
-#life.play { opacity: 0.16; }
+#life.paint { opacity: 0.16; }
 
 /* home */
 .home { margin-top: 12vh; }

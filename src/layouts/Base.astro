@@ -70,33 +70,67 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
       </ul>
     </footer>
     <script>
-      // Conway's Game of Life, faint, seeded by the page path so each page has its own soup.
+      import tiles from '../data/tiles.json';
+      // Conway's Game of Life, faint. The grid starts as a still life assembled from the diamond
+      // tiles of game-of-life-mosaics on a torus, so nothing moves (or costs CPU) until someone clicks.
       const c = document.getElementById('life') as HTMLCanvasElement;
       const ctx = c.getContext('2d')!;
-      const S = 12;
-      let W = 0, H = 0, g = new Uint8Array(0), n = new Uint8Array(0);
+      const S = 8;
+      let W = 0, H = 0, g = new Uint8Array(0), n = new Uint8Array(0), active = false;
       let s = 2166136261;
       for (const ch of location.pathname) s = Math.imul(s ^ ch.charCodeAt(0), 16777619);
       s = s >>> 0 || 1;
       const rnd = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
+      // Tiles are 6L x 6L bits packed MSB first, sorted by population. Expanded once per level.
+      const bank: Record<string, Uint8Array[]> = {};
+      function expand(level: number) {
+        return bank[level] ??= (tiles as Record<string, string[]>)[level].map((b) => {
+          const bytes = atob(b);
+          return Uint8Array.from({ length: 36 * level * level }, (_, k) => (bytes.charCodeAt(k >> 3) >> (7 - (k & 7))) & 1);
+        });
+      }
+      function mosaic() {
+        const level = 3 + Math.floor(rnd() * 3), size = 6 * level, half = 3 * level;
+        const set = expand(level), pop = set.map((t) => t.reduce((a, b) => a + b, 0));
+        // Whole lattice periods, so the torus itself is a still life and no tile is cut at the edge.
+        W = Math.ceil(c.width / S / size) * size; H = Math.ceil(c.height / S / size) * size;
+        g = new Uint8Array(W * H); n = new Uint8Array(W * H);
+        // Linear density gradient along a random direction: empty sites, then the sparsest tile, up to the densest.
+        const th = rnd() * 2 * Math.PI, f = (x: number, y: number) => Math.cos(th) * x - Math.sin(th) * y;
+        const ends = [f(0, 0), f(W, 0), f(0, H), f(W, H)], lo = Math.min(...ends), hi = Math.max(...ends);
+        const pmin = pop[0], pmax = pop[pop.length - 1];
+        for (let j = 0; j < H / half; j++) for (let i = j % 2; i < W / half; i += 2) {
+          const x = i * half, y = j * half;
+          const want = ((f(x + half, y + half) - lo) / (hi - lo)) * pmax;
+          if (want < pmin && rnd() > want / pmin) continue; // below the sparsest tile, thin out to nothing
+          // Nearest population, then a random tile among those of that population.
+          let k = 0; while (k < pop.length - 1 && Math.abs(pop[k + 1] - want) <= Math.abs(pop[k] - want)) k++;
+          let a = k, b = k; while (a > 0 && pop[a - 1] === pop[k]) a--; while (b < pop.length - 1 && pop[b + 1] === pop[k]) b++;
+          const t = set[a + Math.floor(rnd() * (b - a + 1))];
+          for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) if (t[dy * size + dx]) g[((y + dy) % H) * W + ((x + dx) % W)] = 1;
+        }
+      }
       function init() {
         // Size the bitmap to the canvas's real CSS box, so cells land where the pointer is.
         const r = c.getBoundingClientRect();
         c.width = Math.round(r.width); c.height = Math.round(r.height);
-        W = Math.ceil(c.width / S); H = Math.ceil(c.height / S);
-        g = new Uint8Array(W * H); n = new Uint8Array(W * H);
-        for (let i = 0; i < g.length; i++) g[i] = rnd() < 0.15 ? 1 : 0;
+        mosaic();
+        active = step() > 0;
+        console.assert(!active, 'mosaic is not a still life');
       }
       function step() {
+        let d = 0;
         for (let y = 0; y < H; y++) {
           const ym = ((y - 1 + H) % H) * W, y0 = y * W, yp = ((y + 1) % H) * W;
           for (let x = 0; x < W; x++) {
             const xm = (x - 1 + W) % W, xp = (x + 1) % W;
             const k = g[ym + xm] + g[ym + x] + g[ym + xp] + g[y0 + xm] + g[y0 + xp] + g[yp + xm] + g[yp + x] + g[yp + xp];
-            n[y0 + x] = k === 3 || (k === 2 && g[y0 + x]) ? 1 : 0;
+            const v = k === 3 || (k === 2 && g[y0 + x]) ? 1 : 0;
+            n[y0 + x] = v; d += v ^ g[y0 + x];
           }
         }
         [g, n] = [n, g];
+        return d;
       }
       function draw() {
         ctx.clearRect(0, 0, c.width, c.height);
@@ -106,7 +140,8 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
       let run = !matchMedia('(prefers-reduced-motion: reduce)').matches;
       init(); draw();
       new ResizeObserver(() => { if (c.width !== Math.round(c.clientWidth) || c.height !== Math.round(c.clientHeight)) { init(); draw(); } }).observe(c);
-      setInterval(() => { if (run && !document.hidden) { step(); draw(); } }, 250);
+      // Idle while nothing changes. ponytail: a grid left with only blinkers never idles; add period-2 detection if that ever costs anything.
+      setInterval(() => { if (run && active && !document.hidden) { active = step() > 0; draw(); } }, 250);
 
       // Home playground: buttons and painting with the pointer.
       const pause = document.querySelector<HTMLButtonElement>('[data-life=pause]');
@@ -115,9 +150,9 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
       document.querySelectorAll<HTMLButtonElement>('[data-life]').forEach((b) => b.addEventListener('click', () => {
         const k = b.dataset.life;
         if (k === 'pause') run = !run;
-        else if (k === 'step') step();
-        else if (k === 'clear') g.fill(0);
-        else if (k === 'seed') init();
+        else if (k === 'step') active = step() > 0;
+        else if (k === 'clear') { g.fill(0); active = false; }
+        else if (k === 'seed') { s = (Math.random() * 4294967296) >>> 0 || 1; init(); }
         label(); draw();
       }));
       if (c.classList.contains('paint')) {
@@ -129,7 +164,7 @@ const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : u
             const xx = x + dx, yy = y + dy;
             if (xx >= 0 && yy >= 0 && xx < W && yy < H && Math.random() < 0.6) g[yy * W + xx] = 1;
           }
-          draw();
+          active = true; draw();
         };
         addEventListener('pointerdown', (e) => {
           if (e.button !== 0 || (e.target as Element).closest('a, button')) return;

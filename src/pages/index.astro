@@ -12,10 +12,14 @@ import Base from '../layouts/Base.astro';
     <p class="now"><a href="/ai-safety/">PhD done, BlueDot done, Iliad Intensive next. Looking for what comes after.</a></p>
   </section>
   <div class="play" role="group" aria-label="Game of Life controls">
-    <span>The background is Conway's Game of Life. Click or drag anywhere to add cells.</span>
+    <span>
+      The background is a Game of Life still life, assembled from the tiles of
+      my <a href="https://github.com/mrollier/game-of-life-mosaics">mosaics</a>. Nothing moves until
+      you click or drag on it.
+    </span>
     <button type="button" data-life="pause">pause</button>
     <button type="button" data-life="step">step</button>
     <button type="button" data-life="clear">clear</button>
-    <button type="button" data-life="seed">reseed</button>
+    <button type="button" data-life="seed">new still life</button>
   </div>
 </Base>

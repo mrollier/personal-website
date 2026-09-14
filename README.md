@@ -21,6 +21,7 @@ npm run check    # build + link check
 | Gallery | `src/content/gallery.yaml` + image in `src/assets/mosaics/` |
 | About, AI safety, Ventures, DJ, CV | `src/pages/*.md` |
 | Home intro and "now" line | `src/pages/index.astro` |
+| Background still-life tiles | `src/data/tiles.json`, regenerate with `PYTHONPATH=../game-of-life-mosaics/src python3 scripts/export-tiles.py` |
 | Nav, footer links | `src/layouts/Base.astro` |
 | CV PDF | `public/cv.pdf` (redacted copy only) |
 

@@ -6,8 +6,8 @@ description: Jungle, tekno and tribe sets by Brak Geboren, recorded at clubs, ra
 
 # DJ sets
 
-Jungle, tekno, tribe. I've played since 2012 as **Brak Geboren**: parties and raves, record
-stores, and radio at Kompass Klub and Urgent.fm in Belgium and Red Light Radio in Amsterdam.
+Jungle, tekno, tribe. I've played since 2012 as **Brak Geboren**: parties and raves, clubs such as Kompass Klub, record
+stores, and radio at Urgent.fm in Ghent and Red Light Radio in Amsterdam.
 For a few years I also ran the nights myself, see [ventures](/ventures/). Everything recorded
 is on [SoundCloud](https://soundcloud.com/brakgeboren); five to start with:
 
@@ -21,5 +21,5 @@ is on [SoundCloud](https://soundcloud.com/brakgeboren); five to start with:
 
 <iframe title="Brak in de Brousse (Red Light Radio Special)" height="166" scrolling="no" loading="lazy" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/brakgeboren/brak-in-de-brousse-red-light-radio-special&color=%232a5bd7&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false"></iframe>
 
-If you care about the shape of a set more than the set itself, there's a
+If you care about the shape of a set more than the set itself, I made a
 [small app](https://github.com/mrollier/visualise-dj-tracklists) for looking at tracklists over time.

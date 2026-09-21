@@ -30,17 +30,19 @@
   repo: https://github.com/mrollier/visualise-dj-tracklists
   status: live
   tags: [creative, vibe-coded]
-- id: immo-agent
-  name: Immo agent
-  blurb: Daily scraper of Belgian property sites, deduplicated in SQLite, filtered, and mailed as a digest. Runs on a GitHub Actions cron. Built to find a house, then kept because it works.
+- id: network-automata-robustness
+  name: Network automata robustness
+  blurb: Python package for Life-like network automata, Conway's rules on arbitrary graphs, and how one flipped bit spreads through them. Defect densities, Boolean Jacobians, Lyapunov spectra, Derrida maps, mean-field theory, and a test suite. The engine behind the damage-response papers.
   year: 2026
-  status: private
-  tags: [tool, vibe-coded]
+  repo: https://github.com/mrollier/network_automata_robustness
+  status: code
+  tags: [research]
 - id: caspectra
   name: Caspectra
   blurb: Attempt to build a behavioural taxonomy of cellular automata from label-free dynamical invariants. The self-supervised angle did not work, and the write-up says so.
   year: 2026
-  status: private
+  repo: https://github.com/mrollier/caspectra
+  status: code
   tags: [research]
 - id: essential-metrics-life-on-graphs
   name: Life on graphs

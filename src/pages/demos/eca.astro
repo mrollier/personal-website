@@ -1,0 +1,104 @@
+---
+import Base from '../../layouts/Base.astro';
+import Eca from '../../components/Eca.astro';
+import EcaTable from '../../components/EcaTable.astro';
+import EcaFigure from '../../components/EcaFigure.astro';
+const demo = (p: string) => `/demos/eca/?${p}#eca`;
+---
+<Base title="Elementary cellular automata" description="An interactive elementary cellular automaton: any Wolfram rule 0–255, periodic or zero boundaries, with a walkthrough of rule 90 for a crowd that plays it with their fingers." wide>
+  <div class="measure">
+    <h1>Elementary cellular automata</h1>
+    <p>
+      A row of cells, each either on or off. Time runs in ticks. At every tick each cell looks at three
+      things only: its own state and the states of its left and right neighbour. A fixed rule says what
+      it becomes next, and every cell switches at the same moment.
+    </p>
+    <p>
+      Three cells make 8 possible neighbourhoods, and a rule assigns an outcome to each, so there are
+      2<sup>8</sup> = 256 rules, numbered 0 to 255. In the picture below the top row is the starting
+      state and every row underneath is the next tick: the image is a history, not a snapshot. Click the
+      table under the controls to flip one outcome and see the rule number change.
+    </p>
+  </div>
+
+  <Eca rule={90} width={31} />
+
+  <div class="measure">
+    <p class="meta">
+      Keys once the demo has focus (click it or go fullscreen): space plays and pauses, → or PageDown
+      steps, ← or PageUp undoes a round, r resets, f toggles fullscreen. A presentation clicker sends
+      PageDown and PageUp. The address bar follows the settings, so a set-up can be bookmarked.
+    </p>
+
+    <h2 id="rule-90">Rule 90</h2>
+    <EcaTable rule={90} fingers />
+    <p>
+      Read the eight outcomes from case 111 down to case 000 and you get the binary
+      number <code>01011010</code>, which is 90 in decimal. That is where every rule gets its number.
+    </p>
+    <p>
+      Now look at what the table actually says: the outcome is 1 exactly when the left and right
+      neighbours differ. Your own state plays no part. In crowd terms: <strong>look left, look right,
+      ignore your own hand. If exactly one of your two neighbours has a finger up, put yours up for
+      the next round. If both or neither do, put it down.</strong> Mathematically the new state is
+      left XOR right, the sum of the two neighbours modulo 2.
+    </p>
+    <p>
+      Start from a single finger up in the middle and rule 90 draws the Sierpinski triangle: the
+      pattern spreads one seat per round in both directions, and the inside keeps hollowing out into
+      smaller copies of the whole. Row <em>t</em> is row <em>t</em> of Pascal's triangle with the odd
+      entries marked, because adding modulo 2 is exactly what the rule does.
+    </p>
+
+    <h2 id="boundaries">Boundaries</h2>
+    <p>
+      On a computer the row is usually a ring: the last cell counts the first as its right neighbour.
+      In a room the row ends at the aisle, so the person on the end has one real neighbour and an empty
+      seat. The simplest fix is a <em>phantom seat</em> on each end whose finger is always down. Those
+      are zero boundary conditions, and they change the picture. The end person only copies their one
+      real neighbour, since 0 XOR <em>x</em> = <em>x</em>.
+    </p>
+  </div>
+  <ul class="grid">
+    <li>
+      <EcaFigure rule={90} width={15} gens={8} boundary="zero" label="Rule 90 on 15 seats with a phantom seat at each end, from one seed: the triangle grows for 7 rounds and row 8 is empty">
+        15 seats, phantom seat at each end. Round 7 is every other finger up; round 8 is empty and
+        stays empty. <a href={demo('rule=90&width=15&boundary=zero')}>Load it in the demo.</a>
+      </EcaFigure>
+    </li>
+    <li>
+      <EcaFigure rule={90} width={16} gens={8} boundary="periodic" label="Rule 90 on a ring of 16 from one seed: the two arms meet and row 8 is empty">
+        A ring of 16. The two arms of the triangle meet on the far side and cancel: round 8 is empty
+        too. <a href={demo('rule=90&width=16')}>Load it in the demo.</a>
+      </EcaFigure>
+    </li>
+  </ul>
+  <div class="measure">
+    <p>
+      That is no accident. With 2<sup><em>k</em></sup> − 1 seats and phantoms, or a ring of
+      2<sup><em>k</em></sup> seats, a single seed dies out at round 2<sup><em>k</em>−1</sup>: at that
+      moment the only two live cells of the infinite triangle land exactly on the phantom seats (or on
+      the same cell of the ring, once from each side), and all that is left inside is zeros. Pick any
+      other count and nothing dies. <a href={demo('rule=90&width=15')}>A ring of 15</a> repeats every 15
+      rounds; <a href={demo('rule=90&width=20&boundary=zero')}>20 seats with phantoms</a> keep going and
+      only repeat after 126 rounds. Whether the room ends in silence or in a loop depends on how many
+      people are in the row.
+    </p>
+
+    <h2 id="crowd">Running it with a seated crowd</h2>
+    <ol>
+      <li>Use one row of seats. An odd number is easiest: the middle person is the seed and starts with a
+        finger up, everyone else down. Count the row and enter that number as cells, with zero boundary.</li>
+      <li>The people at both ends have an empty chair, or you, beside them as the phantom seat. Its finger is
+        always down.</li>
+      <li>Each round: look at both neighbours, not at your own hand, and decide. Nobody moves yet. On
+        "three", everyone changes at once. Deciding and changing have to be separate steps, or the quick
+        ones will contaminate the round for the slow ones.</li>
+      <li>Step the demo after every round as the answer key. Set the projector to fullscreen and use a
+        clicker: PageDown steps, PageUp takes a round back. Click the demo first so the keys reach it.</li>
+      <li>With 15 people the whole thing ends at round 8 with every finger down. With 16 people who close
+        the ring by having the two end people watch each other, the same happens. With 20 people and
+        phantoms it goes on until you stop it.</li>
+    </ol>
+  </div>
+</Base>

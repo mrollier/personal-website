@@ -1,0 +1,62 @@
+---
+// The 8-case lookup table of one rule, 111 first. Rendered at build time; with `interactive`
+// the output cells are buttons that the Eca component's script flips to change the rule.
+import { CASES, ruleBits } from '../scripts/eca';
+type Props = { rule: number; interactive?: boolean; fingers?: boolean };
+const { rule, interactive = false, fingers = false } = Astro.props;
+const bits = ruleBits(rule);
+const word = (b: number) => (b ? 'up' : 'down');
+---
+<div class="scroll-x">
+<table class="lut" data-lut>
+  <caption>left · you · right → you next round{fingers ? ' (finger up = 1, down = 0)' : ''}</caption>
+  <thead>
+    <tr>
+      {CASES.map((n) => (
+        <th scope="col" aria-label={`Case ${n.toString(2).padStart(3, '0')}`}>
+          <span class="hood" aria-hidden="true">
+            <i data-on={(n >> 2) & 1}></i><i data-on={(n >> 1) & 1}></i><i data-on={n & 1}></i>
+          </span>
+          {fingers && <span class="say">{word((n >> 2) & 1)} {word((n >> 1) & 1)} {word(n & 1)}</span>}
+        </th>
+      ))}
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      {CASES.map((n) => (
+        <td>
+          {interactive ? (
+            <button type="button" data-bit={n} data-on={bits[n]} aria-pressed={bits[n] === 1}
+              title={`Case ${n.toString(2).padStart(3, '0')}: click to flip`}>{bits[n]}</button>
+          ) : (
+            <span class="out" data-on={bits[n]}>{bits[n]}</span>
+          )}
+          {fingers && <span class="say">{word(bits[n])}</span>}
+        </td>
+      ))}
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<style>
+  .scroll-x { max-width: 100%; overflow-x: auto; }
+  .lut {
+    width: auto; max-width: 100%; margin: 0 0 1rem;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
+    border-collapse: separate; border-spacing: 0.35rem 0;
+  }
+  caption { caption-side: bottom; text-align: left; padding-top: 0.35rem; }
+  th, td { text-align: center; padding: 0.15rem 0; border: 0; font-weight: 400; }
+  .hood { display: inline-flex; gap: 2px; }
+  i, .out, button {
+    display: inline-block; width: 1.1rem; height: 1.1rem; line-height: 1.1rem; font: inherit; font-size: 0.75rem;
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted); box-sizing: border-box;
+  }
+  [data-on="1"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  button { cursor: pointer; padding: 0; width: 1.4rem; height: 1.4rem; touch-action: manipulation; }
+  button:hover { border-color: var(--accent); }
+  .out { width: 1.4rem; height: 1.4rem; }
+  .say { display: block; font-size: 0.66rem; line-height: 1.2; white-space: nowrap; margin-top: 0.15rem; }
+</style>

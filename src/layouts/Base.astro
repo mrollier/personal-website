@@ -12,6 +12,7 @@ const nav = [
   ['/about/', 'About'],
   ['/research/', 'Research'],
   ['/projects/', 'Projects'],
+  ['/demos/', 'Demos'],
   ['/ai-safety/', 'AI safety'],
   ['/gallery/', 'Gallery'],
   ['/cv/', 'CV'],
@@ -28,7 +29,11 @@ const elsewhere = [
   ['https://www.linkedin.com/in/michiel-rollier-ba0594152', 'LinkedIn'],
   ['https://soundcloud.com/brakgeboren', 'SoundCloud'],
 ];
-const current = (href: string) => (path === href.replace(/\/$/, '') ? 'page' : undefined);
+// Exact match marks the page; a section prefix (/demos/ on /demos/eca/) marks the ancestor.
+const current = (href: string) => {
+  const h = href.replace(/\/$/, '');
+  return path === h ? 'page' : h && path.startsWith(h + '/') ? 'true' : undefined;
+};
 ---
 <!doctype html>
 <html lang="en">

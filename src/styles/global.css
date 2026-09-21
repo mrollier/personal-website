@@ -74,7 +74,7 @@ main.wide .measure { padding-inline: 0; margin-inline: 0; }
 .theme:hover { color: var(--ink); }
 .site-header nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
 .site-header nav a { color: var(--ink); text-decoration: none; font-size: 0.92rem; }
-.site-header nav a:hover, .site-header nav a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.site-header nav a:hover, .site-header nav a[aria-current] { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
 
 /* footer */
 .site-footer {

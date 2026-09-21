@@ -1,0 +1,217 @@
+---
+// Interactive elementary cellular automaton. Self-contained: this file plus src/scripts/eca.ts and
+// EcaTable.astro, relying only on the site's colour and font tokens. Props are the defaults; the
+// URL query (?rule=&width=&boundary=&init=) overrides them so a set-up can be bookmarked.
+import EcaTable from './EcaTable.astro';
+import type { Boundary, Init } from '../scripts/eca';
+type Props = { rule?: number; width?: number; boundary?: Boundary; init?: Init };
+const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.props;
+---
+<figure class="eca" id="eca" data-eca data-rule={rule} data-width={width} data-boundary={boundary} data-init={init} tabindex="-1">
+  <canvas role="img" aria-label={`Rule ${rule}, ${width} cells, ${boundary} boundary, generation 0`}></canvas>
+  <div class="controls" role="group" aria-label="Automaton controls">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <input name="ruleSlider" type="range" min="0" max="255" value={rule} aria-label="rule (slider)" />
+    <label>cells <input name="width" type="number" min="3" max="512" value={width} inputmode="numeric" /></label>
+    <button name="init" type="button" aria-pressed={init === 'random'}>random start</button>
+    <button name="boundary" type="button" aria-pressed={boundary === 'zero'}>zero boundary</button>
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">gen 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <div class="lut"><EcaTable rule={rule} interactive /></div>
+</figure>
+
+<style>
+  .eca { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .eca:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(240px, 55vh, 640px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    image-rendering: pixelated; touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 5.5em; }
+  .lut { min-width: 0; } /* a flex child; without this the table cannot shrink and the page overflows on phones */
+
+  /* Fullscreen (native) or the .full overlay fallback where the API is missing. */
+  .eca:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; margin: 0; padding: 1rem;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg); overflow: hidden;
+  }
+  .eca:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .eca::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { step, seedRow, clampRule, type Boundary, type Init } from '../scripts/eca';
+
+  document.querySelectorAll<HTMLElement>('[data-eca]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIn = $<HTMLInputElement>('rule'), ruleSl = $<HTMLInputElement>('ruleSlider');
+    const widthIn = $<HTMLInputElement>('width'), speedIn = $<HTMLInputElement>('speed');
+    const initBtn = $<HTMLButtonElement>('init'), bndBtn = $<HTMLButtonElement>('boundary');
+    const playBtn = $<HTMLButtonElement>('play'), fullBtn = $<HTMLButtonElement>('full'), gen = $<HTMLOutputElement>('gen');
+    const bits = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-bit]'));
+    const CAP = 4096;
+    const clampW = (w: number) => Math.min(512, Math.max(3, Math.round(w) || 31));
+
+    // State. The URL wins over the props so a set-up can be linked; only non-default values are written back.
+    const d = el.dataset, q = new URLSearchParams(location.search);
+    let rule = clampRule(+(q.get('rule') ?? d.rule!));
+    let W = clampW(+(q.get('width') ?? d.width!));
+    let boundary: Boundary = (q.get('boundary') ?? d.boundary) === 'zero' ? 'zero' : 'periodic';
+    let init: Init = (q.get('init') ?? d.init) === 'random' ? 'random' : 'seed';
+    let hist: Uint8Array[] = [seedRow(W, init)]; // the source of truth; the bitmap is only a view of its tail
+    let s = 1, R = 1, ox = 0, gap = 0, ink = '', bg = '';
+    let playing = false, last = 0, acc = 0, ms = 250;
+
+    // Geometry: bitmap = CSS box × DPR, integer cell size, rows top-aligned (the scroll trick needs that).
+    function fit() {
+      const dpr = devicePixelRatio || 1, r = c.getBoundingClientRect();
+      c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
+      // Cells fill the width, but never so large that fewer than 12 rows fit: a crowd run needs its history on screen.
+      s = Math.max(1, Math.min(Math.floor(c.width / W), Math.floor(c.height / 12))); R = Math.max(1, Math.floor(c.height / s));
+      ox = Math.floor((c.width - s * W) / 2);
+      gap = s >= 6 ? Math.max(1, Math.round(s / 10)) : 0; // readable cells from a distance; solid texture when tiny
+    }
+    function drawRow(row: Uint8Array, y: number) {
+      ctx.fillStyle = ink;
+      for (let x = 0; x < W; x++) if (row[x]) ctx.fillRect(ox + x * s, y * s, s - gap, s - gap);
+    }
+    function paint() {
+      const cs = getComputedStyle(c); ink = cs.color; bg = cs.backgroundColor;
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, c.width, c.height);
+      const first = Math.max(0, hist.length - R);
+      for (let y = first; y < hist.length; y++) drawRow(hist[y], y - first);
+      status();
+    }
+    function advance() {
+      const next = step(hist[hist.length - 1], rule, boundary);
+      hist.push(next); if (hist.length > CAP) hist.shift();
+      if (hist.length <= R) drawRow(next, hist.length - 1);
+      else {
+        ctx.drawImage(c, 0, -s);
+        ctx.fillStyle = bg; ctx.fillRect(0, (R - 1) * s, c.width, c.height - (R - 1) * s);
+        drawRow(next, R - 1);
+      }
+      status();
+    }
+    function status() {
+      gen.value = `gen ${hist.length - 1}`;
+      if (!playing) c.setAttribute('aria-label', `Rule ${rule}, ${W} cells, ${boundary} boundary, generation ${hist.length - 1}`);
+    }
+    function reseed() { hist = [seedRow(W, init)]; paint(); }
+    function reset() { play(false); hist = [hist[0]]; paint(); }
+    function undo() { if (hist.length > 1) { hist.pop(); paint(); } }
+
+    // Playback: requestAnimationFrame with an accumulator, capped so a tab coming back from hidden does not spiral.
+    function frame(t: number) {
+      if (!playing) return;
+      acc += t - last; last = t;
+      let k = 0; while (acc >= ms && k < 32) { advance(); acc -= ms; k++; }
+      if (k === 32) acc = 0;
+      requestAnimationFrame(frame);
+    }
+    function play(on = !playing) {
+      if (on === playing) return;
+      playing = on; playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on));
+      if (on) { last = performance.now(); acc = 0; requestAnimationFrame(frame); } else status();
+    }
+    const speed = () => { ms = 2000 / 2 ** (+speedIn.value / 10); }; // 2 s per generation down to ~8 ms
+
+    // Controls reflect state; the URL mirrors it.
+    function show() {
+      ruleIn.value = String(rule); ruleSl.value = String(rule); widthIn.value = String(W);
+      initBtn.setAttribute('aria-pressed', String(init === 'random'));
+      bndBtn.setAttribute('aria-pressed', String(boundary === 'zero'));
+      for (const b of bits) {
+        const on = (rule >> +b.dataset.bit!) & 1;
+        b.dataset.on = String(on); b.textContent = String(on); b.setAttribute('aria-pressed', String(on === 1));
+      }
+    }
+    function sync() {
+      const u = new URL(location.href), p = u.searchParams;
+      const set = (k: string, v: string, def: string) => (v === def ? p.delete(k) : p.set(k, v));
+      set('rule', String(rule), d.rule!); set('width', String(W), d.width!);
+      set('boundary', boundary, d.boundary!); set('init', init, d.init!);
+      history.replaceState(null, '', u);
+    }
+    function setRule(r: number) { rule = clampRule(r); show(); sync(); status(); } // no reset: the rule can change mid-run
+    ruleIn.addEventListener('input', () => { if (ruleIn.value !== '') setRule(+ruleIn.value); });
+    ruleIn.addEventListener('change', () => setRule(+ruleIn.value));
+    ruleSl.addEventListener('input', () => setRule(+ruleSl.value));
+    for (const b of bits) b.addEventListener('click', () => setRule(rule ^ (1 << +b.dataset.bit!)));
+    widthIn.addEventListener('change', () => { W = clampW(+widthIn.value); play(false); show(); sync(); fit(); reseed(); });
+    initBtn.addEventListener('click', () => { init = init === 'seed' ? 'random' : 'seed'; play(false); show(); sync(); reseed(); });
+    bndBtn.addEventListener('click', () => { boundary = boundary === 'zero' ? 'periodic' : 'zero'; play(false); show(); sync(); reseed(); });
+    $('step').addEventListener('click', () => { play(false); advance(); });
+    playBtn.addEventListener('click', () => play());
+    speedIn.addEventListener('input', speed);
+    $('reset').addEventListener('click', reset);
+
+    // Fullscreen on the figure so the controls stay usable; class fallback where the API is missing (iPhone).
+    const doc = document as any;
+    const fsEl = () => document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+    const isFull = () => fsEl() === el || el.classList.contains('full');
+    function onFs() {
+      const on = isFull();
+      fullBtn.textContent = on ? 'exit fullscreen' : 'fullscreen'; fullBtn.setAttribute('aria-pressed', String(on));
+      el.focus(); // the ResizeObserver refits and repaints
+    }
+    function fallback() { el.classList.add('full'); onFs(); }
+    function full() {
+      if (el.classList.contains('full')) { el.classList.remove('full'); onFs(); return; }
+      if (fsEl() === el) { (document.exitFullscreen ?? doc.webkitExitFullscreen)?.call(document); return; }
+      const req = el.requestFullscreen ?? (el as any).webkitRequestFullscreen;
+      if (!req) return fallback();
+      try { const p = req.call(el); if (p && p.catch) p.catch(fallback); } catch { fallback(); }
+    }
+    fullBtn.addEventListener('click', full);
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+
+    // Keys, scoped to the figure so PageDown still scrolls the page elsewhere. Clickers send PageDown/PageUp.
+    c.addEventListener('pointerdown', () => el.focus());
+    el.addEventListener('keydown', (e) => {
+      const t = e.target as HTMLElement, k = e.key;
+      if (t.matches('input, select, textarea')) return;
+      if (t.matches('button, a') && (k === ' ' || k === 'Enter')) return;
+      if (k === ' ') play();
+      else if (k === 'ArrowRight' || k === 'PageDown' || k === 'n') { play(false); advance(); }
+      else if (k === 'ArrowLeft' || k === 'PageUp') { play(false); undo(); }
+      else if (k === 'r') reset();
+      else if (k === 'f') full();
+      else if (k === 'Escape' && isFull()) full();
+      else return;
+      e.preventDefault();
+    });
+
+    // Any resize wipes the bitmap, so always repaint from history. The theme toggle emits no event; watch the attribute.
+    new ResizeObserver(() => { fit(); paint(); }).observe(c);
+    new MutationObserver(paint).observe(document.documentElement, { attributeFilter: ['data-theme'] });
+
+    show(); speed(); fit(); paint(); sync();
+  }
+</script>

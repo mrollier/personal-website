@@ -1,0 +1,33 @@
+---
+import Base from '../../layouts/Base.astro';
+// Demos are pages under this folder; list them here.
+const demos = [
+  {
+    href: '/demos/eca/',
+    name: 'Elementary cellular automata',
+    blurb: 'Pick any of the 256 Wolfram rules and watch a row of cells evolve. Built for the live part of my PhD defence, where the audience plays rule 90 with their fingers.',
+    meta: 'PhD defence · interactive',
+  },
+];
+---
+<Base title="Demos" description="Interactive demonstrations: elementary cellular automata, built for a live crowd." wide>
+  <div class="measure">
+    <h1>Demos</h1>
+    <p>
+      Small interactive pages that run entirely in the browser, made for talks and for playing. Each one
+      works offline once loaded and has a fullscreen button for the projector.
+    </p>
+  </div>
+  <ul class="grid">
+    {demos.map((x) => (
+      <li class="card">
+        <h3><a href={x.href}>{x.name}</a></h3>
+        <p>{x.blurb}</p>
+        <div class="links">
+          <a href={x.href}>open</a>
+          <span class="meta">{x.meta}</span>
+        </div>
+      </li>
+    ))}
+  </ul>
+</Base>

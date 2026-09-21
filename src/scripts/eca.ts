@@ -1,16 +1,14 @@
 // Elementary cellular automaton (Wolfram rules 0–255): one row of binary cells, each next state
 // read off the rule's bits by the 3-cell neighbourhood (left, self, right) as a 3-bit number.
-// Pure functions, no DOM: used both at build time (static figures) and in the browser.
+// The row is a ring: the last cell's right neighbour is the first cell. Pure functions, no DOM.
 
-export type Boundary = 'periodic' | 'zero';
 export type Init = 'seed' | 'random';
 
-/** One generation. 'zero' treats the cell beyond each end as a phantom that is always 0. */
-export function step(row: Uint8Array, rule: number, boundary: Boundary): Uint8Array {
-  const W = row.length, out = new Uint8Array(W), wrap = boundary === 'periodic';
+/** One generation. */
+export function step(row: Uint8Array, rule: number): Uint8Array {
+  const W = row.length, out = new Uint8Array(W);
   for (let i = 0; i < W; i++) {
-    const l = i > 0 ? row[i - 1] : wrap ? row[W - 1] : 0;
-    const r = i < W - 1 ? row[i + 1] : wrap ? row[0] : 0;
+    const l = row[(i + W - 1) % W], r = row[(i + 1) % W];
     out[i] = (rule >> ((l << 2) | (row[i] << 1) | r)) & 1;
   }
   return out;
@@ -25,9 +23,9 @@ export function seedRow(width: number, init: Init, rnd: () => number = Math.rand
 }
 
 /** The initial row followed by `gens` generations. */
-export function evolve(row: Uint8Array, rule: number, boundary: Boundary, gens: number): Uint8Array[] {
+export function evolve(row: Uint8Array, rule: number, gens: number): Uint8Array[] {
   const rows = [row];
-  for (let g = 0; g < gens; g++) rows.push(step(rows[g], rule, boundary));
+  for (let g = 0; g < gens; g++) rows.push(step(rows[g], rule));
   return rows;
 }
 

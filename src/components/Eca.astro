@@ -1,20 +1,19 @@
 ---
 // Interactive elementary cellular automaton. Self-contained: this file plus src/scripts/eca.ts and
 // EcaTable.astro, relying only on the site's colour and font tokens. Props are the defaults; the
-// URL query (?rule=&width=&boundary=&init=) overrides them so a set-up can be bookmarked.
+// URL query (?rule=&width=&init=) overrides them so a set-up can be bookmarked.
 import EcaTable from './EcaTable.astro';
-import type { Boundary, Init } from '../scripts/eca';
-type Props = { rule?: number; width?: number; boundary?: Boundary; init?: Init };
-const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.props;
+import type { Init } from '../scripts/eca';
+type Props = { rule?: number; width?: number; init?: Init };
+const { rule = 90, width = 31, init = 'seed' } = Astro.props;
 ---
-<figure class="eca" id="eca" data-eca data-rule={rule} data-width={width} data-boundary={boundary} data-init={init} tabindex="-1">
-  <canvas role="img" aria-label={`Rule ${rule}, ${width} cells, ${boundary} boundary, generation 0`}></canvas>
+<figure class="eca" id="eca" data-eca data-rule={rule} data-width={width} data-init={init} tabindex="-1">
+  <canvas role="img" aria-label={`Rule ${rule}, ${width} cells, generation 0`}></canvas>
   <div class="controls" role="group" aria-label="Automaton controls">
     <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
     <input name="ruleSlider" type="range" min="0" max="255" value={rule} aria-label="rule (slider)" />
     <label>cells <input name="width" type="number" min="3" max="512" value={width} inputmode="numeric" /></label>
     <button name="init" type="button" aria-pressed={init === 'random'}>random start</button>
-    <button name="boundary" type="button" aria-pressed={boundary === 'zero'}>zero boundary</button>
     <button name="step" type="button">step</button>
     <button name="play" type="button" aria-pressed="false">play</button>
     <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
@@ -66,7 +65,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
 </style>
 
 <script>
-  import { step, seedRow, clampRule, type Boundary, type Init } from '../scripts/eca';
+  import { step, seedRow, clampRule, type Init } from '../scripts/eca';
 
   document.querySelectorAll<HTMLElement>('[data-eca]').forEach(mount);
 
@@ -75,7 +74,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
     const ruleIn = $<HTMLInputElement>('rule'), ruleSl = $<HTMLInputElement>('ruleSlider');
     const widthIn = $<HTMLInputElement>('width'), speedIn = $<HTMLInputElement>('speed');
-    const initBtn = $<HTMLButtonElement>('init'), bndBtn = $<HTMLButtonElement>('boundary');
+    const initBtn = $<HTMLButtonElement>('init');
     const playBtn = $<HTMLButtonElement>('play'), fullBtn = $<HTMLButtonElement>('full'), gen = $<HTMLOutputElement>('gen');
     const bits = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-bit]'));
     const CAP = 4096;
@@ -85,7 +84,6 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     const d = el.dataset, q = new URLSearchParams(location.search);
     let rule = clampRule(+(q.get('rule') ?? d.rule!));
     let W = clampW(+(q.get('width') ?? d.width!));
-    let boundary: Boundary = (q.get('boundary') ?? d.boundary) === 'zero' ? 'zero' : 'periodic';
     let init: Init = (q.get('init') ?? d.init) === 'random' ? 'random' : 'seed';
     let hist: Uint8Array[] = [seedRow(W, init)]; // the source of truth; the bitmap is only a view of its tail
     let s = 1, R = 1, ox = 0, gap = 0, ink = '', bg = '';
@@ -112,7 +110,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
       status();
     }
     function advance() {
-      const next = step(hist[hist.length - 1], rule, boundary);
+      const next = step(hist[hist.length - 1], rule);
       hist.push(next); if (hist.length > CAP) hist.shift();
       if (hist.length <= R) drawRow(next, hist.length - 1);
       else {
@@ -124,7 +122,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     }
     function status() {
       gen.value = `gen ${hist.length - 1}`;
-      if (!playing) c.setAttribute('aria-label', `Rule ${rule}, ${W} cells, ${boundary} boundary, generation ${hist.length - 1}`);
+      if (!playing) c.setAttribute('aria-label', `Rule ${rule}, ${W} cells, generation ${hist.length - 1}`);
     }
     function reseed() { hist = [seedRow(W, init)]; paint(); }
     function reset() { play(false); hist = [hist[0]]; paint(); }
@@ -149,7 +147,6 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     function show() {
       ruleIn.value = String(rule); ruleSl.value = String(rule); widthIn.value = String(W);
       initBtn.setAttribute('aria-pressed', String(init === 'random'));
-      bndBtn.setAttribute('aria-pressed', String(boundary === 'zero'));
       for (const b of bits) {
         const on = (rule >> +b.dataset.bit!) & 1;
         b.dataset.on = String(on); b.textContent = String(on); b.setAttribute('aria-pressed', String(on === 1));
@@ -158,8 +155,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     function sync() {
       const u = new URL(location.href), p = u.searchParams;
       const set = (k: string, v: string, def: string) => (v === def ? p.delete(k) : p.set(k, v));
-      set('rule', String(rule), d.rule!); set('width', String(W), d.width!);
-      set('boundary', boundary, d.boundary!); set('init', init, d.init!);
+      set('rule', String(rule), d.rule!); set('width', String(W), d.width!); set('init', init, d.init!);
       history.replaceState(null, '', u);
     }
     function setRule(r: number) { rule = clampRule(r); show(); sync(); status(); } // no reset: the rule can change mid-run
@@ -169,7 +165,6 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     for (const b of bits) b.addEventListener('click', () => setRule(rule ^ (1 << +b.dataset.bit!)));
     widthIn.addEventListener('change', () => { W = clampW(+widthIn.value); play(false); show(); sync(); fit(); reseed(); });
     initBtn.addEventListener('click', () => { init = init === 'seed' ? 'random' : 'seed'; play(false); show(); sync(); reseed(); });
-    bndBtn.addEventListener('click', () => { boundary = boundary === 'zero' ? 'periodic' : 'zero'; play(false); show(); sync(); reseed(); });
     $('step').addEventListener('click', () => { play(false); advance(); });
     playBtn.addEventListener('click', () => play());
     speedIn.addEventListener('input', speed);

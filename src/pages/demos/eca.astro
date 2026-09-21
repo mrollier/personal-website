@@ -2,11 +2,9 @@
 import Base from '../../layouts/Base.astro';
 import Eca from '../../components/Eca.astro';
 import EcaTable from '../../components/EcaTable.astro';
-import EcaFigure from '../../components/EcaFigure.astro';
 import Deck from '../../components/Deck.astro';
-const demo = (p: string) => `/demos/eca/?${p}#eca`;
 ---
-<Base title="Elementary cellular automata" description="An interactive elementary cellular automaton: any Wolfram rule 0–255, periodic or zero boundaries, with a walkthrough of rule 90 for a crowd that plays it with their fingers." wide>
+<Base title="Elementary cellular automata" description="An interactive elementary cellular automaton: any Wolfram rule 0–255, with a walkthrough of rule 90 for a crowd that plays it with their fingers." wide>
   <div class="measure">
     <h1>Elementary cellular automata</h1>
     <p>
@@ -17,8 +15,9 @@ const demo = (p: string) => `/demos/eca/?${p}#eca`;
     <p>
       Three cells make 8 possible neighbourhoods, and a rule assigns an outcome to each, so there are
       2<sup>8</sup> = 256 rules, numbered 0 to 255. In the picture below the top row is the starting
-      state and every row underneath is the next tick: the image is a history, not a snapshot. Click the
-      table under the controls to flip one outcome and see the rule number change.
+      state and every row underneath is the next tick: the image is a history, not a snapshot. The row
+      is a ring, so the last cell counts the first as its right neighbour. Click the table under the
+      controls to flip one outcome and see the rule number change.
     </p>
     <Deck id="deck" note="Fullscreen, two slides: the rule, then this demo. A clicker or the arrow keys move forward; Esc leaves.">
       <section data-slide aria-label="Rule 90" style="--lut-size: clamp(0.9rem, 1.9vw, 1.8rem)">
@@ -29,7 +28,7 @@ const demo = (p: string) => `/demos/eca/?${p}#eca`;
           <strong>Exactly one neighbour up: your finger goes up.</strong><br />
           Both up, or both down: your finger goes down.
         </p>
-        <p class="meta">Decide first, change on "three". The empty seat at the end of the row always stays down.</p>
+        <p class="meta">Pick your two neighbours first and keep them. On the edge, take the person in front of you; if you cannot see two people, take the presenter.</p>
       </section>
       <section data-slide data-adopt="#eca" aria-label="Live demo"></section>
     </Deck>
@@ -65,57 +64,22 @@ const demo = (p: string) => `/demos/eca/?${p}#eca`;
       entries marked, because adding modulo 2 is exactly what the rule does.
     </p>
 
-    <h2 id="boundaries">Boundaries</h2>
-    <p>
-      On a computer the row is usually a ring: the last cell counts the first as its right neighbour.
-      In a room the row ends at the aisle, so the person on the end has one real neighbour and an empty
-      seat. The simplest fix is a <em>phantom seat</em> on each end whose finger is always down. Those
-      are zero boundary conditions, and they change the picture. The end person only copies their one
-      real neighbour, since 0 XOR <em>x</em> = <em>x</em>.
-    </p>
-  </div>
-  <ul class="grid">
-    <li>
-      <EcaFigure rule={90} width={15} gens={8} boundary="zero" label="Rule 90 on 15 seats with a phantom seat at each end, from one seed: the triangle grows for 7 rounds and row 8 is empty">
-        15 seats, phantom seat at each end. Round 7 is every other finger up; round 8 is empty and
-        stays empty. <a href={demo('rule=90&width=15&boundary=zero')}>Load it in the demo.</a>
-      </EcaFigure>
-    </li>
-    <li>
-      <EcaFigure rule={90} width={16} gens={8} boundary="periodic" label="Rule 90 on a ring of 16 from one seed: the two arms meet and row 8 is empty">
-        A ring of 16. The two arms of the triangle meet on the far side and cancel: round 8 is empty
-        too. <a href={demo('rule=90&width=16')}>Load it in the demo.</a>
-      </EcaFigure>
-    </li>
-  </ul>
-  <div class="measure">
-    <p>
-      That is no accident. With 2<sup><em>k</em></sup> − 1 seats and phantoms, or a ring of
-      2<sup><em>k</em></sup> seats, a single seed dies out at round 2<sup><em>k</em>−1</sup>: at that
-      moment the only two live cells of the infinite triangle land exactly on the phantom seats (or on
-      the same cell of the ring, once from each side), and all that is left inside is zeros. Pick any
-      other count and nothing dies. <a href={demo('rule=90&width=15')}>A ring of 15</a> repeats every 15
-      rounds; <a href={demo('rule=90&width=20&boundary=zero')}>20 seats with phantoms</a> keep going and
-      only repeat after 126 rounds. Whether the room ends in silence or in a loop depends on how many
-      people are in the row.
-    </p>
-
     <h2 id="crowd">Running it with a seated crowd</h2>
     <ol>
-      <li>Use one row of seats. An odd number is easiest: the middle person is the seed and starts with a
-        finger up, everyone else down. Count the row and enter that number as cells, with zero boundary.</li>
-      <li>The people at both ends have an empty chair, or you, beside them as the phantom seat. Its finger is
-        always down.</li>
-      <li>Each round: look at both neighbours, not at your own hand, and decide. Nobody moves yet. On
+      <li>Everyone picks two neighbours and keeps them for the whole game: normally the person on the
+        left and the person on the right. On the edge of a row, take the person in front of you instead.
+        If you cannot see two people, take the presenter.</li>
+      <li>One person in the middle of the room starts with a finger up, everyone else down.</li>
+      <li>Each round: look at your two neighbours, not at your own hand, and decide. Nobody moves yet. On
         "three", everyone changes at once. Deciding and changing have to be separate steps, or the quick
         ones will contaminate the round for the slow ones.</li>
       <li>Press <em>Start presenting</em> at the top of this page. The first slide is the rule as the
         crowd should hear it; one press forward on the clicker brings up the demo. From then on forward
-        steps a round and back undoes one, as the answer key. Back at round 0 returns to the rule slide,
-        and Esc leaves. Set the cell count and the zero boundary on the demo slide itself.</li>
-      <li>With 15 people the whole thing ends at round 8 with every finger down. With 16 people who close
-        the ring by having the two end people watch each other, the same happens. With 20 people and
-        phantoms it goes on until you stop it.</li>
+        steps a round and back undoes one. Back at round 0 returns to the rule slide, and Esc leaves.
+        Set the number of people as cells on the demo slide itself.</li>
+      <li>The demo shows the clean case, one straight row of that many cells. A real room, with
+        neighbours picked across rows, drifts away from the picture after a few rounds. The rule is the
+        same; the wiring is not, and that is worth saying out loud.</li>
     </ol>
   </div>
 </Base>

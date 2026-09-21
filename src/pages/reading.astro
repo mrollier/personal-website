@@ -14,18 +14,16 @@ const shelves = [...tally].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1])
 const rated = read.filter((b) => b.rating);
 const avg = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1) : null;
 ---
-<Base title="Reading" description="The books I have read and the pile I still mean to, from my Goodreads shelves." wide>
-  <div class="measure">
-    <h1>Reading</h1>
-    <p>
-      What I've read, most recent first, from my <a href="https://www.goodreads.com/review/list/176815309">Goodreads</a> shelves.
-      {' '}{read.length} finished{avg && `, rated ${avg} on average`}; {pile.length} on the pile.
-    </p>
-  </div>
+<Base title="Reading" description="The books I have read and the pile I still mean to, from my Goodreads shelves.">
+  <h1>Reading</h1>
+  <p>
+    What I've read, most recent first, from my <a href="https://www.goodreads.com/review/list/176815309">Goodreads</a> shelves.
+    {' '}{read.length} finished{avg && `, rated ${avg} on average`}; {pile.length} on the pile.
+  </p>
   {now.length > 0 && (
     <>
       <h2>Reading now</h2>
-      <CoverWall items={now} kind="books" />
+      <CoverWall items={now} kind="books" label="Reading now" />
     </>
   )}
   <h2>Read</h2>
@@ -37,7 +35,7 @@ const avg = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.leng
       ))}
     </div>
   )}
-  <CoverWall items={read} kind="books" />
+  <CoverWall items={read} kind="books" label="Books read" />
   <h2>The pile</h2>
   <details class="more">
     <summary>{pile.length} books I still mean to read</summary>
@@ -52,8 +50,9 @@ const avg = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.leng
 <script>
   // Shelf filter: purely cosmetic, every book is in the markup and shows without JavaScript.
   const bar = document.querySelector<HTMLElement>('[data-filters]');
-  const wall = bar?.nextElementSibling;
-  if (bar && wall) {
+  const strip = bar?.nextElementSibling as HTMLElement | null;
+  const wall = strip?.querySelector('.wall');
+  if (bar && strip && wall) {
     bar.addEventListener('click', (e) => {
       const b = (e.target as Element).closest<HTMLButtonElement>('button[data-shelf]');
       if (!b) return;
@@ -62,6 +61,7 @@ const avg = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.leng
       wall.querySelectorAll<HTMLElement>('li').forEach((li) => {
         li.hidden = !!shelf && !(li.dataset.shelves ?? '').split(' ').includes(shelf);
       });
+      strip.dispatchEvent(new Event('strip:update'));
     });
   }
 </script>

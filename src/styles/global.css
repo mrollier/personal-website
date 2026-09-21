@@ -155,5 +155,26 @@ th.num { text-align: right; }
 .photos img { display: block; width: 100%; border: 1px solid var(--line); }
 .map { width: 100%; height: auto; border: 1px solid var(--line); background: var(--panel); margin-bottom: 1rem; }
 
+/* cover walls (records on /dj/, books on /reading/) */
+.wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1.1rem 0.8rem; padding: 0; margin: 0 0 1.5rem; list-style: none; }
+.wall li { min-width: 0; }
+.wall a { display: block; }
+.wall img, .wall .nocover { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--line); background: var(--panel); }
+.wall.books img, .wall.books .nocover { aspect-ratio: 2 / 3; object-fit: contain; }
+.wall .cap { display: block; font-family: var(--mono); font-size: 0.72rem; line-height: 1.4; color: var(--muted); margin-top: 0.35rem; }
+.wall .cap > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wall .cap b { color: var(--ink); font-weight: 600; }
+.wall .stars { color: var(--ink); letter-spacing: 0.05em; }
+.wall .stars i { font-style: normal; color: var(--line); }
+.filters { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.25rem; }
+.filters button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; }
+.filters button:hover { border-color: var(--accent); }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+details.more { margin-bottom: 1.5rem; }
+details.more > summary { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); cursor: pointer; margin-bottom: 1rem; }
+details.more > summary:hover { color: var(--ink); }
+.pile { columns: 2 22rem; column-gap: 2.5rem; padding-left: 1.2rem; font-size: 0.95rem; }
+.pile li { break-inside: avoid; margin-bottom: 0.2rem; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (max-width: 640px) { .site-header nav { order: 1; flex-basis: 100%; } }

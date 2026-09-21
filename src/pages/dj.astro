@@ -1,0 +1,53 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import CoverWall from '../components/CoverWall.astro';
+const records = (await getCollection('records')).map((r) => r.data).sort((a, b) => (b.added ?? '').localeCompare(a.added ?? ''));
+// The five most common Discogs styles, in the site's own spelling.
+const spell: Record<string, string> = { 'Drum n Bass': 'drum & bass', 'Freetekno': 'freetekno' };
+const tally = new Map<string, number>();
+for (const r of records) for (const s of r.styles) tally.set(s, (tally.get(s) ?? 0) + 1);
+const top = [...tally].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => spell[s] ?? s.toLowerCase());
+const list = (xs: string[]) => xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+const shown = 48;
+const sets = [
+  ["Rollier's Urgent.fm Phasefour Jungle Set", 'rolliers-urgentfm-phasefour-jungle-set'],
+  ['Het Is Niet Waar Dat Dit Het Zonlicht Is', 'het-is-niet-waar-dat-dit-het-zonlicht-is'],
+  ['De Drank, de Liefde, de Toeback en de Kunst', 'de-drank-de-liefde-de-toeback-en-de-kunst'],
+  ['Madame Jeanette in mijn ogen', 'madame-jeanette-in-mijn-ogen'],
+  ['Brak in de Brousse (Red Light Radio Special)', 'brak-in-de-brousse-red-light-radio-special'],
+];
+const player = (slug: string) =>
+  `https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/brakgeboren/${slug}&color=%232a5bd7&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`;
+---
+<Base title="DJ sets" description="Jungle, tekno and tribe sets by Brak Geboren, recorded at clubs, radio stations and record stores since 2012, and the record collection behind them." wide>
+  <div class="measure">
+    <h1>DJ sets</h1>
+    <p>
+      Jungle, tekno, tribe. I've played since 2012 as <strong>Brak Geboren</strong>: parties and raves, clubs such as Kompass Klub, record
+      stores, and radio at Urgent.fm in Ghent and Red Light Radio in Amsterdam.
+      For a few years I also ran the nights myself, see <a href="/ventures/">ventures</a>. Everything recorded
+      is on <a href="https://soundcloud.com/brakgeboren">SoundCloud</a>; five to start with:
+    </p>
+    {sets.map(([title, slug]) => (
+      <iframe title={title} height="166" scrolling="no" loading="lazy" allow="autoplay" src={player(slug)}></iframe>
+    ))}
+    <p>
+      If you care about the shape of a set more than the set itself, I made a <a href="https://github.com/mrollier/visualise-dj-tracklists">small app</a>
+      for looking at tracklists over time.
+    </p>
+
+    <h2 id="records">Records</h2>
+    <p>
+      The vinyl behind the sets: {records.length} records on <a href="https://www.discogs.com/user/michielrollier">Discogs</a>,
+      mostly {list(top)}, newest first. Digital purchases live on <a href="https://bandcamp.com/mrollier">Bandcamp</a>.
+    </p>
+  </div>
+  <CoverWall items={records.slice(0, shown)} kind="records" />
+  {records.length > shown && (
+    <details class="more">
+      <summary>The other {records.length - shown} records</summary>
+      <CoverWall items={records.slice(shown)} kind="records" />
+    </details>
+  )}
+</Base>

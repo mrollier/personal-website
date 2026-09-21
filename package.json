@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|10.1103|cv.pdf'"
+    "sync": "node scripts/sync.mjs",
+    "check": "astro build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|discogs.com|goodreads.com|bandcamp.com|10.1103|cv.pdf'"
   },
   "dependencies": {
     "astro": "^7.3.2"

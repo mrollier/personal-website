@@ -1,0 +1,35 @@
+---
+// A grid of covers: records (square) or books (portrait). Each cell links out, with the details in the caption and title.
+type Item = {
+  id: string; url: string; cover: string | null; w?: number; h?: number;
+  artist?: string; title: string; label?: string; catno?: string; year?: number; format?: string; // records
+  author?: string; rating?: number; shelves?: string[]; readAt?: string; published?: number;      // books
+};
+const { items, kind } = Astro.props as { items: Item[]; kind: 'records' | 'books' };
+const head = (x: Item) => (kind === 'records' ? x.artist! : x.title);
+const sub = (x: Item) => (kind === 'records' ? x.title : x.author!);
+const detail = (x: Item) =>
+  kind === 'records'
+    ? [`${x.artist} – ${x.title}`, [x.label, x.catno].filter(Boolean).join(' '), x.year, x.format].filter(Boolean).join(' · ')
+    : [`${x.title} – ${x.author}`, x.published, x.rating ? `${x.rating}/5` : ''].filter(Boolean).join(' · ');
+---
+<ul class:list={['wall', kind]}>
+  {items.map((x) => (
+    <li data-shelves={kind === 'books' ? (x.shelves ?? []).join(' ') : undefined}>
+      <a href={x.url} title={detail(x)}>
+        {x.cover ? (
+          <img src={x.cover} alt={`${head(x)} – ${sub(x)}`} width={x.w} height={x.h} loading="lazy" decoding="async" />
+        ) : (
+          <span class="nocover" aria-hidden="true"></span>
+        )}
+      </a>
+      <span class="cap">
+        <b>{head(x)}</b>
+        <span>{sub(x)}</span>
+        {kind === 'books' && x.rating ? (
+          <span class="stars" aria-label={`${x.rating} out of 5`}>{'★'.repeat(x.rating)}<i>{'★'.repeat(5 - x.rating)}</i></span>
+        ) : null}
+      </span>
+    </li>
+  ))}
+</ul>

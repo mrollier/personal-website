@@ -19,7 +19,9 @@ npm run check    # build + link check
 | Projects | `src/content/projects.yaml` |
 | Mountains | `src/content/mountains.yaml` (map outline: `src/data/ne_110m_land.json`, Natural Earth, public domain) |
 | Gallery | `src/content/gallery.yaml` + image in `src/assets/mosaics/` |
-| About, AI safety, Ventures, DJ, CV | `src/pages/*.md` |
+| About, AI safety, Ventures, CV | `src/pages/*.md` |
+| DJ sets (prose + record wall) | `src/pages/dj.astro` |
+| Records and books | `npm run sync` refreshes `src/content/records.json`, `src/content/books.json` and the covers in `public/covers/` from Discogs and Goodreads, then commit. Builds never fetch anything; if a source is down the old file stays. Bandcamp has no API and is a plain link |
 | Home intro and "now" line | `src/pages/index.astro` |
 | Background still-life tiles | `src/data/tiles.json`, regenerate with `PYTHONPATH=../game-of-life-mosaics/src python3 scripts/export-tiles.py` |
 | Nav, footer links | `src/layouts/Base.astro` |

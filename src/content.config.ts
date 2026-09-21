@@ -3,6 +3,7 @@ import { file } from 'astro/loaders';
 import { z } from 'astro/zod';
 
 const yaml = (name: string) => file(`src/content/${name}.yaml`);
+const json = (name: string) => file(`src/content/${name}.json`);
 
 export const collections = {
   publications: defineCollection({
@@ -56,5 +57,43 @@ export const collections = {
         image: image(),
         caption: z.string().optional(),
       }),
+  }),
+  // records.json and books.json are written by `npm run sync` (scripts/sync.mjs); do not edit by hand.
+  records: defineCollection({
+    loader: json('records'),
+    schema: z.object({
+      id: z.string(),
+      artist: z.string(),
+      title: z.string(),
+      label: z.string().optional(),
+      catno: z.string().optional(),
+      year: z.number().optional(),
+      format: z.string(),
+      styles: z.array(z.string()),
+      url: z.string().url(),
+      added: z.string().nullable(),
+      cover: z.string().nullable(),
+      w: z.number().optional(),
+      h: z.number().optional(),
+    }),
+  }),
+  books: defineCollection({
+    loader: json('books'),
+    schema: z.object({
+      id: z.string(),
+      title: z.string(),
+      author: z.string(),
+      shelf: z.enum(['read', 'currently-reading', 'to-read']),
+      shelves: z.array(z.string()),
+      rating: z.number().min(0).max(5),
+      readAt: z.string().optional(),
+      added: z.string().nullable(),
+      published: z.number().optional(),
+      pages: z.number().optional(),
+      url: z.string().url(),
+      cover: z.string().nullable(),
+      w: z.number().optional(),
+      h: z.number().optional(),
+    }),
   }),
 };

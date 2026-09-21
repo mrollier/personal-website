@@ -73,10 +73,10 @@
 - id: node-importance
   title: "Probing dynamical importance of network nodes under maximal agnosticism"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
-  venue: "Under review"
+  venue: "In preparation"
   year: 2026
   type: A1
-  status: review
+  status: writing
   summary: "Which node matters most when you know nothing about the dynamics except that they are local and deterministic?"
 - id: shape-irregularity
   title: "Shape irregularity of Life-Like Network Automaton rules as an indicator of classification performance"

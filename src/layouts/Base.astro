@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 const { frontmatter } = Astro.props;
-const title: string = Astro.props.title ?? frontmatter?.title ?? 'Michiel Rollier';
+const title: string = Astro.props.title ?? frontmatter?.title ?? 'michiel rollier';
 const description: string =
   Astro.props.description ??
   frontmatter?.description ??
@@ -42,16 +42,16 @@ const current = (href: string) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === 'Michiel Rollier' ? title : `${title} · Michiel Rollier`}</title>
+    <title>{title === 'michiel rollier' ? title : `${title} · michiel rollier`}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
     <script is:inline>try { if (localStorage.theme === 'dark') document.documentElement.dataset.theme = 'dark'; } catch {}</script>
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
   </head>
   <body>
     <canvas id="life" class:list={[path === '' && 'paint']} aria-hidden="true"></canvas>
     <header class="wrap site-header">
-      <a class="brand" href="/">Michiel Rollier</a>
+      <a class="brand" href="/">michiel rollier</a>
       <nav aria-label="Main">
         <ul>
           {nav.map(([href, label]) => (

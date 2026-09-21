@@ -1,0 +1,152 @@
+---
+// A fullscreen slide deck for presenting. The slides are the `<section data-slide>` children
+// in the default slot. A slide with data-adopt="<selector>" pulls that element out of the page
+// while presenting and puts it back on exit, so a live demo on the page is also the demo in the deck.
+// Keys the slide's own widget consumes (preventDefault) never reach the deck: on the demo slide a
+// clicker steps the automaton, and only an unhandled key (nothing left to undo) turns the slide back.
+type Props = { id: string; label?: string; note?: string };
+const { id, label = 'Start presenting', note } = Astro.props;
+---
+<p class="present">
+  <button type="button" data-deck-start={id}>{label}</button>
+  {note && <span>{note}</span>}
+</p>
+<div class="deck" id={id} data-deck role="region" aria-label="Presentation" tabindex="-1" hidden>
+  <slot />
+  <div class="bar" role="group" aria-label="Slides">
+    <button type="button" name="prev" aria-label="previous slide" title="previous (PageUp, left arrow)">&lsaquo;</button>
+    <output name="pos" aria-live="polite">1 / 1</output>
+    <button type="button" name="next" aria-label="next slide" title="next (PageDown, right arrow)">&rsaquo;</button>
+    <button type="button" name="exit" aria-label="leave presentation" title="leave (Esc)">&times;</button>
+  </div>
+</div>
+
+<style>
+  .present {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.8rem; margin: 1.5rem 0;
+  }
+  .present button {
+    font: inherit; font-size: 0.95rem; color: var(--bg); background: var(--ink); border: 1px solid var(--ink);
+    padding: 0.35em 1em; cursor: pointer; touch-action: manipulation;
+  }
+  .present button:hover { background: var(--accent); border-color: var(--accent); }
+
+  .deck { background: var(--bg); color: var(--ink); overflow: hidden; }
+  .deck:focus { outline: none; }
+  /* Native fullscreen puts the deck in the top layer at full size; .full is the fallback where the API is missing. */
+  .deck.full { position: fixed; inset: 0; z-index: 20; width: auto; height: 100dvh; }
+  .deck::backdrop { background: var(--bg); }
+
+  /* Slides are slotted from the page, hence :global. One slide at a time fills the deck. */
+  .deck :global([data-slide]) {
+    position: absolute; inset: 0; overflow: auto;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 2.5vh; padding: 5vh 6vw 10vh; text-align: center;
+  }
+  .deck :global([data-slide][hidden]) { display: none; }
+  .deck :global([data-slide] > h2) { font-size: clamp(1.6rem, 5vw, 4rem); margin: 0; }
+  .deck :global([data-slide] > p) { font-size: clamp(1.05rem, 2.4vw, 2.1rem); line-height: 1.35; max-width: 36ch; margin: 0; }
+  .deck :global([data-slide] > p.meta) { font-size: clamp(0.85rem, 1.5vw, 1.3rem); max-width: 48ch; }
+  /* A slide that adopts a page element gives it the whole area instead of centring it. */
+  .deck :global([data-slide][data-adopt]) { justify-content: stretch; align-items: stretch; padding: 1rem 1rem 3rem; text-align: left; }
+
+  .bar {
+    position: absolute; right: 1rem; bottom: 0.7rem;
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .bar button {
+    font: inherit; color: var(--muted); background: none; border: 1px solid var(--line);
+    padding: 0 0.5em; line-height: 1.5; cursor: pointer; touch-action: manipulation;
+  }
+  .bar button:hover:not(:disabled) { color: var(--ink); border-color: var(--accent); }
+  .bar button:disabled { opacity: 0.35; cursor: default; }
+  .bar output { min-width: 3.5em; text-align: center; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-deck]').forEach(mount);
+
+  function mount(deck: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => deck.querySelector<T>(`[name="${n}"]`)!;
+    const slides = Array.from(deck.querySelectorAll<HTMLElement>(':scope > [data-slide]'));
+    const starts = Array.from(document.querySelectorAll<HTMLElement>(`[data-deck-start="${deck.id}"]`));
+    const prevBtn = $<HTMLButtonElement>('prev'), nextBtn = $<HTMLButtonElement>('next'), pos = $<HTMLOutputElement>('pos');
+    const homes = new Map<HTMLElement, Comment>(); // adopted element → the mark that holds its place on the page
+    const doc = document as any;
+    const fsEl = () => document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+    const on = () => !deck.hidden;
+    let i = 0;
+
+    function show(n: number) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach((s, k) => { s.hidden = k !== i; });
+      pos.value = `${i + 1} / ${slides.length}`;
+      prevBtn.disabled = i === 0; nextBtn.disabled = i === slides.length - 1;
+      focusSlide();
+    }
+    // The slide's own focusable widget (the demo figure) gets the keys; otherwise the deck does.
+    function focusSlide() { (slides[i].querySelector<HTMLElement>('[tabindex]') ?? deck).focus({ preventScroll: true }); }
+
+    function adopt() {
+      for (const s of slides) {
+        const el = s.dataset.adopt ? document.querySelector<HTMLElement>(s.dataset.adopt) : null;
+        if (!el || s.contains(el)) continue;
+        const mark = document.createComment('deck'); el.replaceWith(mark); homes.set(el, mark);
+        el.setAttribute('data-presented', ''); s.append(el);
+      }
+    }
+    function restore() {
+      for (const [el, mark] of homes) { el.removeAttribute('data-presented'); mark.replaceWith(el); }
+      homes.clear();
+    }
+
+    function start() {
+      if (on()) return;
+      deck.hidden = false; adopt(); show(0);
+      const req = deck.requestFullscreen ?? (deck as any).webkitRequestFullscreen;
+      if (!req) return fallback();
+      try { const p = req.call(deck); if (p && p.catch) p.catch(fallback); } catch { fallback(); }
+    }
+    function fallback() { deck.classList.add('full'); focusSlide(); }
+    function stop() {
+      if (fsEl() === deck) { (document.exitFullscreen ?? doc.webkitExitFullscreen)?.call(document); return; } // onFs ends it
+      end();
+    }
+    function end() {
+      if (!on()) return;
+      deck.classList.remove('full'); restore(); deck.hidden = true;
+      starts[0]?.focus({ preventScroll: true });
+    }
+    function onFs() { if (on() && !deck.classList.contains('full') && fsEl() !== deck) end(); }
+
+    for (const b of starts) b.addEventListener('click', start);
+    prevBtn.addEventListener('click', () => show(i - 1));
+    nextBtn.addEventListener('click', () => show(i + 1));
+    $('exit').addEventListener('click', stop);
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+
+    // Clicking the slide background keeps the keys with the slide's widget instead of moving focus to the deck.
+    deck.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('button, a, input, select, textarea, [tabindex]')) return;
+      e.preventDefault(); focusSlide();
+    });
+
+    // Clickers send PageDown/PageUp. A widget that already handled the key has called preventDefault.
+    document.addEventListener('keydown', (e) => {
+      if (!on() || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement, k = e.key;
+      if (t.matches('input, select, textarea')) return;
+      if (t.matches('button, a') && (k === ' ' || k === 'Enter')) return;
+      if (k === 'ArrowRight' || k === 'PageDown' || k === 'ArrowDown' || k === ' ' || k === 'n') show(i + 1);
+      else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'ArrowUp' || k === 'Backspace' || k === 'p') show(i - 1);
+      else if (k === 'Home') show(0);
+      else if (k === 'End') show(slides.length - 1);
+      else if (k === 'Escape') stop();
+      else return;
+      e.preventDefault();
+    });
+  }
+</script>

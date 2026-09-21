@@ -52,12 +52,16 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
   output { min-width: 5.5em; }
   .lut { min-width: 0; } /* a flex child; without this the table cannot shrink and the page overflows on phones */
 
-  /* Fullscreen (native) or the .full overlay fallback where the API is missing. */
+  /* Fullscreen (native), the .full overlay fallback where the API is missing, or adopted into a
+     presentation slide ([data-presented], set by Deck.astro): the canvas takes all the free height. */
   .eca:is(:fullscreen, .full) {
-    position: fixed; inset: 0; z-index: 10; margin: 0; padding: 1rem;
-    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg); overflow: hidden;
+    position: fixed; inset: 0; z-index: 10; padding: 1rem;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
   }
-  .eca:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .eca:is(:fullscreen, .full, [data-presented]) { margin: 0; overflow: hidden; }
+  .eca[data-presented] { flex: 1; min-height: 0; }
+  .eca:is(:fullscreen, .full, [data-presented]) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .eca[data-presented] [name="full"] { display: none; } /* the deck owns fullscreen */
   .eca::backdrop { background: var(--bg); }
 </style>
 
@@ -178,10 +182,11 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     function onFs() {
       const on = isFull();
       fullBtn.textContent = on ? 'exit fullscreen' : 'fullscreen'; fullBtn.setAttribute('aria-pressed', String(on));
-      el.focus(); // the ResizeObserver refits and repaints
+      if (on) el.focus(); // so the keys work at once; the ResizeObserver refits and repaints. Other elements' fullscreen changes leave focus alone.
     }
     function fallback() { el.classList.add('full'); onFs(); }
     function full() {
+      if (el.hasAttribute('data-presented')) return; // inside a Deck slide: the deck is the fullscreen element
       if (el.classList.contains('full')) { el.classList.remove('full'); onFs(); return; }
       if (fsEl() === el) { (document.exitFullscreen ?? doc.webkitExitFullscreen)?.call(document); return; }
       const req = el.requestFullscreen ?? (el as any).webkitRequestFullscreen;
@@ -193,6 +198,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
     document.addEventListener('webkitfullscreenchange', onFs);
 
     // Keys, scoped to the figure so PageDown still scrolls the page elsewhere. Clickers send PageDown/PageUp.
+    // A back key with nothing left to undo is left alone, so inside a Deck it turns to the previous slide.
     c.addEventListener('pointerdown', () => el.focus());
     el.addEventListener('keydown', (e) => {
       const t = e.target as HTMLElement, k = e.key;
@@ -200,7 +206,7 @@ const { rule = 90, width = 31, boundary = 'periodic', init = 'seed' } = Astro.pr
       if (t.matches('button, a') && (k === ' ' || k === 'Enter')) return;
       if (k === ' ') play();
       else if (k === 'ArrowRight' || k === 'PageDown' || k === 'n') { play(false); advance(); }
-      else if (k === 'ArrowLeft' || k === 'PageUp') { play(false); undo(); }
+      else if (k === 'ArrowLeft' || k === 'PageUp') { if (hist.length < 2) return; play(false); undo(); }
       else if (k === 'r') reset();
       else if (k === 'f') full();
       else if (k === 'Escape' && isFull()) full();

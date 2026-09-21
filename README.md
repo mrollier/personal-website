@@ -23,7 +23,7 @@ npm run check    # build + link check
 | Home intro and "now" line | `src/pages/index.astro` |
 | Background still-life tiles | `src/data/tiles.json`, regenerate with `PYTHONPATH=../game-of-life-mosaics/src python3 scripts/export-tiles.py` |
 | Nav, footer links | `src/layouts/Base.astro` |
-| Demos | `src/pages/demos/` (list in `index.astro`). ECA engine `src/scripts/eca.ts`; demo `src/components/Eca.astro` with `EcaTable.astro` and `EcaFigure.astro`, the only components with a scoped `<style>`, on purpose, so they lift out |
+| Demos | `src/pages/demos/` (list in `index.astro`). ECA engine `src/scripts/eca.ts`; demo `src/components/Eca.astro` with `EcaTable.astro` and `EcaFigure.astro`; `Deck.astro` is the fullscreen slide deck (slides are slotted, a slide can adopt a page element). These are the only components with a scoped `<style>`, on purpose, so they lift out |
 | CV PDF | `public/cv.pdf` (redacted copy only) |
 
 A wrong field in a YAML file fails `npm run build`, which is the test.

@@ -1,0 +1,179 @@
+---
+import Base from '../../layouts/Base.astro';
+import EchoRing from '../../components/EchoRing.astro';
+import EchoWell from '../../components/EchoWell.astro';
+import EchoTrain from '../../components/EchoTrain.astro';
+import EchoNoise from '../../components/EchoNoise.astro';
+import { getCollection } from 'astro:content';
+// The paper this page is built on lives in the publications collection, so its links stay in one place.
+const paper = (await getCollection('publications')).find((p) => p.data.id === 'gw-echoes')?.data;
+const doi = paper?.doi ? `https://doi.org/${paper.doi}` : 'https://doi.org/10.1103/PhysRevD.98.024023';
+const arxiv = paper?.url ?? 'https://arxiv.org/abs/1804.04877';
+---
+<Base title="Finding echoes" description="What a gravitational-wave echo would look like, where it would come from, and how to search for one without knowing its shape. Four things to play with, from my MSc thesis." wide>
+  <div class="measure">
+    <h1>Finding echoes</h1>
+    <p>
+      In September 2015 the two LIGO detectors recorded, for the first time, a ripple in space itself:
+      two black holes, each about thirty times the mass of the Sun, had spiralled into each other more
+      than a billion years ago. The ripple stretched and squeezed the detectors' four-kilometre arms by
+      less than a thousandth of the width of a proton. This page is about a question that came up soon
+      after: how sure are we that what merged were black holes, and what would we hear if they were not?
+    </p>
+    <p>
+      I worked on that question for my master's thesis at Nikhef in Amsterdam, and the method became
+      a <a href={doi}>paper</a> with Ka Wa Tsang and colleagues. Below, the story in four animations.
+    </p>
+
+    <h2 id="stretch">What a gravitational wave does</h2>
+    <p>
+      Put a ring of free-floating masses in space and let a gravitational wave pass through, straight at
+      you. The ring is stretched one way and squeezed the other, then the reverse, once per wave cycle.
+      There are two ways to do this, called the plus and cross polarisations: the second is the first
+      turned by 45 degrees. A real wave carries a mix of both. From a pair of black holes seen face-on
+      the two arrive a quarter of a cycle apart, and the stretch direction spins round.
+    </p>
+    <EchoRing />
+    <p>
+      The four highlighted masses are where the ends of a detector's arms would sit. A LIGO detector is
+      essentially two of those masses, one at the end of each arm, with a laser measuring the distance
+      between them. The effect here is exaggerated by about twenty orders of magnitude; the real stretch
+      was one part in 10<sup>21</sup>.
+    </p>
+
+    <h2 id="ringdown">What a merger sounds like</h2>
+    <p>
+      The signal from two merging black holes has three parts. The <em>inspiral</em>: a rising whistle
+      as the pair circles ever faster. The <em>merger</em>: the loudest moment, when they touch.
+      And the <em>ringdown</em>: the newly formed black hole is lopsided at first and rings like a struck bell
+      while it settles, for a few milliseconds. Then nothing. A black hole has a horizon, a surface of no
+      return, so whatever falls in stays in and the bell goes quiet.
+    </p>
+
+    <h2 id="origin">What if it is not quite a black hole?</h2>
+    <p>
+      Nobody has seen a horizon. We have seen objects that are dark, heavy and compact enough to have
+      one, and the ringdown of the 2015 merger looks exactly like general relativity says a black hole's
+      should. But theorists have proposed several kinds of object that would look the same from far
+      away and yet have no horizon: stars made of exotic particles, bubbles of vacuum energy held in by
+      a shell of matter, wormholes. Collectively, exotic compact objects. What they share is a surface
+      of some kind sitting a hair's breadth outside where the horizon would have been.
+    </p>
+    <p>
+      That surface changes the ending of the story. The ringing happens at the <em>light ring</em>, an
+      orbit at one and a half times the horizon radius where light can circle the hole, and it runs both
+      ways: outward, as the ringdown we hear, and inward. A black hole swallows the inward part. An
+      object with a surface bounces it back up to the light ring, which for waves acts as a barrier: a
+      fraction of the energy leaks out, the rest is reflected back down, and so on. The result is a
+      train of echoes.
+    </p>
+  </div>
+  <EchoWell />
+  <div class="measure">
+    <p>
+      The gap between echoes is the time a wave needs to go from the light ring down to the surface
+      and back. The drawing measures distance the way the wave does, in travel time, and because time
+      runs so slowly that deep in the gravity well, a surface closer to the horizon is further away:
+      push the surface down and the wall moves off from the barrier. But the gap depends only on
+      the <em>logarithm</em> of how close the surface sits to the would-be horizon: move the slider from a
+      hundred-thousandth of the radius to a Planck length, thirty-five powers of ten, and the gap
+      merely grows eightfold. For a remnant like the 2015 one, roughly sixty times the mass of the Sun,
+      that is about a tenth of a second between echoes whatever the details. Long compared with the few
+      milliseconds of ringdown, short enough to look for right after the main signal. The leak slider
+      sets how much of the energy escapes at each bounce; the rest comes round again, quieter each time.
+      Set the object to a black hole and the inward part falls through the horizon: one burst, then nothing.
+    </p>
+
+    <h2 id="shape">A shape without a theory</h2>
+    <p>
+      The trouble with searching for echoes is that nobody can tell you exactly what one looks like.
+      Each candidate object predicts a different waveform, most of them only roughly, and the right
+      object may be one nobody has written down. What the pictures do agree on are four fingerprints:
+      the echoes arrive at a <strong>constant time gap</strong>, each is <strong>quieter</strong> than
+      the last because the barrier only leaks a fraction, each is <strong>longer and lower in pitch</strong>
+      because the barrier lets low frequencies through more easily, and each may pick up
+      a <strong>phase shift</strong> from the bounce off the surface. The first two are on solid ground;
+      the widening is softer, and the phase is a guess.
+    </p>
+    <p>
+      So my thesis took a search that assumes no waveform at all and taught it those four fingerprints.
+      BayesWave, an algorithm by Neil Cornish and Tyson Littenberg, describes whatever is in the data as
+      a sum of small wave packets, sine-Gaussians, and lets Bayesian statistics decide how many are
+      needed. We replaced the single packet by a <em>train</em> of packets, with the gap, damping,
+      widening and phase step as knobs the algorithm turns while it fits. Here are those knobs.
+    </p>
+  </div>
+  <EchoTrain />
+  <div class="measure">
+    <p>
+      The dashed lines are the envelopes of the individual echoes; the small ticks mark their centres.
+      Switch on the spectrum and the echoes show up as a comb: a signal that repeats every Δt has
+      frequency teeth 1/Δt apart, which is the second way an echo search can recognise a train. The
+      listen button plays the train pitched up three times and slowed down five times, because a
+      170-hertz ping forty milliseconds apart is a low buzz rather than a series of echoes.
+    </p>
+
+    <h2 id="search">Pulling it out of the noise</h2>
+    <p>
+      In a real detector the echoes would be buried. How buried is measured by the signal-to-noise
+      ratio, SNR: roughly, how many times louder than the noise a perfect filter would find the signal.
+      The 2015 ringdown alone had an SNR of about 8. The thesis planted echo trains into simulated
+      LIGO noise at SNRs of 8, 12, 18 and 25 and asked the algorithm to compare three explanations of
+      the data: only noise, a glitch in one detector, or a real signal seen by both. The comparison
+      comes out as a Bayes factor, the odds of the signal explanation against the noise explanation.
+    </p>
+  </div>
+  <EchoNoise />
+  <div class="measure">
+    <p>
+      The trace is the data in units of the noise level, so drag the SNR slider and watch the echoes
+      surface out of the same noise. The train buried here is whatever you built in the figure above.
+      "Show fit" runs a small cousin of BayesWave on the data: it builds whatever stands out of the
+      noise from wave packets, one at a time, keeps a packet only when it stands well above anything
+      noise alone produces, and knows nothing about echoes. At SNR 8 it usually finds nothing. As the
+      SNR rises it picks up the first burst, then the echoes one by one, and reads off their spacing.
+      The gauge underneath places the SNR on the log Bayes factors the thesis measured
+      for these injections. At SNR 8 the runs were indistinguishable from pure noise; from SNR 12 the
+      signal explanation won clearly; from around 15 the algorithm also measured the echoes: at SNR 25
+      it read back a gap of 40 ± 7 ms, a damping of 0.69 ± 0.05 and a widening of 1.16 ± 0.09
+      from a train planted with 40 ms, 0.7 and 1.2. The phase step it could not measure at all. One
+      finding worth being upfront about: the trains did not <em>detect</em> echoes any better than
+      plain BayesWave with single packets did. What they added is the reading of the fingerprints.
+    </p>
+    <p>
+      Two honest caveats. The noise here is white, while real detector noise is coloured and full of
+      glitches, which is exactly why the glitch hypothesis is in the comparison. And the gauge is an
+      interpolation of four measured points for one family of injections, not a general law. Others
+      have reported tentative hints of echoes in the real LIGO data, at a significance that did not
+      survive closer scrutiny; no echo has been found. The point of a shape-free search is to be ready
+      when a louder event comes, without betting on one theory of what a non-black-hole would be.
+    </p>
+
+    <h2 id="reading">Read more</h2>
+    <ul class="pubs">
+      <li>
+        <a href={doi}>A morphology-independent data analysis method for detecting and characterizing gravitational wave echoes</a>
+        <div class="meta">K. W. Tsang, <strong>M. Rollier</strong>, A. Ghosh, A. Samajdar, M. Agathos, K. Chatziioannou, V. Cardoso, G. Khanna, C. Van Den Broeck</div>
+        <div class="meta">Physical Review D 98, 024023, 2018 · <a href={arxiv}>preprint</a></div>
+      </li>
+      <li>
+        <a href="https://arxiv.org/abs/1410.3835">BayesWave: Bayesian inference for gravitational wave bursts and instrument glitches</a>
+        <div class="meta">N. J. Cornish, T. B. Littenberg, 2015. The algorithm this work modifies.</div>
+      </li>
+      <li>
+        <a href="https://arxiv.org/abs/1904.05363">Testing the nature of dark compact objects: a status report</a>
+        <div class="meta">V. Cardoso, P. Pani, 2019. The review to read on exotic compact objects and echoes.</div>
+      </li>
+      <li>
+        <a href="https://arxiv.org/abs/1612.00266">Echoes from the Abyss</a> and <a href="https://arxiv.org/abs/1712.09966">Low significance of evidence for black hole echoes</a>
+        <div class="meta">J. Abedi, H. Dykaar, N. Afshordi, 2017; J. Westerweck et al., 2017. The tentative claim and its re-analysis.</div>
+      </li>
+    </ul>
+    <p class="meta">
+      MSc thesis, University of Amsterdam, VU Amsterdam and Nikhef, 2018, supervised by Chris Van Den
+      Broeck, Archisman Ghosh and Ka Wa Tsang. Keys once a figure has focus: space plays and pauses the
+      animations, r resets or rerolls the noise, s toggles the spectrum or the signal overlay, b the fit,
+      l listens, f goes fullscreen. The address bar follows the settings, so a set-up can be linked.
+    </p>
+  </div>
+</Base>

@@ -25,7 +25,7 @@ npm run check    # build + link check
 | Home intro and "now" line | `src/pages/index.astro` |
 | Background still-life tiles | `src/data/tiles.json`, regenerate with `PYTHONPATH=../game-of-life-mosaics/src python3 scripts/export-tiles.py` |
 | Nav, footer links | `src/layouts/Base.astro` |
-| Demos | `src/pages/demos/` (list in `index.astro`). ECA engine `src/scripts/eca.ts`; demo `src/components/Eca.astro` with `EcaTable.astro`; `Deck.astro` is the fullscreen slide deck (slides are slotted, a slide can adopt a page element). These are the only components with a scoped `<style>`, on purpose, so they lift out |
+| Demos | `src/pages/demos/` (list in `index.astro`). Cellular automata: 1-D engine `src/scripts/eca.ts` with `src/components/Eca.astro` and `EcaTable.astro`; the parity rule on a grid in `src/scripts/grid.ts` with `CaGrid.astro`, on networks (Watts–Strogatz, Erdős–Rényi, Barabási–Albert, force layout) in `src/scripts/net.ts` with `CaNet.astro`; `Deck.astro` is the fullscreen slide deck (slides are slotted, a slide can adopt a page element). Echoes: maths in `src/scripts/echoes.ts`, canvas plumbing shared by the figures in `src/scripts/figure.ts`, sound in `src/scripts/audio.ts`; figures `EchoRing.astro`, `EchoWell.astro`, `EchoTrain.astro`, `EchoNoise.astro`. These are the only components with a scoped `<style>`, on purpose, so they lift out with their script files |
 | CV PDF | `public/cv.pdf` (redacted copy only) |
 
 A wrong field in a YAML file fails `npm run build`, which is the test.

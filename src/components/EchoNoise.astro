@@ -1,0 +1,192 @@
+---
+// Inject and recover: the echo train buried in white Gaussian noise at a chosen optimal SNR, a fit
+// that builds whatever stands out of the noise from wave packets one at a time (a small cousin of
+// BayesWave, knowing nothing about echoes), and a gauge that maps the SNR to the log Bayes factors
+// the thesis measured. Follows the train built in `data-follow` (an EchoTrain figure) if it exists on
+// the page; otherwise the paper's injection. Self-contained with src/scripts/{echoes,figure,audio}.ts.
+type Props = { snr?: number; seed?: number; signal?: boolean; template?: boolean; follow?: string };
+const { snr = 12, seed = 1, signal = false, template = false, follow = '#train' } = Astro.props;
+---
+<figure class="fig" id="noise" data-echo-noise data-snr={snr} data-seed={seed} data-signal={signal ? '1' : '0'} data-template={template ? '1' : '0'} data-follow={follow} tabindex="-1">
+  <canvas role="img" aria-label="Echoes hidden in detector noise"></canvas>
+  <div class="controls" role="group" aria-label="Injection controls">
+    <label>SNR <input name="snr" type="range" min="4" max="30" step="0.5" value={snr} list="snr-marks" /> <output name="snrv"></output></label>
+    <datalist id="snr-marks"><option value="8"></option><option value="12"></option><option value="18"></option><option value="25"></option></datalist>
+    <button name="reseed" type="button">new noise</button>
+    <button name="signal" type="button" aria-pressed={signal}>show signal</button>
+    <button name="template" type="button" aria-pressed={template}>show fit</button>
+    <button name="listen" type="button">listen</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="verdict" class="verdict" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(280px, 50vh, 520px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 3em; color: var(--ink); }
+  .verdict { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); }
+  .verdict b { color: var(--ink); font-weight: 600; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { DEFAULT, RATE, sampleTrain, duration, makeRng, whiteNoise, sigmaForSnr, matchedFilter, fitter, packetGap, logBayes, snrFor, verdict, BANDS, type Train, type Verdict, type Fit } from '../scripts/echoes';
+  import { fit, tokens, watch, schedule, fullscreen, urlState, keys, trace, label } from '../scripts/figure';
+  import { canPlay, play, sampleRate } from '../scripts/audio';
+
+  document.querySelectorAll<HTMLElement>('[data-echo-noise]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const d = el.dataset, url = urlState('noise', { snr: d.snr!, seed: d.seed!, signal: d.signal!, template: d.template! });
+    const snrIn = $<HTMLInputElement>('snr'), snrOut = $<HTMLOutputElement>('snrv'), sigBtn = $<HTMLButtonElement>('signal');
+    const tplBtn = $<HTMLButtonElement>('template'), listenBtn = $<HTMLButtonElement>('listen'), out = $<HTMLOutputElement>('verdict');
+    const WORDS: Record<Verdict, string> = { noise: 'looks like noise', detected: 'detected', measured: 'detected, echoes measurable' };
+    const clampSnr = (v: number) => Math.min(30, Math.max(4, isFinite(v) ? v : 12));
+
+    let snr = clampSnr(+url.get('snr')), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let showSig = url.get('signal') === '1', showTpl = url.get('template') === '1';
+    let p: Train = DEFAULT, h = new Float32Array(0), noise = new Float32Array(0), dat = new Float32Array(0), tmax = 0.6, hover: number | null = null;
+    let sigma = 1, mf = { amp: 0, snr: 0 }, fitted: Fit | null = null, fitting = false, fitTimer = 0, fitGen = 0;
+
+    // The train to bury: the builder's, if the page has one, else the paper's injection.
+    const src = d.follow ? document.querySelector<HTMLElement>(d.follow) : null;
+    if ((src as any)?.echoParams) p = (src as any).echoParams;
+    document.addEventListener('echo:params', (e) => { const ev = e as CustomEvent; if (src && ev.detail.id === src.id) { p = ev.detail.params; update(); } });
+
+    function recompute() {
+      tmax = Math.min(1.5, Math.max(0.5, duration(p) + 0.1));
+      h = sampleTrain(p, RATE, tmax);
+      if (noise.length !== h.length) noise = whiteNoise(h.length, makeRng(seed));
+      sigma = sigmaForSnr(h, snr);
+      dat = new Float32Array(h.length); for (let i = 0; i < h.length; i++) dat[i] = h[i] + sigma * noise[i];
+      mf = matchedFilter(dat, h, sigma);
+      fitted = null; refit();
+    }
+
+    // The fit runs a step at a time off the input events, and starts over when the data changes under it.
+    function refit() {
+      clearTimeout(fitTimer); fitting = false;
+      if (!showTpl) return;
+      fitting = true;
+      const gen = ++fitGen;
+      fitTimer = setTimeout(() => {
+        const job = fitter(dat, RATE, sigma);
+        fitted = job.fit;
+        const pump = () => { if (gen !== fitGen) return; if (job.step()) { repaint(); setTimeout(pump, 0); } else { fitting = false; show(); repaint(); } };
+        pump();
+      }, 120) as unknown as number;
+    }
+    function fitWords() {
+      if (!showTpl) return '';
+      if (fitting || !fitted) return ' · fitting…';
+      const n = fitted.packets.length, gap = packetGap(fitted.packets);
+      return n ? ` · fit finds <b>${n}</b> packet${n > 1 ? 's' : ''}${gap ? `, <b>${Math.round(gap * 1000)} ms</b> apart` : ''}` : ' · fit finds <b>nothing</b> above the noise';
+    }
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, h: hh } = s;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, hh);
+      const gaugeH = 72, box = { x: 10, y: 26, w: w - 20, h: hh - gaugeH - 50 };
+      const X = (tt: number) => box.x + (tt / tmax) * box.w, mid = box.y + box.h / 2;
+      // Everything in units of the noise level: the data stays the same size and the signal grows with SNR.
+      const scale = box.h / 9, inv = 1 / sigma;
+      const dat = new Float32Array(h.length); for (let i = 0; i < h.length; i++) dat[i] = h[i] * inv + noise[i];
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(box.x, mid); ctx.lineTo(box.x + box.w, mid); ctx.stroke();
+      trace(ctx, dat, box, scale, { stroke: t.muted, width: 1 });
+      if (showSig) { const v = new Float32Array(h.length); for (let i = 0; i < h.length; i++) v[i] = h[i] * inv; trace(ctx, v, box, scale, { stroke: t.accent, width: 2 }); }
+      if (showTpl && fitted) {
+        const v = new Float32Array(h.length); for (let i = 0; i < h.length; i++) v[i] = fitted.model[i] * inv;
+        trace(ctx, v, box, scale, { stroke: t.danger, width: 1.5, dash: [4, 3] });
+        for (const q of fitted.packets) { ctx.fillStyle = t.danger; ctx.fillRect(X(q.t0) - 1, box.y, 2, 6); }
+      }
+      for (let m = 0; m <= tmax * 1000; m += 100) if (X(m / 1000) < box.x + box.w - 28) label(ctx, `${m}`, X(m / 1000), box.y + box.h + 16, t, { align: 'center' });
+      label(ctx, 'ms', box.x + box.w, box.y + box.h + 16, t, { align: 'right' });
+      label(ctx, `data, in units of the noise level${showSig ? ' · signal' : ''}${showTpl ? ' · fit' : ''}`, box.x + 2, 16, t, { color: t.ink });
+      if (showSig || showTpl) {
+        let lx = box.x + box.w - 2;
+        if (showTpl) { const txt = fitting ? 'fitting…' : fitted?.packets.length ? 'fit, wave packets found' : 'fit: nothing found'; label(ctx, txt, lx, 16, t, { align: 'right', color: t.danger }); ctx.font = `11px ${t.mono}`; lx -= ctx.measureText(txt).width + 12; }
+        if (showSig) label(ctx, 'signal', lx, 16, t, { align: 'right', color: t.accent });
+      }
+      if (hover !== null && hover >= 0 && hover <= tmax) { ctx.strokeStyle = t.accent; ctx.beginPath(); ctx.moveTo(X(hover), box.y); ctx.lineTo(X(hover), box.y + box.h); ctx.stroke(); label(ctx, `t = ${Math.round(hover * 1000)} ms`, box.x + box.w - 2, box.y + 12, t, { align: 'right' }); }
+
+      // The gauge: injected SNR against the log Bayes factors the thesis measured (a toy: four points, one injection family).
+      const g = { x: 10, y: hh - 50, w: w - 20, h: 22 };
+      const GX = (v: number) => g.x + ((v - 4) / 26) * g.w;
+      const b1 = snrFor(BANDS.detected), b2 = snrFor(BANDS.measured);
+      const zones: [number, number, string, string][] = [[4, b1, t.line, WORDS.noise], [b1, b2, t.sun, WORDS.detected], [b2, 30, t.accent, WORDS.measured]];
+      for (const [a, b, col, txt] of zones) {
+        ctx.save(); ctx.globalAlpha = col === t.line ? 0.6 : 0.3; ctx.fillStyle = col; ctx.fillRect(GX(a), g.y, GX(b) - GX(a), g.h); ctx.restore();
+        ctx.strokeStyle = t.line; ctx.strokeRect(GX(a) + 0.5, g.y + 0.5, GX(b) - GX(a) - 1, g.h - 1);
+        if (GX(b) - GX(a) > 90) label(ctx, txt, (GX(a) + GX(b)) / 2, g.y + 15, t, { align: 'center', color: t.ink, size: 10 });
+      }
+      for (const v of [8, 12, 18, 25]) { ctx.fillStyle = t.muted; ctx.fillRect(GX(v) - 0.5, g.y + g.h, 1, 4); label(ctx, `${v}`, GX(v), g.y + g.h + 14, t, { align: 'center', size: 10 }); }
+      label(ctx, 'SNR', g.x + g.w, g.y + g.h + 14, t, { align: 'right', size: 10 });
+      const nx = GX(snr);
+      ctx.fillStyle = t.ink; ctx.fillRect(nx - 1, g.y - 6, 2, g.h + 8);
+      ctx.beginPath(); ctx.moveTo(nx - 5, g.y - 8); ctx.lineTo(nx + 5, g.y - 8); ctx.lineTo(nx, g.y - 3); ctx.closePath(); ctx.fill();
+      label(ctx, `log B ≈ ${fmtB(logBayes(snr))}`, Math.min(g.x + g.w - 60, Math.max(g.x + 60, nx)), g.y - 12, t, { align: 'center', color: t.ink });
+    }
+    const fmtB = (b: number) => (Math.abs(b) < 10 ? b.toFixed(1) : String(Math.round(b)));
+    const repaint = schedule(paint);
+
+    function show() {
+      snrIn.value = String(snr); snrOut.value = String(snr);
+      sigBtn.setAttribute('aria-pressed', String(showSig)); tplBtn.setAttribute('aria-pressed', String(showTpl));
+      const lb = logBayes(snr), v = verdict(lb);
+      out.innerHTML = `injected SNR <b>${snr}</b> · a filter that knew the shape would recover <b>${mf.snr.toFixed(1)}</b>${fitWords()} · thesis log Bayes factor at this SNR ≈ <b>${fmtB(lb)}</b> · <b>${WORDS[v]}</b>`;
+      c.setAttribute('aria-label', `Echo train in noise at signal-to-noise ratio ${snr}: ${WORDS[v]}`);
+      url.set('snr', String(snr)); url.set('seed', String(seed)); url.set('signal', showSig ? '1' : '0'); url.set('template', showTpl ? '1' : '0');
+    }
+    function update() { recompute(); show(); repaint(); }
+    snrIn.addEventListener('input', () => { snr = clampSnr(+snrIn.value); update(); });
+    $('reseed').addEventListener('click', () => { seed++; noise = whiteNoise(h.length, makeRng(seed)); update(); });
+    sigBtn.addEventListener('click', () => { showSig = !showSig; show(); repaint(); });
+    tplBtn.addEventListener('click', () => { showTpl = !showTpl; if (showTpl && !fitted) refit(); show(); repaint(); });
+
+    // Listen to the data: the train for the ear (3x pitch, 5x slower) plus white noise at the same SNR.
+    let stop: { stop?: () => void } = {};
+    async function listen() {
+      if (stop.stop) { stop.stop(); return; }
+      const rate = sampleRate(), pp: Train = { ...p, f0: 3 * p.f0, q: 15 * p.q, dt: 5 * p.dt, t0: 0.15 };
+      const hs = sampleTrain(pp, rate, Math.min(4, duration(pp) + 0.3)), sg = sigmaForSnr(hs, snr), ns = whiteNoise(hs.length, makeRng(seed));
+      for (let i = 0; i < hs.length; i++) hs[i] += sg * ns[i];
+      listenBtn.textContent = 'stop'; stop = {};
+      try { await play(hs, rate, 0.25, stop); } catch {}
+      listenBtn.textContent = 'listen'; stop = {};
+    }
+    if (canPlay()) listenBtn.addEventListener('click', listen); else listenBtn.hidden = true;
+
+    c.addEventListener('pointermove', (e) => { const r = c.getBoundingClientRect(); hover = ((e.clientX - r.left - 10) / (r.width - 20)) * tmax; repaint(); });
+    c.addEventListener('pointerleave', () => { hover = null; repaint(); });
+    const fs = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { r: () => $('reseed').click(), s: () => sigBtn.click(), b: () => tplBtn.click(), l: () => listenBtn.click(), f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); } });
+    watch(c, paint);
+
+    update();
+  }
+</script>

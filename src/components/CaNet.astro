@@ -1,0 +1,188 @@
+---
+// The parity rule on a network: pick a family of random network, the one knob it has, and which
+// node lights up first, from the most to the least connected. The network is drawn above, its
+// history below as rows of time with one column per node. Self-contained with src/scripts/net.ts and
+// src/scripts/figure.ts. Props are the defaults; the URL query (?net.kind=&net.p=&net.n=&net.self=&net.rank=&net.seed=) overrides them.
+import { PARAM, type NetKind } from '../scripts/net';
+type Props = { kind?: NetKind; p?: number; n?: number; self?: boolean; rank?: number; seed?: number };
+const { kind = 'ws', p = PARAM[kind].def, n = 100, self = false, rank = 1, seed = 1 } = Astro.props;
+const kinds = Object.keys(PARAM) as NetKind[];
+---
+<figure class="fig" id="net" data-ca-net data-kind={kind} data-p={p} data-n={n} data-self={self ? '1' : '0'} data-rank={rank} data-seed={seed} tabindex="-1">
+  <canvas role="img" aria-label={`Parity rule on a ${PARAM[kind].name} network of ${n} nodes, generation 0`}></canvas>
+  <div class="controls" role="group" aria-label="Network controls">
+    {kinds.map((k) => <button name={k} type="button" aria-pressed={k === kind}>{PARAM[k].name}</button>)}
+    <label><span data-plabel>{PARAM[kind].label}</span> <input name="param" type="range" min={PARAM[kind].min} max={PARAM[kind].max} step={PARAM[kind].step} value={p} /> <output name="pv">{PARAM[kind].fmt(p)}</output></label>
+    <label>nodes <input name="nodes" type="number" min="10" max="250" value={n} inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+    <button name="self" type="button" aria-pressed={self}>include self</button>
+    <label>seed <input name="rank" type="range" min="1" max={n} step="1" value={rank} /> <output name="seedv"></output></label>
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">gen 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(320px, 65vh, 680px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 3em; }
+  [name="gen"] { min-width: 8em; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { PARAM, makeNet, stepNet, seedNet, count, clampParam, clampN, type Net, type NetKind } from '../scripts/net';
+  import { fit, tokens, watch, loop, fullscreen, urlState, keys, schedule, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-ca-net]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const KINDS = Object.keys(PARAM) as NetKind[];
+    const kindBtns = Object.fromEntries(KINDS.map((k) => [k, $<HTMLButtonElement>(k)])) as Record<NetKind, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const nodesIn = $<HTMLInputElement>('nodes'), selfBtn = $<HTMLButtonElement>('self');
+    const rankIn = $<HTMLInputElement>('rank'), seedv = $<HTMLOutputElement>('seedv');
+    const speedIn = $<HTMLInputElement>('speed'), playBtn = $<HTMLButtonElement>('play'), gen = $<HTMLOutputElement>('gen');
+    const d = el.dataset, url = urlState('net', { kind: d.kind!, p: d.p!, n: d.n!, self: d.self!, rank: d.rank!, seed: d.seed! });
+    const isKind = (s: string): s is NetKind => s in PARAM;
+    const CAP = 4096;
+
+    // State. The URL wins over the props so a set-up can be linked; only non-default values are written back.
+    let kind: NetKind = isKind(url.get('kind')) ? (url.get('kind') as NetKind) : 'ws';
+    // the knob's default belongs to the family: with only the kind in the address, take that family's default
+    let p = clampParam(kind, new URLSearchParams(location.search).has('net.p') || kind === d.kind ? +url.get('p') : PARAM[kind].def);
+    let n = clampN(+url.get('n'));
+    let self = url.get('self') === '1';
+    let seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let rank = Math.min(n, Math.max(1, Math.round(+url.get('rank')) || 1));
+    let net: Net = makeNet(kind, n, p, seed);
+    let hist: Uint8Array[] = [seedNet(net, rank)];
+    let ms = 250, acc = 0;
+
+    const seedNode = () => net.order[rank - 1];
+    const links = (k: number) => (k === 1 ? '1 link' : `${k} links`);
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, h } = s;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const stripH = Math.max(48, Math.round(h * 0.22)), mainH = h - stripH, pad = 14;
+      // the network, uniformly scaled into the upper panel
+      const S = Math.min(w, mainH) - 2 * pad, x0 = (w - S) / 2, y0 = pad + (mainH - 2 * pad - S) / 2;
+      const X = (i: number) => x0 + net.xy[2 * i] * S, Y = (i: number) => y0 + net.xy[2 * i + 1] * S;
+      const state = hist[hist.length - 1], sn = seedNode();
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
+      for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      const base = Math.max(2.2, Math.min(7, (0.55 * S) / Math.sqrt(n))), mean = (2 * net.edges.length) / n || 1;
+      const radius = (i: number) => Math.min(2.2 * base, Math.max(0.6 * base, base * Math.sqrt((net.deg[i] + 1) / (mean + 1))));
+      // small nodes first and lit nodes last, so a hub is not buried under the neighbours crowding it
+      ctx.lineWidth = 1;
+      const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => state[a] - state[b] || net.deg[a] - net.deg[b]);
+      for (const i of order) {
+        ctx.beginPath(); ctx.arc(X(i), Y(i), radius(i), 0, 2 * Math.PI);
+        if (state[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+      }
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(sn), Y(sn), radius(sn) + 3.5, 0, 2 * Math.PI); ctx.stroke();
+      const narrow = w < 560;
+      label(ctx, `${PARAM[kind].name} · ${n} nodes · ${net.edges.length} links`, 10, 16, t);
+      label(ctx, `seed: ${rankWords()}`, 10, 30, t, { color: t.accent });
+      // the history: time runs down, one column per node in the order the nodes were made, turned so the seed sits in the middle
+      const y1 = mainH + 0.5;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(w, y1); ctx.stroke();
+      const rowH = 3, R = Math.max(1, Math.floor((stripH - 6) / rowH)), first = Math.max(0, hist.length - R), colW = w / n;
+      const shift = (n >> 1) - sn + n;
+      ctx.fillStyle = t.ink;
+      for (let r = first; r < hist.length; r++) {
+        const row = hist[r], y = mainH + 3 + (r - first) * rowH;
+        for (let i = 0; i < n; i++) if (row[i]) ctx.fillRect(((i + shift) % n) * colW, y, Math.max(0.6, colW - 0.6), rowH - 0.6);
+      }
+      label(ctx, narrow ? 'time ↓ · one column per node' : 'time runs down · one column per node, in the order they were made, the seed in the middle', w - 8, h - 6, t, { align: 'right' });
+      status();
+    }
+
+    function rankWords() {
+      const deg = net.deg[seedNode()];
+      const where = rank === 1 ? 'most connected' : rank === n ? 'least connected' : `rank ${rank} of ${n}`;
+      return `${where} · ${deg ? links(deg) : 'no links, so nothing happens'}`;
+    }
+    function status() {
+      gen.value = `gen ${hist.length - 1} · ${count(hist[hist.length - 1])} of ${n} on`;
+      if (!lp.playing) c.setAttribute('aria-label', `Parity rule on a ${PARAM[kind].name} network of ${n} nodes, seed at the ${rankWords()}, generation ${hist.length - 1}`);
+    }
+    function advance() { hist.push(stepNet(hist[hist.length - 1], net, self)); if (hist.length > CAP) hist.shift(); }
+    function reseed() { hist = [seedNet(net, rank)]; paint(); }
+    function regen() { lp.play(false); net = makeNet(kind, n, p, seed); rank = Math.min(rank, n); reseed(); }
+    function reset() { lp.play(false); hist = [hist[0]]; paint(); }
+    function undo() { if (hist.length > 1) { lp.play(false); hist.pop(); paint(); } }
+    function step() { lp.play(false); advance(); paint(); }
+
+    const lp = loop(el, (_, dt) => {
+      acc += dt * 1000;
+      let k = 0; while (acc >= ms && k < 32) { advance(); acc -= ms; k++; }
+      if (k === 32) acc = 0;
+      if (k) paint();
+    });
+    lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); if (on) acc = 0; else status(); };
+    const speed = () => { ms = 2000 / 2 ** (+speedIn.value / 10); };
+
+    // Controls reflect state; the URL mirrors it.
+    function show() {
+      for (const k of KINDS) kindBtns[k].setAttribute('aria-pressed', String(k === kind));
+      const P = PARAM[kind];
+      plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(p); pv.value = P.fmt(p);
+      nodesIn.value = String(n); selfBtn.setAttribute('aria-pressed', String(self));
+      rankIn.max = String(n); rankIn.value = String(rank); seedv.value = rankWords();
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(p)); url.set('n', String(n)); url.set('self', self ? '1' : '0'); url.set('rank', String(rank)); url.set('seed', String(seed)); }
+    const regenSoon = schedule(() => { regen(); show(); sync(); }); // slider drags rebuild at most once per frame
+    for (const k of KINDS) kindBtns[k].addEventListener('click', () => { if (k === kind) return; kind = k; p = PARAM[k].def; regen(); show(); sync(); });
+    paramIn.addEventListener('input', () => { p = clampParam(kind, +paramIn.value); pv.value = PARAM[kind].fmt(p); regenSoon(); });
+    nodesIn.addEventListener('change', () => { n = clampN(+nodesIn.value); regen(); show(); sync(); });
+    $('regen').addEventListener('click', () => { seed++; regen(); show(); sync(); });
+    selfBtn.addEventListener('click', () => { self = !self; show(); sync(); paint(); }); // no reset: the rule can change mid-run
+    rankIn.addEventListener('input', () => { rank = Math.min(n, Math.max(1, Math.round(+rankIn.value) || 1)); lp.play(false); show(); sync(); reseed(); });
+    $('step').addEventListener('click', step);
+    playBtn.addEventListener('click', () => lp.play());
+    speedIn.addEventListener('input', speed);
+    $('reset').addEventListener('click', reset);
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, {
+      ' ': () => lp.play(), ArrowRight: step, PageDown: step, n: step, ArrowLeft: undo, PageUp: undo,
+      r: reset, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); },
+    });
+    watch(c, paint);
+    show(); speed(); paint();
+  }
+</script>

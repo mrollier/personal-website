@@ -1,0 +1,142 @@
+---
+// A ring of free test masses breathing under a passing gravitational wave: the plus polarisation
+// stretches one axis while squeezing the other, the cross polarisation does the same on the
+// diagonals, and both together a quarter of a cycle apart (a binary seen face-on) make the stretch
+// direction turn. Self-contained with src/scripts/figure.ts. Props are the defaults; the URL query
+// (?ring.mode=&ring.amp=) overrides them.
+type Props = { mode?: 'plus' | 'cross' | 'both'; amp?: number; masses?: number };
+const { mode = 'plus', amp = 0.3, masses = 16 } = Astro.props;
+---
+<figure class="fig" id="ring" data-echo-ring data-mode={mode} data-amp={amp} data-masses={masses} tabindex="-1">
+  <canvas role="img" aria-label={`Ring of ${masses} test masses under a ${mode}-polarised gravitational wave`}></canvas>
+  <div class="controls" role="group" aria-label="Polarisation controls">
+    <button name="plus" type="button" aria-pressed={mode === 'plus'}>plus</button>
+    <button name="cross" type="button" aria-pressed={mode === 'cross'}>cross</button>
+    <button name="both" type="button" aria-pressed={mode === 'both'}>both</button>
+    <label>stretch <input name="amp" type="range" min="0.05" max="0.5" step="0.01" value={amp} /></label>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <output name="readout"></output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(220px, 40vh, 360px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 4em; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { fit, tokens, watch, loop, fullscreen, urlState, keys, reducedMotion, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-echo-ring]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const plusBtn = $<HTMLButtonElement>('plus'), crossBtn = $<HTMLButtonElement>('cross'), bothBtn = $<HTMLButtonElement>('both');
+    const ampIn = $<HTMLInputElement>('amp'), playBtn = $<HTMLButtonElement>('play'), readout = $<HTMLOutputElement>('readout');
+    const d = el.dataset, url = urlState('ring', { mode: d.mode!, amp: d.amp! });
+    const M = Math.max(8, +d.masses! || 16), PERIOD = 3; // seconds of screen time per wave period
+    const clampAmp = (a: number) => Math.min(0.5, Math.max(0.05, +a || 0.3));
+    type Mode = 'plus' | 'cross' | 'both';
+    const TITLE: Record<Mode, string> = { plus: 'plus polarisation', cross: 'cross polarisation', both: 'plus and cross together, a quarter cycle apart' };
+
+    let mode: Mode = url.get('mode') === 'cross' ? 'cross' : url.get('mode') === 'both' ? 'both' : 'plus';
+    let amp = clampAmp(+url.get('amp'));
+    let phase = 0;
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, h } = s;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const stripH = 34, cx = w / 2, cy = (h - stripH) / 2, R = 0.36 * Math.min(w, h - stripH);
+      // the two strains: plus scales x by (1+kp) and y by (1-kp); cross shears, which is the same thing on the diagonals
+      const kp = mode === 'cross' ? 0 : (amp / 2) * Math.cos(phase), kx = mode === 'plus' ? 0 : (amp / 2) * (mode === 'cross' ? Math.cos(phase) : Math.sin(phase));
+
+      // reference ring and the two stretch axes; with both polarisations the axes turn at half the wave's rate
+      ctx.save();
+      ctx.setLineDash([3, 4]); ctx.lineWidth = 1; ctx.strokeStyle = t.line;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+      ctx.strokeStyle = t.muted; ctx.globalAlpha = 0.5;
+      const a0 = mode === 'plus' ? 0 : mode === 'cross' ? Math.PI / 4 : phase / 2, L = R * 1.35;
+      for (const a of [a0, a0 + Math.PI / 2]) {
+        ctx.beginPath(); ctx.moveTo(cx - L * Math.cos(a), cy + L * Math.sin(a)); ctx.lineTo(cx + L * Math.cos(a), cy - L * Math.sin(a)); ctx.stroke();
+      }
+      ctx.restore();
+
+      // the deformed ring; the highlighted masses are where a detector's arm ends would sit for this polarisation
+      const hi = mode === 'cross' ? Math.PI / 4 : 0, pts: [number, number, boolean][] = [];
+      for (let i = 0; i < M; i++) {
+        const th = (2 * Math.PI * i) / M, x0 = R * Math.cos(th), y0 = R * Math.sin(th);
+        const x = x0 * (1 + kp) + kx * y0, y = y0 * (1 - kp) + kx * x0; // stretch axis at half the wave phase when both act
+        const onAxis = Math.abs(((th - hi + Math.PI / 4) % (Math.PI / 2)) - Math.PI / 4) < 1e-6;
+        pts.push([cx + x, cy - y, onAxis]);
+      }
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.stroke();
+      for (const [x, y, on] of pts) { ctx.fillStyle = on ? t.accent : t.ink; ctx.fillRect(x - 3, y - 3, 6, 6); }
+
+      // where we are in the wave: one period of each strain with a marker (cross dashed when both are shown)
+      const sx = 16, sw = w - 32, sy = h - stripH / 2, u = (phase / (2 * Math.PI)) % 1;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sw, sy); ctx.stroke();
+      const curves: [number, number[]][] = mode === 'both' ? [[0, []], [-Math.PI / 2, [4, 3]]] : [[0, []]];
+      for (const [shift, dash] of curves) {
+        ctx.save(); ctx.strokeStyle = t.muted; ctx.setLineDash(dash); ctx.beginPath();
+        for (let i = 0; i <= 120; i++) { const x = sx + (i / 120) * sw, y = sy - 9 * Math.cos((2 * Math.PI * i) / 120 + shift); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke(); ctx.restore();
+        ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(sx + u * sw, sy - 9 * Math.cos(phase + shift), 4, 0, 2 * Math.PI); dash.length ? ctx.stroke() : ctx.fill();
+      }
+      label(ctx, TITLE[mode], 12, 18, t, { color: t.ink });
+      label(ctx, `stretch h = ${amp.toFixed(2)}, about 10²⁰ times a real wave`, 12, 34, t);
+      label(ctx, mode === 'both' ? 'one wave period · plus solid, cross dashed' : 'one wave period', sx + sw, sy - 14, t, { align: 'right' });
+    }
+
+    const lp = loop(el, (tm) => { phase = (2 * Math.PI * tm) / PERIOD; paint(); });
+    lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); status(); };
+
+    function status() {
+      readout.value = `h = ${amp.toFixed(2)}`;
+      if (!lp.playing) c.setAttribute('aria-label', `Ring of ${M} test masses under a gravitational wave, ${TITLE[mode]}, stretch ${amp.toFixed(2)}`);
+    }
+    function show() {
+      plusBtn.setAttribute('aria-pressed', String(mode === 'plus')); crossBtn.setAttribute('aria-pressed', String(mode === 'cross')); bothBtn.setAttribute('aria-pressed', String(mode === 'both'));
+      ampIn.value = String(amp);
+      url.set('mode', mode); url.set('amp', String(amp));
+      status(); if (!lp.playing) paint();
+    }
+    plusBtn.addEventListener('click', () => { mode = 'plus'; show(); });
+    crossBtn.addEventListener('click', () => { mode = 'cross'; show(); });
+    bothBtn.addEventListener('click', () => { mode = 'both'; show(); });
+    ampIn.addEventListener('input', () => { amp = clampAmp(+ampIn.value); show(); });
+    playBtn.addEventListener('click', () => lp.play());
+    const fs = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ' ': () => lp.play(), f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); } });
+    watch(c, paint);
+
+    show();
+    if (reducedMotion()) paint(); else lp.play(true);
+  }
+</script>

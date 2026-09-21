@@ -1,0 +1,191 @@
+---
+// Where echoes come from, as a cartoon. The ringing starts at the light ring and runs both ways: a
+// burst outward to the detector, a packet inward. A black hole swallows the inward packet. An object
+// with a surface bounces it back to the light ring, which for waves is a barrier that lets a fraction
+// of the energy out and reflects the rest, so a train of echoes follows. The horizontal axis is light
+// travel time, which stretches near the horizon: a surface closer to the horizon is further away for
+// the wave. The strain trace underneath uses the real echo delay for the chosen surface, so the sketch
+// and the signal agree by construction. Self-contained with src/scripts/{echoes,figure}.ts; URL query
+// ?well.* overrides the props. `eps` is the surface's height above the horizon as a power of ten of the radius.
+type Props = { mode?: 'eco' | 'bh'; leak?: number; eps?: number; msun?: number };
+const { mode = 'eco', leak = 0.5, eps = 40, msun = 65 } = Astro.props;
+---
+<figure class="fig" id="well" data-echo-well data-mode={mode} data-leak={leak} data-eps={eps} data-msun={msun} tabindex="-1">
+  <canvas role="img" aria-label="A wave packet bouncing between an object's surface and the light ring, leaking echoes"></canvas>
+  <div class="controls" role="group" aria-label="Object">
+    <button name="eco" type="button" aria-pressed={mode === 'eco'}>exotic object</button>
+    <button name="bh" type="button" aria-pressed={mode === 'bh'}>black hole</button>
+    <label>surface at 10<sup><output name="epsv"></output></sup> above the horizon <input name="eps" type="range" min="-40" max="-5" step="1" value={-eps} /></label>
+    <label>barrier leak <input name="leak" type="range" min="0.05" max="0.95" step="0.05" value={leak} /> <output name="leakv"></output></label>
+  </div>
+  <div class="controls" role="group" aria-label="Playback">
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <button name="restart" type="button">restart</button>
+    <output name="readout"></output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(300px, 55vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls sup { font-size: 0.75em; line-height: 0; }
+  .controls sup output { min-width: 0; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 10rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 3em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { RATE, sampleTrain, echoDelay, type Train } from '../scripts/echoes';
+  import { fit, tokens, watch, loop, fullscreen, urlState, keys, reducedMotion, trace, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-echo-well]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const d = el.dataset, url = urlState('well', { mode: d.mode!, leak: d.leak!, eps: d.eps! });
+    const ecoBtn = $<HTMLButtonElement>('eco'), bhBtn = $<HTMLButtonElement>('bh'), epsIn = $<HTMLInputElement>('eps'), leakIn = $<HTMLInputElement>('leak');
+    const epsOut = $<HTMLOutputElement>('epsv'), leakOut = $<HTMLOutputElement>('leakv'), playBtn = $<HTMLButtonElement>('play'), readout = $<HTMLOutputElement>('readout');
+    // Geometry (fractions of the width): the barrier at XB, the horizon's hatched region below XH, the surface
+    // between 0.15 and 0.45 to the left of the barrier. Waves travel at V widths per second, so the longest round
+    // trip takes 1.6 s of screen time and a surface further out gives quicker echoes, as it should.
+    const MSUN = +d.msun! || 65, XB = 0.62, XH = 0.15, V = 0.9 / 1.6, N_ECHO = 8, F0 = 166.7, Q = 10, W = 1.15, T0 = 0.03;
+    const TWIN = T0 + N_ECHO * echoDelay(1e-40, MSUN) + 0.06; // fixed time axis: room for eight Planck-scale echoes
+    const clampEps = (v: number) => Math.min(40, Math.max(5, Math.round(v) || 40)), clampLeak = (v: number) => Math.min(0.95, Math.max(0.05, +v || 0.5));
+
+    let mode: 'eco' | 'bh' = url.get('mode') === 'bh' ? 'bh' : 'eco';
+    let eps = clampEps(+url.get('eps')), leak = clampLeak(+url.get('leak'));
+    let gap = 0.3, Tb = 1, dtReal = 0.1, gamma = 0.7, amps: number[] = [], p: Train, h = new Float32Array(0), start = 0, now = 0, tau = 0;
+
+    // The surface's distance from the barrier grows with the log of how close it sits to the horizon, as the
+    // echo delay does. At the barrier the energy splits: a fraction `leak` escapes, the rest (amplitude gamma)
+    // is reflected, so the k-th echo carries sqrt(leak) gamma^(k-1) of the ringdown's amplitude.
+    function recompute() {
+      gap = 0.15 + (0.3 * (eps - 5)) / 35; Tb = (2 * gap) / V;
+      dtReal = echoDelay(10 ** -eps, MSUN);
+      gamma = Math.sqrt(1 - leak);
+      amps = [1]; for (let k = 1; k <= N_ECHO; k++) amps.push(Math.sqrt(leak) * gamma ** (k - 1));
+      p = { f0: F0, q: Q, dt: dtReal, gamma, w: W, dphi: 0, n: mode === 'bh' ? 1 : N_ECHO + 1, t0: T0, phi0: 0 };
+      h = sampleTrain(p, RATE, TWIN, amps);
+    }
+    const exitT = (1.1 - XB) / V; // screen time for a burst to leave the picture
+    const endTau = () => (mode === 'bh' ? Math.max(exitT, (XB - 0.05) / V) + 0.8 : N_ECHO * Tb + exitT + 0.5);
+    const still = () => (mode === 'bh' ? 0.5 : 2.3 * Tb);
+
+    // A sine-Gaussian bump drawn along x, sitting on a baseline.
+    function bump(x0: number, amp: number, width: number, base: number, t: ReturnType<typeof tokens>, X: (x: number) => number, alpha = 1) {
+      if (alpha <= 0) return;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.beginPath();
+      for (let i = 0; i <= 80; i++) {
+        const u = ((i / 40) - 1) * 3, x = x0 + u * width;
+        const y = base - amp * Math.exp(-u * u) * Math.cos(4 * Math.PI * u);
+        i ? ctx.lineTo(X(x), y) : ctx.moveTo(X(x), y);
+      }
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+    }
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, h: hh } = s;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, hh);
+      const topH = hh * 0.55, X = (x: number) => 16 + x * (w - 32);
+      const base = 0.7 * topH, amp0 = 0.2 * topH, xs = XB - gap, narrow = w < 600;
+
+      // the potential: a barrier at the light ring; the surface (a wall) or the horizon (an absorber)
+      ctx.strokeStyle = t.muted; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i <= 200; i++) { const x = i / 200, u = (x - XB) / 0.05, y = base - 0.45 * topH * Math.exp(-u * u); i ? ctx.lineTo(X(x), y) : ctx.moveTo(X(x), y); }
+      ctx.stroke();
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X(0), base); ctx.lineTo(X(1), base); ctx.stroke();
+      label(ctx, 'light-ring barrier', X(XB), base - 0.45 * topH - 8, t, { align: 'center' });
+      label(ctx, 'to the detector →', X(1), 16, t, { align: 'right' });
+      label(ctx, narrow ? '← deeper · distance in light travel time' : '← deeper in the gravity well · distances as light travels them', X(0), topH - 2, t);
+      if (mode === 'eco') {
+        ctx.strokeStyle = t.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(xs), base + 2); ctx.lineTo(X(xs), base - 0.6 * topH); ctx.stroke();
+        label(ctx, 'surface', X(xs), base - 0.6 * topH - 8, t, { align: 'center', color: t.ink });
+      } else {
+        ctx.save(); ctx.beginPath(); ctx.rect(X(0), 8, X(XH) - X(0), base - 8); ctx.clip();
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
+        for (let k = -topH; k < X(XH) + topH; k += 8) { ctx.moveTo(k, base); ctx.lineTo(k + topH, base - topH); }
+        ctx.stroke(); ctx.restore();
+        label(ctx, 'horizon', X(XH / 2), base - 0.6 * topH - 8, t, { align: 'center', color: t.ink });
+      }
+
+      // the ringdown burst on its way out, the packet on its way in (and back), and the echoes that already left
+      const wid = 0.02;
+      bump(XB + V * tau, amp0, wid, base, t, X);
+      if (mode === 'eco') {
+        const k = Math.floor(tau / Tb), u = tau / Tb - k;
+        if (k < N_ECHO) bump(XB - gap * (u < 0.5 ? 2 * u : 2 - 2 * u), amp0 * gamma ** k, wid * W ** k, base, t, X);
+        else bump(XB, amp0 * gamma ** N_ECHO, wid * W ** N_ECHO, base, t, X, 1 - (tau - N_ECHO * Tb) / 0.4);
+        for (let k = 1; k <= N_ECHO; k++) { const x = XB + V * (tau - k * Tb); if (x > XB && x <= 1.1) bump(x, amp0 * amps[k], wid * W ** k, base, t, X); }
+      } else {
+        const x = XB - V * tau; // the inward packet crosses the horizon and is gone
+        bump(x, amp0, wid, base, t, X, Math.min(1, (x - 0.05) / (XH - 0.05)));
+      }
+
+      // the strain at the detector, drawn only as far as the story has come
+      const box = { x: 16, y: topH + 22, w: w - 32, h: hh - topH - 52 }, mid = box.y + box.h / 2;
+      const TX = (tt: number) => box.x + (tt / TWIN) * box.w, tReal = T0 + (tau / Tb) * dtReal;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(box.x, mid); ctx.lineTo(box.x + box.w, mid); ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, Math.max(0, TX(tReal) - box.x), box.h); ctx.clip();
+      trace(ctx, h, box, 0.46 * box.h, { stroke: t.ink, width: 1.5 });
+      ctx.restore();
+      for (let k = 0; k < p.n; k++) { const x = TX(T0 + k * dtReal); ctx.fillStyle = t.accent; ctx.fillRect(x - 1, box.y + box.h + 2, 2, 6); }
+      for (let m = 0; m <= TWIN * 1000; m += 200) if (TX(m / 1000) < box.x + box.w - 28) label(ctx, `${m}`, TX(m / 1000), box.y + box.h + 18, t, { align: 'center' });
+      label(ctx, 'ms', box.x + box.w, box.y + box.h + 18, t, { align: 'right' });
+      const pct = `${Math.round(leak * 100)}%`, ms = `Δt ≈ ${Math.round(dtReal * 1000)} ms`;
+      label(ctx, mode === 'eco' ? (narrow ? `at the detector · ${ms} · leak ${pct}` : `what the detector sees · ${ms} · ${pct} of the energy leaks out per bounce`) : `${narrow ? 'at the detector' : 'what the detector sees'} · one ringdown, then nothing`, box.x + 2, box.y - 8, t, { color: t.ink });
+    }
+
+    const lp = loop(el, (tm) => { now = tm; tau = tm - start; if (tau > endTau()) { start = tm; tau = 0; } paint(); });
+    lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); status(); };
+
+    function status() {
+      readout.value = mode === 'eco' ? `Δt ≈ ${Math.round(dtReal * 1000)} ms · γ = ${gamma.toFixed(2)}` : 'no echoes';
+      if (!lp.playing) c.setAttribute('aria-label', mode === 'eco' ? `Wave packet bouncing between the surface and the light ring of a ${MSUN} solar-mass object, echoes ${Math.round(dtReal * 1000)} ms apart, each ${gamma.toFixed(2)} times the last` : 'Ringdown at the light ring of a black hole: one burst escapes, the rest falls through the horizon');
+    }
+    function show() {
+      ecoBtn.setAttribute('aria-pressed', String(mode === 'eco')); bhBtn.setAttribute('aria-pressed', String(mode === 'bh'));
+      epsIn.value = String(-eps); epsOut.value = `−${eps}`; leakIn.value = String(leak); leakOut.value = `${Math.round(leak * 100)}%`;
+      epsIn.disabled = leakIn.disabled = mode === 'bh';
+      url.set('mode', mode); url.set('eps', String(eps)); url.set('leak', String(leak));
+      status(); if (!lp.playing) paint();
+    }
+    function restart() { start = now; tau = 0; if (!lp.playing) paint(); }
+    function update() { recompute(); show(); }
+    ecoBtn.addEventListener('click', () => { mode = 'eco'; update(); restart(); });
+    bhBtn.addEventListener('click', () => { mode = 'bh'; update(); restart(); });
+    epsIn.addEventListener('input', () => { eps = clampEps(-epsIn.value); update(); });
+    leakIn.addEventListener('input', () => { leak = clampLeak(+leakIn.value); update(); });
+    playBtn.addEventListener('click', () => lp.play());
+    $('restart').addEventListener('click', restart);
+    const fs = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ' ': () => lp.play(), r: restart, f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); } });
+    watch(c, paint);
+
+    update();
+    if (reducedMotion()) { tau = still(); paint(); } else lp.play(true);
+  }
+</script>

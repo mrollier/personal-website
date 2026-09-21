@@ -1,0 +1,163 @@
+---
+// The parity rule on a square grid with wrapped edges: three neighbourhoods, with or without the
+// cell itself, from a single cell, a shape or a random start. Self-contained with src/scripts/grid.ts
+// and src/scripts/figure.ts. Props are the defaults; the URL query (?grid.hood=&grid.self=&grid.shape=&grid.cells=) overrides them.
+import type { Hood, Shape } from '../scripts/grid';
+type Props = { hood?: Hood; self?: boolean; shape?: Shape; cells?: number };
+const { hood = 'vn', self = false, shape = 'smiley', cells = 63 } = Astro.props;
+const shapes: [Shape, string][] = [['dot', 'one cell'], ['smiley', 'smiley'], ['heart', 'heart'], ['star', 'star'], ['random', 'random']];
+---
+<figure class="fig" id="grid" data-ca-grid data-hood={hood} data-self={self ? '1' : '0'} data-shape={shape} data-cells={cells} tabindex="-1">
+  <canvas role="img" aria-label={`Parity rule on a ${cells} by ${cells} grid, generation 0`}></canvas>
+  <div class="controls" role="group" aria-label="Grid controls">
+    <button name="vn" type="button" aria-pressed={hood === 'vn'}>von Neumann</button>
+    <button name="moore" type="button" aria-pressed={hood === 'moore'}>Moore</button>
+    <button name="vn2" type="button" aria-pressed={hood === 'vn2'}>von Neumann 2</button>
+    <button name="self" type="button" aria-pressed={self}>include self</button>
+    <label>start <select name="shape">{shapes.map(([v, txt]) => <option value={v} selected={v === shape}>{txt}</option>)}</select></label>
+    <label>cells <input name="cells" type="number" min="9" max="151" value={cells} inputmode="numeric" /></label>
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">gen 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(280px, 60vh, 640px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    image-rendering: pixelated; touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"], .controls select {
+    font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="number"] { width: 4.5em; }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 7em; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { stepGrid, seedGrid, count, HOODS, clampSide, type Hood, type Shape } from '../scripts/grid';
+  import { fit, tokens, watch, loop, fullscreen, urlState, keys, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-ca-grid]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const hoodBtns: Record<Hood, HTMLButtonElement> = { vn: $('vn'), moore: $('moore'), vn2: $('vn2') };
+    const selfBtn = $<HTMLButtonElement>('self'), shapeSel = $<HTMLSelectElement>('shape'), cellsIn = $<HTMLInputElement>('cells');
+    const speedIn = $<HTMLInputElement>('speed'), playBtn = $<HTMLButtonElement>('play'), gen = $<HTMLOutputElement>('gen');
+    const d = el.dataset, url = urlState('grid', { hood: d.hood!, self: d.self!, shape: d.shape!, cells: d.cells! });
+    const SHAPES: Shape[] = ['dot', 'smiley', 'heart', 'star', 'random'];
+    const isHood = (s: string): s is Hood => s in HOODS;
+    const isShape = (s: string): s is Shape => (SHAPES as string[]).includes(s);
+    const CAP = 256;
+
+    // State. The URL wins over the props so a set-up can be linked; only non-default values are written back.
+    let hood: Hood = isHood(url.get('hood')) ? (url.get('hood') as Hood) : 'vn';
+    let self = url.get('self') === '1';
+    let shape: Shape = isShape(url.get('shape')) ? (url.get('shape') as Shape) : 'smiley';
+    let W = clampSide(+url.get('cells'));
+    let hist: Uint8Array[] = [seedGrid(W, W, shape)]; // the source of truth; the canvas is a view of its last entry
+    let ms = 250, acc = 0;
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, h, dpr } = s, px = 1 / dpr;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      // integer device pixels per cell so the grid stays crisp at any zoom; centred
+      const cell = Math.max(1, Math.floor((Math.min(w, h) * dpr) / W)) * px;
+      const gap = cell * dpr >= 6 ? Math.max(1, Math.round((cell * dpr) / 10)) * px : 0;
+      const ox = Math.round(((w - cell * W) / 2) * dpr) * px, oy = Math.round(((h - cell * W) / 2) * dpr) * px;
+      const g = hist[hist.length - 1];
+      ctx.fillStyle = t.ink;
+      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (g[y * W + x]) ctx.fillRect(ox + x * cell, oy + y * cell, cell - gap, cell - gap);
+      icon(t, 10, 10);
+      status();
+    }
+
+    // The neighbourhood as a 5x5 pictogram: neighbours in ink, the cell itself in accent, filled when it counts too.
+    function icon(t: ReturnType<typeof tokens>, x0: number, y0: number) {
+      const u = 7, off = HOODS[hood].offsets;
+      ctx.fillStyle = t.panel; ctx.fillRect(x0 - 4, y0 - 4, 5 * u + 8, 5 * u + 22);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1;
+      for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) ctx.strokeRect(x0 + i * u + 0.5, y0 + j * u + 0.5, u - 1, u - 1);
+      ctx.fillStyle = t.ink;
+      for (const [dx, dy] of off) ctx.fillRect(x0 + (dx + 2) * u, y0 + (dy + 2) * u, u, u);
+      ctx.fillStyle = t.accent; ctx.strokeStyle = t.accent;
+      if (self) ctx.fillRect(x0 + 2 * u, y0 + 2 * u, u, u); else ctx.strokeRect(x0 + 2 * u + 0.5, y0 + 2 * u + 0.5, u - 1, u - 1);
+      label(ctx, `${off.length} neighbours${self ? ' + self' : ''}`, x0, y0 + 5 * u + 12, t);
+    }
+
+    function status() {
+      const g = hist[hist.length - 1];
+      gen.value = `gen ${hist.length - 1} · ${count(g)} on`;
+      if (!lp.playing) c.setAttribute('aria-label', `Parity rule, ${HOODS[hood].name} neighbourhood${self ? ' including the cell itself' : ''}, ${W} by ${W} grid, generation ${hist.length - 1}`);
+    }
+    function advance() {
+      hist.push(stepGrid(hist[hist.length - 1], W, W, hood, self));
+      if (hist.length > CAP) hist.shift();
+    }
+    function reseed() { hist = [seedGrid(W, W, shape)]; paint(); }
+    function reset() { lp.play(false); hist = [hist[0]]; paint(); }
+    function undo() { if (hist.length > 1) { lp.play(false); hist.pop(); paint(); } }
+    function step() { lp.play(false); advance(); paint(); }
+
+    // Playback: the shared loop hands out wall-clock steps; an accumulator turns them into generations, capped so a tab back from hidden does not spiral.
+    const lp = loop(el, (_, dt) => {
+      acc += dt * 1000;
+      let k = 0; while (acc >= ms && k < 32) { advance(); acc -= ms; k++; }
+      if (k === 32) acc = 0;
+      if (k) paint();
+    });
+    lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); if (on) acc = 0; else status(); };
+    const speed = () => { ms = 2000 / 2 ** (+speedIn.value / 10); }; // 2 s per generation down to ~8 ms
+
+    // Controls reflect state; the URL mirrors it.
+    function show() {
+      for (const k of Object.keys(hoodBtns) as Hood[]) hoodBtns[k].setAttribute('aria-pressed', String(k === hood));
+      selfBtn.setAttribute('aria-pressed', String(self));
+      shapeSel.value = shape; cellsIn.value = String(W);
+    }
+    function sync() { url.set('hood', hood); url.set('self', self ? '1' : '0'); url.set('shape', shape); url.set('cells', String(W)); }
+    for (const k of Object.keys(hoodBtns) as Hood[]) hoodBtns[k].addEventListener('click', () => { hood = k; show(); sync(); paint(); }); // no reset: the rule can change mid-run
+    selfBtn.addEventListener('click', () => { self = !self; show(); sync(); paint(); });
+    shapeSel.addEventListener('change', () => { shape = isShape(shapeSel.value) ? (shapeSel.value as Shape) : 'smiley'; lp.play(false); show(); sync(); reseed(); });
+    cellsIn.addEventListener('change', () => { W = clampSide(+cellsIn.value); lp.play(false); show(); sync(); reseed(); });
+    $('step').addEventListener('click', step);
+    playBtn.addEventListener('click', () => lp.play());
+    speedIn.addEventListener('input', speed);
+    $('reset').addEventListener('click', reset);
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, {
+      ' ': () => lp.play(), ArrowRight: step, PageDown: step, n: step, ArrowLeft: undo, PageUp: undo,
+      r: reset, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); },
+    });
+    watch(c, paint);
+    show(); speed(); paint();
+  }
+</script>

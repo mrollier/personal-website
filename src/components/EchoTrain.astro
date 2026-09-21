@@ -1,0 +1,194 @@
+---
+// The generalised wavelet of the thesis: a train of sine-Gaussians with the four echo parameters as
+// sliders, drawn in time and optionally in frequency, and playable. Self-contained with
+// src/scripts/{echoes,figure,audio}.ts. Props are the defaults; the URL query (?train.dt=...)
+// overrides them. Every change is announced as an `echo:params` event so another figure can follow.
+import { DEFAULT } from '../scripts/echoes';
+type Props = { f0?: number; q?: number; dt?: number; gamma?: number; w?: number; dphi?: number; n?: number; spectrum?: boolean };
+const { f0 = DEFAULT.f0, q = DEFAULT.q, dt = DEFAULT.dt, gamma = DEFAULT.gamma, w = DEFAULT.w, dphi = DEFAULT.dphi, n = DEFAULT.n, spectrum = false } = Astro.props;
+const ms = Math.round(dt * 1000), deg = Math.round((dphi * 180) / Math.PI);
+---
+<figure class="fig" id="train" data-echo-train data-f0={f0} data-q={q} data-dt={ms} data-gamma={gamma} data-w={w} data-dphi={deg} data-n={n} data-spectrum={spectrum ? '1' : '0'} tabindex="-1">
+  <canvas role="img" aria-label="A train of echoes"></canvas>
+  <div class="controls" role="group" aria-label="Wavelet">
+    <span class="head">wavelet</span>
+    <label>f₀ <input name="f0" type="range" min="50" max="400" step="1" value={f0} /> <output name="f0v"></output></label>
+    <label>Q <input name="q" type="range" min="2" max="20" step="0.5" value={q} /> <output name="qv"></output></label>
+  </div>
+  <div class="controls" role="group" aria-label="Echo parameters">
+    <span class="head">echoes</span>
+    <label>Δt <input name="dt" type="range" min="10" max="250" step="1" value={ms} /> <output name="dtv"></output></label>
+    <label>damping γ <input name="gamma" type="range" min="0.1" max="0.95" step="0.01" value={gamma} /> <output name="gammav"></output></label>
+    <label>widening w <input name="w" type="range" min="1" max="1.6" step="0.01" value={w} /> <output name="wv"></output></label>
+    <label>phase Δφ <input name="dphi" type="range" min="0" max="360" step="5" value={deg} /> <output name="dphiv"></output></label>
+    <label>count <input name="n" type="range" min="1" max="10" step="1" value={n} /> <output name="nv"></output></label>
+  </div>
+  <div class="controls" role="group" aria-label="View">
+    <button name="spectrum" type="button" aria-pressed={spectrum}>spectrum</button>
+    <button name="listen" type="button">listen</button>
+    <span name="note" class="note" hidden>pitched up 3×, slowed down 5×</span>
+    <button name="reset" type="button">reset</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(260px, 50vh, 520px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem;
+  }
+  .head { min-width: 4.5em; color: var(--ink); }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 4.5em; color: var(--ink); }
+  .note[hidden] { display: none; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { DEFAULT, RATE, sampleTrain, duration, envelope, spectrum as spectrumOf, tau, type Train } from '../scripts/echoes';
+  import { fit, tokens, watch, schedule, fullscreen, urlState, keys, trace, label } from '../scripts/figure';
+  import { canPlay, play, sampleRate } from '../scripts/audio';
+
+  document.querySelectorAll<HTMLElement>('[data-echo-train]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const d = el.dataset;
+    const KEYS = ['f0', 'q', 'dt', 'gamma', 'w', 'dphi', 'n'] as const;
+    type K = (typeof KEYS)[number];
+    const defaults: Record<string, string> = { spectrum: d.spectrum! };
+    for (const k of KEYS) defaults[k] = d[k]!;
+    const url = urlState('train', defaults);
+    const inputs = Object.fromEntries(KEYS.map((k) => [k, $<HTMLInputElement>(k)])) as Record<K, HTMLInputElement>;
+    const outs = Object.fromEntries(KEYS.map((k) => [k, $<HTMLOutputElement>(k + 'v')])) as Record<K, HTMLOutputElement>;
+    const specBtn = $<HTMLButtonElement>('spectrum'), listenBtn = $<HTMLButtonElement>('listen'), note = $('note');
+    const clamp = (k: K, v: number) => { const i = inputs[k]; return Math.min(+i.max, Math.max(+i.min, isFinite(v) ? v : +defaults[k])); };
+
+    // Slider units (ms, degrees) are the URL units; the engine takes seconds and radians.
+    const raw = {} as Record<K, number>;
+    for (const k of KEYS) raw[k] = clamp(k, +url.get(k));
+    let spec = url.get('spectrum') === '1';
+    const params = (): Train => ({ f0: raw.f0, q: raw.q, dt: raw.dt / 1000, gamma: raw.gamma, w: raw.w, dphi: (raw.dphi * Math.PI) / 180, n: raw.n, t0: DEFAULT.t0, phi0: DEFAULT.phi0 });
+    let p = params(), h = new Float32Array(0), tmax = 0, hover: number | null = null;
+
+    function recompute() {
+      p = params();
+      tmax = Math.max(0.15, duration(p) + 0.02);
+      h = sampleTrain(p, RATE, tmax);
+      (el as any).echoParams = p;
+      document.dispatchEvent(new CustomEvent('echo:params', { detail: { id: el.id, params: p } }));
+    }
+
+    function paint() {
+      const s = fit(c); if (!s) return;
+      const t = tokens(c), { w, hh } = { w: s.w, hh: s.h };
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, hh);
+      const topH = spec ? hh * 0.6 : hh;
+      const box = { x: 10, y: 26, w: w - 20, h: topH - 50 };
+      const X = (tt: number) => box.x + (tt / tmax) * box.w;
+      let peak = 0; for (let i = 0; i < h.length; i++) peak = Math.max(peak, Math.abs(h[i]));
+      const scale = (0.46 * box.h) / (peak || 1);
+      const mid = box.y + box.h / 2;
+
+      // zero line, then the envelope of each echo so the damping and widening read even where the cosine is dense
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(box.x, mid); ctx.lineTo(box.x + box.w, mid); ctx.stroke();
+      ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = t.muted; ctx.globalAlpha = 0.6;
+      for (let k = 0; k < p.n; k++) {
+        const c0 = p.t0 + k * p.dt, tk = tau(p, k);
+        for (const sgn of [1, -1]) {
+          ctx.beginPath();
+          for (let i = 0; i <= 60; i++) { const tt = c0 + ((i / 30) - 1) * 3 * tk; const y = mid - sgn * envelope(p, k, tt) * scale; i ? ctx.lineTo(X(tt), y) : ctx.moveTo(X(tt), y); }
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+      trace(ctx, h, box, scale, { stroke: t.ink, width: 1.5 });
+
+      // echo centres and the time axis
+      for (let k = 0; k < p.n; k++) { const x = X(p.t0 + k * p.dt); ctx.fillStyle = t.accent; ctx.fillRect(x - 1, box.y + box.h + 2, 2, 6); }
+      const step = niceStep(tmax * 1000);
+      for (let m = 0; m <= tmax * 1000; m += step) if (X(m / 1000) < box.x + box.w - 28) label(ctx, `${m}`, X(m / 1000), box.y + box.h + 18, t, { align: 'center' });
+      label(ctx, 'ms', box.x + box.w, box.y + box.h + 18, t, { align: 'right' });
+      label(ctx, `Δt = ${raw.dt} ms · γ = ${raw.gamma.toFixed(2)} · w = ${raw.w.toFixed(2)} · Δφ = ${raw.dphi}°`, box.x + 2, 16, t, { color: t.ink });
+      if (hover !== null && hover >= 0 && hover <= tmax) {
+        const x = X(hover);
+        ctx.strokeStyle = t.accent; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, box.y); ctx.lineTo(x, box.y + box.h); ctx.stroke();
+        label(ctx, `t = ${Math.round(hover * 1000)} ms`, box.x + box.w - 2, 16, t, { align: 'right' });
+      }
+
+      if (spec) {
+        const sb = { x: 10, y: topH + 8, w: w - 20, h: hh - topH - 30 };
+        const { f, mag } = spectrumOf(h, RATE);
+        const fmax = Math.min(RATE / 2, Math.max(450, 2 * p.f0)), FX = (ff: number) => sb.x + (ff / fmax) * sb.w;
+        ctx.strokeStyle = t.line; ctx.beginPath(); ctx.moveTo(sb.x, sb.y + sb.h); ctx.lineTo(sb.x + sb.w, sb.y + sb.h); ctx.stroke();
+        // comb teeth 1/dt apart around f0, then the spectrum itself
+        ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = t.accent; ctx.globalAlpha = 0.7;
+        if (p.n > 1) for (let k = -12; k <= 12; k++) { const ff = p.f0 + k / p.dt; if (ff > 0 && ff < fmax) { ctx.beginPath(); ctx.moveTo(FX(ff), sb.y); ctx.lineTo(FX(ff), sb.y + sb.h); ctx.stroke(); } }
+        ctx.restore();
+        ctx.strokeStyle = t.ink; ctx.lineWidth = 1.5; ctx.beginPath();
+        let first = true;
+        for (let i = 0; i < f.length && f[i] <= fmax; i++) { const x = FX(f[i]), y = sb.y + sb.h - mag[i] * (sb.h - 14); first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; }
+        ctx.stroke();
+        for (let ff = 0; ff <= fmax; ff += 100) if (FX(ff) < sb.x + sb.w - 28) label(ctx, `${ff}`, FX(ff), sb.y + sb.h + 14, t, { align: 'center' });
+        label(ctx, 'Hz', sb.x + sb.w, sb.y + sb.h + 14, t, { align: 'right' });
+        label(ctx, p.n > 1 ? `spectrum · teeth 1/Δt = ${(1 / p.dt).toFixed(0)} Hz apart` : 'spectrum of a single wavelet', sb.x + 2, sb.y + 12, t, { color: t.ink });
+      }
+    }
+    const niceStep = (span: number) => { const raw = span / 6, pow = 10 ** Math.floor(Math.log10(raw)), m = raw / pow; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * pow; };
+    const repaint = schedule(paint);
+
+    function show() {
+      for (const k of KEYS) inputs[k].value = String(raw[k]);
+      outs.f0.value = `${raw.f0} Hz`; outs.q.value = String(raw.q); outs.dt.value = `${raw.dt} ms`;
+      outs.gamma.value = raw.gamma.toFixed(2); outs.w.value = raw.w.toFixed(2); outs.dphi.value = `${raw.dphi}°`; outs.n.value = String(raw.n);
+      specBtn.setAttribute('aria-pressed', String(spec));
+      c.setAttribute('aria-label', `${raw.n} echoes ${raw.dt} ms apart at ${raw.f0} Hz, each ${raw.gamma.toFixed(2)} times as loud and ${raw.w.toFixed(2)} times as long as the last`);
+    }
+    function sync() { for (const k of KEYS) url.set(k, String(raw[k])); url.set('spectrum', spec ? '1' : '0'); }
+    function update() { recompute(); show(); sync(); repaint(); }
+    for (const k of KEYS) inputs[k].addEventListener('input', () => { raw[k] = clamp(k, +inputs[k].value); update(); });
+    specBtn.addEventListener('click', () => { spec = !spec; show(); sync(); repaint(); });
+    $('reset').addEventListener('click', () => { for (const k of KEYS) raw[k] = +defaults[k]; spec = defaults.spectrum === '1'; update(); });
+
+    // Listen: the same train recomputed for the ear, three times the pitch and five times slower in time
+    // (so the wavelets keep their number of cycles per echo and the gaps are heard as gaps).
+    let stop: { stop?: () => void } = {};
+    async function listen() {
+      if (stop.stop) { stop.stop(); return; }
+      const rate = sampleRate(), pp: Train = { ...p, f0: 3 * p.f0, q: 15 * p.q, dt: 5 * p.dt, t0: 0.08 };
+      const samples = sampleTrain(pp, rate, duration(pp) + 0.25);
+      listenBtn.textContent = 'stop'; note.hidden = false; stop = {};
+      try { await play(samples, rate, 0.3, stop); } catch {}
+      listenBtn.textContent = 'listen'; note.hidden = true; stop = {};
+    }
+    if (canPlay()) listenBtn.addEventListener('click', listen); else listenBtn.hidden = true;
+
+    c.addEventListener('pointermove', (e) => { const r = c.getBoundingClientRect(); hover = ((e.clientX - r.left - 10) / (r.width - 20)) * tmax; repaint(); });
+    c.addEventListener('pointerleave', () => { hover = null; repaint(); });
+    const fs = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { r: () => $('reset').click(), s: () => specBtn.click(), l: () => listenBtn.click(), f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); } });
+    watch(c, paint);
+
+    update();
+  }
+</script>

@@ -4,13 +4,19 @@ import Base from '../../layouts/Base.astro';
 const demos = [
   {
     href: '/demos/eca/',
-    name: 'Elementary cellular automata',
-    blurb: 'Pick any of the 256 Wolfram rules and watch a row of cells evolve. Built for the live part of my PhD defence, where the audience plays rule 90 with their fingers.',
+    name: 'Cellular automata',
+    blurb: 'Any of the 256 Wolfram rules on a row of cells, then the parity rule on a grid, where a smiley copies itself, and on networks, where one seed spreads from the best- or the worst-connected node. Built for the live part of my PhD defence, where the audience plays rule 90 with their fingers.',
     meta: 'PhD defence · interactive',
+  },
+  {
+    href: '/demos/echoes/',
+    name: 'Finding echoes',
+    blurb: 'What a gravitational-wave echo from a not-quite-black-hole would look like, where it would come from, and how to dig one out of detector noise without knowing its shape. Four animations from my MSc thesis.',
+    meta: 'MSc thesis · interactive',
   },
 ];
 ---
-<Base title="Demos" description="Interactive demonstrations: elementary cellular automata, built for a live crowd." wide>
+<Base title="Demos" description="Interactive demonstrations: cellular automata on rows, grids and networks, made for a live crowd, and gravitational-wave echoes from my MSc thesis." wide>
   <div class="measure">
     <h1>Demos</h1>
     <p>

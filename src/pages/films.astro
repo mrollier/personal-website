@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import CoverWall from '../components/CoverWall.astro';
+const films = (await getCollection('films')).map((f) => f.data).sort((a, b) => b.watched.localeCompare(a.watched));
+const rated = films.filter((f) => f.rating);
+const avg = rated.length ? (rated.reduce((s, f) => s + f.rating!, 0) / rated.length).toFixed(1) : null;
+const since = films.length ? films[films.length - 1].watched.slice(0, 4) : null;
+---
+<Base title="Films" description="Films I have watched, most recent first, from my Letterboxd diary.">
+  <h1>Films</h1>
+  <p>
+    What I've watched, most recent first, from my <a href="https://letterboxd.com/mrollier/">Letterboxd</a> diary{since && ` since ${since}`}.
+    {' '}{films.length} films{avg && `, rated ${avg} on average`}.
+  </p>
+  <CoverWall items={films} kind="films" label="Films watched" />
+</Base>

@@ -1,0 +1,55 @@
+---
+// A strip that pages sideways: the slotted <li>s go into a horizontal scroller with snap points, and the
+// bar below adds arrows, a counter and arrow-key paging. Touch and trackpad work without the script.
+// `kind` picks the layout in global.css: records and books are two rows of five, photos one per page.
+const { kind, label, count } = Astro.props as { kind: 'records' | 'books' | 'films' | 'photos'; label: string; count: number };
+const perPage = kind === 'photos' ? 1 : 10;
+const n = Math.min(perPage, count);
+---
+<div class="strip" data-strip>
+  <ul class:list={['wall', kind]} tabindex="0" aria-label={label}>
+    <slot />
+  </ul>
+  <div class="strip-bar" hidden>
+    <button type="button" data-page="-1" aria-label="Previous">←</button>
+    <output aria-live="polite">{n === 1 ? `1 of ${count}` : `1–${n} of ${count}`}</output>
+    <button type="button" data-page="1" aria-label="Next">→</button>
+  </div>
+</div>
+
+<script>
+  for (const strip of document.querySelectorAll<HTMLElement>('[data-strip]')) {
+    const wall = strip.querySelector<HTMLElement>('.wall')!;
+    const bar = strip.querySelector<HTMLElement>('.strip-bar')!;
+    const out = bar.querySelector('output')!;
+    const [prev, next] = bar.querySelectorAll('button');
+    // One page is the scroller's width plus one gap: the columns and the gaps between them.
+    const gap = () => parseFloat(getComputedStyle(wall).columnGap) || 0;
+    const page = (dir: number) => wall.scrollBy({ left: dir * (wall.clientWidth + gap()), behavior: 'smooth' });
+    prev.addEventListener('click', () => page(-1));
+    next.addEventListener('click', () => page(1));
+    wall.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); page(e.key === 'ArrowRight' ? 1 : -1); }
+    });
+    // Counter: the visible items are those whose column lies inside the scroller's viewport.
+    const update = () => {
+      const shown = [...wall.children].filter((li) => !(li as HTMLElement).hidden);
+      const x0 = wall.getBoundingClientRect().left, x1 = x0 + wall.clientWidth;
+      let first = -1, last = -1;
+      shown.forEach((li, i) => {
+        const r = li.getBoundingClientRect();
+        if (r.left >= x0 - 1 && r.right <= x1 + 1) { if (first < 0) first = i; last = i; }
+      });
+      out.textContent = !shown.length ? 'none' : first === last ? `${first + 1} of ${shown.length}` : `${first + 1}–${last + 1} of ${shown.length}`;
+      prev.disabled = wall.scrollLeft <= 1;
+      next.disabled = wall.scrollLeft + wall.clientWidth >= wall.scrollWidth - 1;
+      bar.hidden = prev.disabled && next.disabled; // everything fits: nothing to page
+    };
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); };
+    wall.addEventListener('scroll', schedule);
+    new ResizeObserver(schedule).observe(wall);
+    strip.addEventListener('strip:update', () => { wall.scrollTo({ left: 0 }); schedule(); });
+    update();
+  }
+</script>

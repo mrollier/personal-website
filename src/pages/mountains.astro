@@ -3,20 +3,29 @@ import Base from '../layouts/Base.astro';
 import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
 import MountainMap from '../components/MountainMap.astro';
+import Strip from '../components/Strip.astro';
 import alps from '../assets/photos/alps-matterhorn.jpg';
 import dolomites from '../assets/photos/dolomites.jpg';
 import cliff from '../assets/photos/cliff.jpg';
+const photos = [
+  [alps, 'On a snowy summit ridge with the Matterhorn in the distance', 'Matterhorn in the distance'],
+  [dolomites, 'Standing in a narrow limestone gully in the Dolomites, climbing helmet on', 'A gully in the Dolomites'],
+  [cliff, 'On a volcanic ridge above the Atlantic', 'Volcanic ridge above the Atlantic'],
+] as const;
 const summits = (await getCollection('mountains')).sort((a, b) => b.data.elevation - a.data.elevation);
 const anyDate = summits.some((s) => s.data.date);
 const fmt = (d?: Date) => (d ? d.toISOString().slice(0, 10) : '');
 ---
 <Base title="Mountains" description="Summits, with dates and a map.">
   <h1>Mountains</h1>
-  <div class="photos">
-    <Image src={alps} alt="On a snowy summit ridge with the Matterhorn in the distance" width={800} />
-    <Image src={dolomites} alt="Standing in a narrow limestone gully in the Dolomites, climbing helmet on" width={800} />
-    <Image src={cliff} alt="On a volcanic ridge above the Atlantic" width={800} />
-  </div>
+  <Strip kind="photos" label="Photos" count={photos.length}>
+    {photos.map(([src, alt, caption], i) => (
+      <li>
+        <Image src={src} alt={alt} widths={[700, 1400]} sizes="(max-width: 700px) 100vw, 650px" loading={i ? 'lazy' : 'eager'} />
+        <span class="cap">{caption}</span>
+      </li>
+    ))}
+  </Strip>
   <MountainMap points={summits.map((s) => s.data)} />
   {summits.length ? (
     <div class="scroll">

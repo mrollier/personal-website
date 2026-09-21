@@ -58,7 +58,7 @@ export const collections = {
         caption: z.string().optional(),
       }),
   }),
-  // records.json and books.json are written by `npm run sync` (scripts/sync.mjs); do not edit by hand.
+  // records.json, books.json and films.json are written by `npm run sync` (scripts/sync.mjs); do not edit by hand.
   records: defineCollection({
     loader: json('records'),
     schema: z.object({
@@ -90,6 +90,20 @@ export const collections = {
       added: z.string().nullable(),
       published: z.number().optional(),
       pages: z.number().optional(),
+      url: z.string().url(),
+      cover: z.string().nullable(),
+      w: z.number().optional(),
+      h: z.number().optional(),
+    }),
+  }),  films: defineCollection({
+    loader: json('films'),
+    schema: z.object({
+      id: z.string(),
+      title: z.string(),
+      year: z.number().optional(),
+      rating: z.number().min(0.5).max(5).optional(),
+      watched: z.string(),
+      rewatch: z.boolean(),
       url: z.string().url(),
       cover: z.string().nullable(),
       w: z.number().optional(),

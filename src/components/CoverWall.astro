@@ -1,23 +1,28 @@
 ---
-// A strip of covers, records (square) or books (portrait), two rows deep and five across, paged with arrows.
-// It is a plain horizontal scroller with scroll snapping, so touch and trackpad work without the script;
-// the script only adds the arrows, the counter and keyboard paging.
+// Covers in a Strip: records (square), books or films (portrait). Each cell links out; details sit in the caption and title.
+import Strip from './Strip.astro';
 type Item = {
-  id: string; url: string; cover: string | null; w?: number; h?: number;
-  artist?: string; title: string; label?: string; catno?: string; year?: number; format?: string; // records
-  author?: string; rating?: number; shelves?: string[]; readAt?: string; published?: number;      // books
+  id: string; url: string; cover: string | null; w?: number; h?: number; title: string;
+  artist?: string; label?: string; catno?: string; year?: number; format?: string; // records
+  author?: string; rating?: number; shelves?: string[]; published?: number;         // books
+  watched?: string; rewatch?: boolean;                                              // films
 };
-const { items, kind, label } = Astro.props as { items: Item[]; kind: 'records' | 'books'; label: string };
+const { items, kind, label } = Astro.props as { items: Item[]; kind: 'records' | 'books' | 'films'; label: string };
 const head = (x: Item) => (kind === 'records' ? x.artist! : x.title);
-const sub = (x: Item) => (kind === 'records' ? x.title : x.author!);
+const sub = (x: Item) => (kind === 'records' ? x.title : kind === 'books' ? x.author! : String(x.year ?? ''));
 const detail = (x: Item) =>
   kind === 'records'
     ? [`${x.artist} – ${x.title}`, [x.label, x.catno].filter(Boolean).join(' '), x.year, x.format].filter(Boolean).join(' · ')
-    : [`${x.title} – ${x.author}`, x.published, x.rating ? `${x.rating}/5` : ''].filter(Boolean).join(' · ');
+    : kind === 'books'
+      ? [`${x.title} – ${x.author}`, x.published, x.rating ? `${x.rating}/5` : ''].filter(Boolean).join(' · ')
+      : [`${x.title} (${x.year})`, x.watched && `watched ${x.watched}${x.rewatch ? ' again' : ''}`, x.rating ? `${x.rating}/5` : ''].filter(Boolean).join(' · ');
+// Ratings: whole stars, a half for films, the rest greyed.
+const stars = (r: number) => ({ full: Math.floor(r), half: r % 1 >= 0.5, empty: 5 - Math.ceil(r) });
 ---
-<div class="strip" data-strip>
-  <ul class:list={['wall', kind]} tabindex="0" aria-label={label}>
-    {items.map((x) => (
+<Strip kind={kind} label={label} count={items.length}>
+  {items.map((x) => {
+    const s = x.rating ? stars(x.rating) : null;
+    return (
       <li data-shelves={kind === 'books' ? (x.shelves ?? []).join(' ') : undefined}>
         <a href={x.url} title={detail(x)} tabindex="-1">
           {x.cover ? (
@@ -29,53 +34,11 @@ const detail = (x: Item) =>
         <span class="cap">
           <b>{head(x)}</b>
           <span>{sub(x)}</span>
-          {kind === 'books' && x.rating ? (
-            <span class="stars" aria-label={`${x.rating} out of 5`}>{'★'.repeat(x.rating)}<i>{'★'.repeat(5 - x.rating)}</i></span>
-          ) : null}
+          {s && (
+            <span class="stars" aria-label={`${x.rating} out of 5`}>{'★'.repeat(s.full)}{s.half && '½'}<i>{'★'.repeat(s.empty)}</i></span>
+          )}
         </span>
       </li>
-    ))}
-  </ul>
-  <div class="strip-bar" hidden>
-    <button type="button" data-page="-1" aria-label="Previous">←</button>
-    <output aria-live="polite">1–{Math.min(10, items.length)} of {items.length}</output>
-    <button type="button" data-page="1" aria-label="Next">→</button>
-  </div>
-</div>
-
-<script>
-  for (const strip of document.querySelectorAll<HTMLElement>('[data-strip]')) {
-    const wall = strip.querySelector<HTMLElement>('.wall')!;
-    const bar = strip.querySelector<HTMLElement>('.strip-bar')!;
-    const out = bar.querySelector('output')!;
-    const [prev, next] = bar.querySelectorAll('button');
-    bar.hidden = false;
-    // One page is the scroller's width plus one gap: five columns and the four gaps between them.
-    const gap = () => parseFloat(getComputedStyle(wall).columnGap) || 0;
-    const page = (dir: number) => wall.scrollBy({ left: dir * (wall.clientWidth + gap()), behavior: 'smooth' });
-    prev.addEventListener('click', () => page(-1));
-    next.addEventListener('click', () => page(1));
-    wall.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); page(e.key === 'ArrowRight' ? 1 : -1); }
-    });
-    // Counter: the visible items are those whose column lies inside the scroller's viewport.
-    const update = () => {
-      const shown = [...wall.children].filter((li) => !(li as HTMLElement).hidden);
-      const x0 = wall.getBoundingClientRect().left, x1 = x0 + wall.clientWidth;
-      let first = -1, last = -1;
-      shown.forEach((li, i) => {
-        const r = li.getBoundingClientRect();
-        if (r.left >= x0 - 1 && r.right <= x1 + 1) { if (first < 0) first = i; last = i; }
-      });
-      out.textContent = shown.length ? `${first + 1}–${last + 1} of ${shown.length}` : 'none';
-      prev.disabled = wall.scrollLeft <= 1;
-      next.disabled = wall.scrollLeft + wall.clientWidth >= wall.scrollWidth - 1;
-    };
-    let raf = 0;
-    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); };
-    wall.addEventListener('scroll', schedule);
-    new ResizeObserver(schedule).observe(wall);
-    strip.addEventListener('strip:update', () => { wall.scrollTo({ left: 0 }); schedule(); });
-    update();
-  }
-</script>
+    );
+  })}
+</Strip>

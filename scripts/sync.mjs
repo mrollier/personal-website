@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Refreshes the record and book collections from Discogs and Goodreads:
-//   src/content/records.json, src/content/books.json and the covers in public/covers/.
+// Refreshes the record, book and film collections from Discogs, Goodreads and Letterboxd:
+//   src/content/{records,books,films}.json and the covers in public/covers/.
 // Run by hand (`npm run sync`) and commit the result; the site build itself never touches the network.
 // Bandcamp has no public API and blocks scripted requests, so it stays a plain link.
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const DISCOGS_USER = 'michielrollier';
 const GOODREADS_LIST = '176815309';
+const LETTERBOXD_USER = 'mrollier';
 const UA = 'michielrollier.be sync script (+https://michielrollier.be)';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const content = (f) => path.join(root, 'src', 'content', f);
@@ -18,9 +19,9 @@ const coverDir = (kind) => path.join(root, 'public', 'covers', kind);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const isoDate = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toISOString().slice(0, 10) : null; };
 
-async function get(url, accept = 'application/json') {
+async function get(url, accept = 'application/json', ua = UA) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: accept } });
+    const res = await fetch(url, { headers: { 'User-Agent': ua, Accept: accept } });
     if (res.status === 429) { await sleep(1000 * (+res.headers.get('retry-after') || 60)); continue; }
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
     return accept === 'application/json' ? res.json() : res.text();
@@ -116,12 +117,42 @@ async function goodreads() {
   return [...out.values()];
 }
 
+// ---- Letterboxd ----------------------------------------------------------------------------------
+// No public API, but the diary has an RSS feed (latest 100 entries) with poster, year, rating and date.
+// Letterboxd sits behind a bot check that lets a browser-looking user agent through and blocks a plain one.
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
+async function letterboxd() {
+  const xml = await get(`https://letterboxd.com/${LETTERBOXD_USER}/rss/`, 'application/rss+xml', BROWSER_UA);
+  const out = new Map();
+  for (const it of xml.match(/<item>[\s\S]*?<\/item>/g) || []) {
+    const title = tag(it, 'letterboxd:filmTitle');
+    const link = tag(it, 'link');
+    const slug = link.match(/\/film\/([^/]+)\//)?.[1];
+    if (!title || !slug) continue; // list entries and the like
+    const watched = isoDate(tag(it, 'letterboxd:watchedDate')) ?? isoDate(tag(it, 'pubDate'));
+    if (out.has(slug) && out.get(slug).watched >= watched) continue; // rewatch: keep the latest entry
+    const poster = tag(it, 'description').match(/<img[^>]+src="([^"]+)"/)?.[1];
+    out.set(slug, {
+      id: slug,
+      title,
+      year: +tag(it, 'letterboxd:filmYear') || undefined,
+      rating: +tag(it, 'letterboxd:memberRating') || undefined,
+      watched,
+      rewatch: tag(it, 'letterboxd:rewatch') === 'Yes',
+      url: `https://letterboxd.com/film/${slug}/`,
+      image: poster ? poster.replace(/&amp;/g, '&') : null,
+    });
+  }
+  console.log(`letterboxd: ${out.size} films`);
+  return [...out.values()];
+}
+
 // ---- covers --------------------------------------------------------------------------------------
 // Downloaded once into public/, so visitors never hit Discogs or Goodreads. Missing = re-downloaded, unreferenced = deleted.
 // Goodreads serves anything up to multi-megabyte scans; sharp (already installed by Astro) shrinks them to a wall-sized JPEG.
 const sharp = await import('sharp').then((m) => m.default).catch(() => null);
 async function shrink(buf, kind) {
-  if (!sharp || kind !== 'books') return buf;
+  if (!sharp || kind === 'discogs') return buf;
   return sharp(buf).resize({ height: 360, withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
 }
 function dimensions(buf) {
@@ -147,7 +178,7 @@ async function covers(kind, items) {
       const file = path.join(dir, `${x.id}.jpg`);
       if (!existsSync(file)) {
         try {
-          const res = await fetch(x.image, { headers: { 'User-Agent': UA } });
+          const res = await fetch(x.image, { headers: { 'User-Agent': kind === 'films' ? BROWSER_UA : UA } });
           if (!res.ok) throw new Error(res.status);
           await writeFile(file, await shrink(Buffer.from(await res.arrayBuffer()), kind));
           fetched++;
@@ -184,4 +215,9 @@ try {
   await covers('books', books);
   await save('books.json', books);
 } catch (e) { ok = false; console.error('goodreads failed, keeping the old books.json:', e.message); }
+try {
+  const films = (await letterboxd()).sort((a, b) => b.watched.localeCompare(a.watched));
+  await covers('films', films);
+  await save('films.json', films);
+} catch (e) { ok = false; console.error('letterboxd failed, keeping the old films.json:', e.message); }
 process.exit(ok ? 0 : 1);

@@ -151,11 +151,9 @@ th { font-family: var(--mono); font-weight: 600; font-size: 0.8rem; color: var(-
 td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
 th.num { text-align: right; }
 
-.photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
-.photos img { display: block; width: 100%; border: 1px solid var(--line); }
 .map { width: 100%; height: auto; border: 1px solid var(--line); background: var(--panel); margin-bottom: 1rem; }
 
-/* cover strips (records on /dj/, books on /reading/): two rows, five columns per page, scroll sideways */
+/* strips (records on /dj/, books on /reading/, films on /films/, photos on /mountains/): scroll sideways, page with the bar */
 .strip { margin: 0 0 1.5rem; }
 .wall {
   --g: 0.8rem; --cols: 5;
@@ -167,15 +165,19 @@ th.num { text-align: right; }
 .wall::-webkit-scrollbar { display: none; }
 .wall li { min-width: 0; scroll-snap-align: start; }
 .wall li[hidden] { display: none; }
+.strip-bar[hidden] { display: none; }
 .strip-bar { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; font-family: var(--mono); font-size: 0.85rem; color: var(--muted); }
 .strip-bar button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; }
 .strip-bar button:hover:not(:disabled) { border-color: var(--accent); }
 .strip-bar button:disabled { color: var(--line); cursor: default; }
 .strip-bar output { min-width: 8ch; text-align: center; }
-@media (max-width: 560px) { .wall { --cols: 3; } }
+.wall.photos { --cols: 1; grid-template-rows: auto; gap: var(--g); }
+.wall.photos img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border: 1px solid var(--line); }
+.wall.photos .cap { white-space: normal; }
+@media (max-width: 560px) { .wall:not(.photos) { --cols: 3; } }
 .wall a { display: block; }
 .wall img, .wall .nocover { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--line); background: var(--panel); }
-.wall.books img, .wall.books .nocover { aspect-ratio: 2 / 3; object-fit: contain; }
+.wall:is(.books, .films) img, .wall:is(.books, .films) .nocover { aspect-ratio: 2 / 3; object-fit: contain; }
 .wall .cap { display: block; font-family: var(--mono); font-size: 0.72rem; line-height: 1.4; color: var(--muted); margin-top: 0.35rem; }
 .wall .cap > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wall .cap b { color: var(--ink); font-weight: 600; }

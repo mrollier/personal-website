@@ -1,0 +1,302 @@
+---
+// A Life-like network automaton running on a network, with the rule diagram in the corner to click on.
+// Three modes: `fssp` watches for the firing squad, every node flashing on and off in step; `majority`
+// watches for the whole network settling on the state that was in the majority at the start; `defect`
+// runs a twin with one node flipped and shows how far the difference spreads. Self-contained with
+// src/scripts/llna.ts, net.ts, diagram.ts and figure.ts. Props are the defaults; the URL query under the
+// mode's prefix (?fssp.kind=&fssp.p=&fssp.n=&fssp.deg=&fssp.rho=&fssp.r=&fssp.b=&fssp.s=&fssp.seed=&fssp.cs=) overrides them.
+import { PRESETS, RESOLUTIONS, presetOf, type Mode } from '../scripts/llna';
+import { PARAM, LATTICE, type NetKind } from '../scripts/net';
+type Props = { mode: Mode; kind?: NetKind; p?: number; n?: number; degree?: 4 | 8; rho?: number; preset?: string; seed?: number };
+const { mode, kind = 'lat', p = 0.3, n = 400, degree = 8, rho = 0.5, preset = 'fssp', seed = 1 } = Astro.props;
+const rule = PRESETS.find((x) => x.id === preset)!.rule;
+const names: Record<NetKind, string> = { lat: LATTICE.name, ws: PARAM.ws.name, er: PARAM.er.name, ba: PARAM.ba.name };
+const kinds = Object.keys(names) as NetKind[];
+const lat = kind === 'lat';
+---
+<figure class="fig" id={mode} data-llna-run data-mode={mode} data-kind={kind} data-p={p} data-n={n} data-deg={degree} data-rho={rho} data-r={rule.r} data-b={rule.B} data-s={rule.S} data-seed={seed} tabindex="-1">
+  <canvas role="img" aria-label={`${names[kind]} network of ${n} nodes, tick 0`}></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    {kinds.map((k) => <button name={k} type="button" aria-pressed={k === kind}>{names[k]}</button>)}
+    <label><span data-plabel>{lat ? LATTICE.label : PARAM[kind as 'ws'].label}</span> <input name="param" type="range" min="0" max="1" step="0.01" value={p} /> <output name="pv"></output></label>
+    <span data-lat hidden={!lat}>
+      <button name="k4" type="button" aria-pressed={degree === 4}>4 neighbours</button>
+      <button name="k8" type="button" aria-pressed={degree === 8}>8 neighbours</button>
+    </span>
+    <label><span data-nlabel>{lat ? 'side' : 'nodes'}</span> <input name="nodes" type="number" min="3" max="900" value={lat ? Math.floor(Math.sqrt(n)) : n} inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+  </div>
+  <div class="controls" role="group" aria-label="Rule and start">
+    <label>rule <select name="preset">
+      <option value="">custom</option>
+      {PRESETS.map((x) => <option value={x.id} selected={x.id === presetOf(rule)}>{x.name}</option>)}
+    </select></label>
+    <label>r <select name="r">{RESOLUTIONS.map((x) => <option value={x} selected={x === rule.r}>{x}</option>)}</select></label>
+    <label>β <input name="b" type="number" min="0" max={2 ** rule.r - 1} value={rule.B} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** rule.r - 1} value={rule.S} inputmode="numeric" /></label>
+    <label>on at start <input name="rho" type="range" min="0" max="1" step="0.01" value={rho} /> <output name="rv"></output></label>
+    <button name="reconf" type="button">new start</button>
+  </div>
+  <div class="controls" role="group" aria-label="Run">
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="40" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">tick 0</output>
+    {mode !== 'defect' && <button name="trials" type="button">run 20 trials</button>}
+    {mode !== 'defect' && <output name="tv"></output>}
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(420px, 68vh, 720px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  [name="gen"] { min-width: 7em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { PRESETS, clampRule, presetOf, step, randomState, density, defects, verdict, trial, ruleName, type Rule, type Mode } from '../scripts/llna';
+  import { PARAM, LATTICE, knob, makeNet, makeRng, clampParam, clampN, latticeLink, type Net, type NetKind } from '../scripts/net';
+  import { draw, hit, type Geom } from '../scripts/diagram';
+  import { fit, tokens, watch, loop, fullscreen, urlState, keys, schedule, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-llna-run]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const mode = el.dataset.mode as Mode;
+    const KINDS: NetKind[] = ['lat', 'ws', 'er', 'ba'];
+    const NAME: Record<NetKind, string> = { lat: LATTICE.name, ws: PARAM.ws.name, er: PARAM.er.name, ba: PARAM.ba.name };
+    const kindBtns = Object.fromEntries(KINDS.map((k) => [k, $<HTMLButtonElement>(k)])) as Record<NetKind, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const latBox = el.querySelector<HTMLElement>('[data-lat]')!, k4 = $<HTMLButtonElement>('k4'), k8 = $<HTMLButtonElement>('k8');
+    const nodesIn = $<HTMLInputElement>('nodes'), nlabel = el.querySelector<HTMLElement>('[data-nlabel]')!;
+    const presetIn = $<HTMLSelectElement>('preset'), rIn = $<HTMLSelectElement>('r'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s');
+    const rhoIn = $<HTMLInputElement>('rho'), rv = $<HTMLOutputElement>('rv');
+    const speedIn = $<HTMLInputElement>('speed'), playBtn = $<HTMLButtonElement>('play'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const trialsBtn = el.querySelector<HTMLButtonElement>('[name="trials"]'), tv = el.querySelector<HTMLOutputElement>('[name="tv"]');
+    const d = el.dataset, url = urlState(mode, { kind: d.kind!, p: d.p!, n: d.n!, deg: d.deg!, rho: d.rho!, r: d.r!, b: d.b!, s: d.s!, seed: d.seed!, cs: '1' });
+    const isKind = (s: string): s is NetKind => KINDS.includes(s as NetKind);
+    const CAP = 4096, TRIALS = 20;
+
+    // State. The URL wins over the props so a set-up can be linked; only non-default values are written back.
+    let kind: NetKind = isKind(url.get('kind')) ? (url.get('kind') as NetKind) : 'lat';
+    let p = clampParam(kind, new URLSearchParams(location.search).has(`${mode}.p`) || kind === d.kind ? +url.get('p') : knob(kind).def);
+    let n = clampN(+url.get('n'), 400, 900);
+    let deg: 4 | 8 = url.get('deg') === '4' ? 4 : 8;
+    let rho0 = Math.min(1, Math.max(0, +url.get('rho') || 0));
+    let rule: Rule = clampRule(+url.get('r'), +url.get('b'), +url.get('s'));
+    let seed = Math.max(1, Math.round(+url.get('seed')) || 1), cs = Math.max(1, Math.round(+url.get('cs')) || 1);
+    let net: Net = makeNet(kind, n, p, seed, deg);
+    let hist: Uint8Array[] = [], twin: Uint8Array[] = [], rhoT: number[] = [], dT: number[] = [], origin = 0;
+    let geom: Geom | null = null, ms = 120, acc = 0, busy = false;
+
+    function start() {
+      const rnd = makeRng(cs * 7919 + 17);
+      const s = randomState(net.n, rho0, rnd);
+      hist = [s]; rhoT = [density(s)];
+      if (mode === 'defect') { origin = Math.floor(rnd() * net.n); const t = s.slice(); t[origin] ^= 1; twin = [t]; dT = [1 / net.n]; }
+    }
+    function advance() {
+      const s = step(hist[hist.length - 1], net, rule); hist.push(s); rhoT.push(density(s));
+      if (mode === 'defect') { const t = step(twin[twin.length - 1], net, rule); twin.push(t); dT.push(defects(s, t) / net.n); }
+      if (hist.length > CAP) { hist.shift(); twin.shift(); }
+    }
+    const limit = () => 2 * net.n;
+    const tick = () => rhoT.length - 1;
+    function outcome() {
+      if (mode !== 'defect') return verdict(mode, rhoT, limit());
+      const last = dT[dT.length - 1], k = Math.round(last * net.n);
+      return last === 0 ? { done: true, ok: true, tick: tick(), text: `the difference has healed at tick ${tick()}: both runs agree` } : { done: false, ok: false, tick: tick(), text: `${k} of ${net.n} nodes differ between the two runs` };
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const wide = w >= 680, cap = 16; // the caption line under the network
+      const side = wide ? Math.min(h - 2 * pad - cap, w * 0.52) : Math.min(w - 2 * pad, h * 0.5);
+      const nx = pad, ny = pad;
+      const col = wide ? { x: nx + side + pad, w: w - side - 3 * pad } : { x: pad, w: w - 2 * pad };
+      const rest = wide ? { y: pad, h: h - 2 * pad } : { y: ny + side + cap + pad, h: h - side - cap - 3 * pad };
+      const diaH = Math.max(72, Math.min(120, rest.h * 0.36));
+      const diaBox = { x: col.x, y: rest.y + rest.h - diaH, w: col.w, h: diaH };
+      const traceBox = { x: col.x, y: rest.y + 18, w: col.w, h: diaBox.y - 34 - (rest.y + 18) };
+      drawNet(t, nx, ny, side);
+      drawTraces(t, traceBox);
+      geom = draw(ctx, diaBox, rule, t, { compact: true });
+      const pre = PRESETS.find((x) => x.id === presetOf(rule));
+      label(ctx, `rule ${ruleName(rule)}${pre ? ` · ${pre.name}` : ''} · click a cell to change it`, geom.x0, diaBox.y - 6, t);
+      state();
+    }
+
+    function drawNet(t: ReturnType<typeof tokens>, x0: number, y0: number, S: number) {
+      const s = hist[hist.length - 1], tw = mode === 'defect' ? twin[twin.length - 1] : null;
+      const X = (i: number) => x0 + net.xy[2 * i] * S, Y = (i: number) => y0 + net.xy[2 * i + 1] * S;
+      ctx.lineWidth = 1;
+      if (net.kind === 'lat') {
+        ctx.strokeStyle = t.line; ctx.beginPath();
+        const far: [number, number][] = [];
+        for (const [i, j] of net.edges) { const l = latticeLink(net, i, j); if (!l.grid) far.push([i, j]); else if (!l.wraps) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); } }
+        ctx.stroke();
+        ctx.save(); ctx.globalAlpha = 0.22; ctx.strokeStyle = t.accent; ctx.beginPath();
+        for (const [i, j] of far) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+        ctx.stroke(); ctx.restore();
+      } else {
+        ctx.strokeStyle = t.line; ctx.beginPath();
+        for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+        ctx.stroke();
+      }
+      const rad = net.kind === 'lat' ? Math.min(7, (0.36 * S) / net.side!) : Math.max(2, Math.min(6, (0.45 * S) / Math.sqrt(net.n)));
+      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < net.n; i++) {
+        if (s[i] !== pass) continue; // dead first, live on top
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        if (s[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+      }
+      if (tw) {
+        ctx.strokeStyle = t.accent; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let i = 0; i < net.n; i++) if (s[i] !== tw[i]) { ctx.moveTo(X(i) + rad + 2, Y(i)); ctx.arc(X(i), Y(i), rad + 2, 0, 2 * Math.PI); }
+        ctx.stroke();
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(origin), Y(origin), rad + 4, 0, 2 * Math.PI); ctx.stroke();
+      }
+      const mean = (2 * net.edges.length) / net.n;
+      label(ctx, `${NAME[net.kind]} · ${net.n} nodes · ${net.edges.length} links · mean degree ${mean.toFixed(1)}`, x0 + 2, y0 + S + 13, t);
+    }
+
+    function drawTraces(t: ReturnType<typeof tokens>, b: { x: number; y: number; w: number; h: number }) {
+      const T = Math.max(60, rhoT.length - 1);
+      const X = (i: number) => b.x + (i / T) * b.w, Y = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1;
+      for (const v of [0, 0.5, 1]) { ctx.beginPath(); ctx.moveTo(b.x, Y(v) + 0.5); ctx.lineTo(b.x + b.w, Y(v) + 0.5); ctx.stroke(); }
+      const line = (ys: number[], color: string) => {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let i = 0; i < ys.length; i++) i ? ctx.lineTo(X(i), Y(ys[i])) : ctx.moveTo(X(i), Y(ys[i]));
+        ctx.stroke();
+      };
+      line(rhoT, t.ink);
+      if (mode === 'defect') line(dT, t.accent);
+      label(ctx, '1', b.x - 4, b.y + 4, t, { align: 'right' }); label(ctx, '½', b.x - 4, Y(0.5) + 4, t, { align: 'right' }); label(ctx, '0', b.x - 4, Y(0) + 4, t, { align: 'right' });
+      const last = rhoT[rhoT.length - 1];
+      label(ctx, `share on ρ = ${last.toFixed(2)}`, b.x + 4, b.y - 5, t, { color: t.ink });
+      if (mode === 'defect') label(ctx, `share differing δ = ${dT[dT.length - 1].toFixed(3)}`, b.x + b.w - 4, b.y - 5, t, { color: t.accent, align: 'right' });
+      label(ctx, `tick 0 … ${T}`, b.x + b.w - 4, b.y + b.h + 12, t, { align: 'right' });
+    }
+
+    function state() {
+      const v = outcome();
+      gen.value = `tick ${tick()}`; status.value = v.text;
+      if (!lp.playing) c.setAttribute('aria-label', `${NAME[net.kind]} network of ${net.n} nodes, rule ${ruleName(rule)}, tick ${tick()}: ${v.text}`);
+      return v;
+    }
+    function regen() { lp.play(false); net = makeNet(kind, n, p, seed, deg); start(); paint(); }
+    function restart() { lp.play(false); start(); paint(); }
+    function reset() { lp.play(false); const s = hist[0], t0 = twin[0]; hist = [s]; rhoT = [density(s)]; if (mode === 'defect') { twin = [t0]; dT = [defects(s, t0) / net.n]; } paint(); }
+    function undo() { if (hist.length > 1) { lp.play(false); hist.pop(); rhoT.pop(); if (mode === 'defect') { twin.pop(); dT.pop(); } paint(); } }
+    function stepOnce() { lp.play(false); advance(); paint(); }
+
+    const lp = loop(el, (_, dt) => {
+      acc += dt * 1000;
+      let k = 0; while (acc >= ms && k < 16) { advance(); acc -= ms; k++; if (outcome().done) { lp.play(false); break; } }
+      if (k === 16) acc = 0;
+      if (k) paint();
+    });
+    lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); if (on) acc = 0; else state(); };
+    const speed = () => { ms = 2000 / 2 ** (+speedIn.value / 10); };
+
+    // Controls reflect state; the URL mirrors it.
+    function show() {
+      for (const k of KINDS) kindBtns[k].setAttribute('aria-pressed', String(k === kind));
+      const P = knob(kind), lat = kind === 'lat';
+      plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(p); pv.value = P.fmt(p);
+      latBox.hidden = !lat; k4.setAttribute('aria-pressed', String(deg === 4)); k8.setAttribute('aria-pressed', String(deg === 8));
+      nlabel.textContent = lat ? 'side' : 'nodes'; nodesIn.min = lat ? '3' : '10'; nodesIn.max = lat ? '30' : '900'; nodesIn.value = String(lat ? Math.floor(Math.sqrt(n)) : n);
+      presetIn.value = presetOf(rule); rIn.value = String(rule.r);
+      bIn.max = sIn.max = String(2 ** rule.r - 1); bIn.value = String(rule.B); sIn.value = String(rule.S);
+      rhoIn.value = String(rho0); rv.value = `${Math.round(rho0 * 100)}%`;
+    }
+    function sync() {
+      url.set('kind', kind); url.set('p', String(p)); url.set('n', String(n)); url.set('deg', String(deg)); url.set('rho', String(rho0));
+      url.set('r', String(rule.r)); url.set('b', String(rule.B)); url.set('s', String(rule.S)); url.set('seed', String(seed)); url.set('cs', String(cs));
+    }
+    const regenSoon = schedule(() => { regen(); show(); sync(); }); // slider drags rebuild at most once per frame
+    for (const k of KINDS) kindBtns[k].addEventListener('click', () => { if (k === kind) return; kind = k; p = knob(k).def; regen(); show(); sync(); });
+    paramIn.addEventListener('input', () => { p = clampParam(kind, +paramIn.value); pv.value = knob(kind).fmt(p); regenSoon(); });
+    k4.addEventListener('click', () => { deg = 4; regen(); show(); sync(); });
+    k8.addEventListener('click', () => { deg = 8; regen(); show(); sync(); });
+    nodesIn.addEventListener('change', () => { const v = +nodesIn.value; n = kind === 'lat' ? Math.min(30, Math.max(3, Math.round(v) || 20)) ** 2 : clampN(v, 400, 900); regen(); show(); sync(); });
+    $('regen').addEventListener('click', () => { seed++; regen(); show(); sync(); });
+    const setRule = (r: Rule) => { rule = r; show(); sync(); paint(); }; // no reset: the rule may change mid-run
+    presetIn.addEventListener('change', () => { const x = PRESETS.find((y) => y.id === presetIn.value); if (x) setRule({ ...x.rule }); });
+    rIn.addEventListener('change', () => setRule(clampRule(+rIn.value, rule.B, rule.S)));
+    bIn.addEventListener('change', () => setRule(clampRule(rule.r, +bIn.value, rule.S)));
+    sIn.addEventListener('change', () => setRule(clampRule(rule.r, rule.B, +sIn.value)));
+    rhoIn.addEventListener('input', () => { rho0 = +rhoIn.value; rv.value = `${Math.round(rho0 * 100)}%`; sync(); restart(); });
+    $('reconf').addEventListener('click', () => { cs++; sync(); restart(); });
+    c.addEventListener('click', (e) => {
+      if (!geom) return;
+      const b = c.getBoundingClientRect(), hx = hit(geom, e.clientX - b.left, e.clientY - b.top);
+      if (!hx) return;
+      const bit = 1 << hx.i;
+      setRule(hx.band === 'B' ? { ...rule, B: rule.B ^ bit } : { ...rule, S: rule.S ^ bit });
+    });
+    $('step').addEventListener('click', stepOnce);
+    playBtn.addEventListener('click', () => lp.play());
+    speedIn.addEventListener('input', speed);
+    $('reset').addEventListener('click', reset);
+
+    // The batch: fresh networks and starts with the current settings, one trial per timeout so the page stays responsive.
+    trialsBtn?.addEventListener('click', () => {
+      if (busy || mode === 'defect') return;
+      busy = true; trialsBtn.disabled = true; lp.play(false);
+      const rnd = makeRng(cs * 104729 + seed), fixed = { kind, n, p, deg, rule: { ...rule }, rho0 };
+      let done = 0, ok = 0;
+      const one = () => {
+        const m = fixed.kind === 'lat' ? Math.max(3, Math.floor(Math.sqrt(fixed.n))) ** 2 : fixed.n;
+        const nt = makeNet(fixed.kind, m, fixed.p, seed + 1000 * (done + 1), fixed.deg, false);
+        if (trial(mode, nt, fixed.rule, fixed.rho0, rnd).ok) ok++;
+        done++; tv!.value = done < TRIALS ? `${done} of ${TRIALS} …` : `solved ${ok} of ${TRIALS} (${Math.round((100 * ok) / TRIALS)}%)`;
+        if (done < TRIALS) setTimeout(one, 0); else { busy = false; trialsBtn.disabled = false; }
+      };
+      tv!.value = `0 of ${TRIALS} …`; setTimeout(one, 0);
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, {
+      ' ': () => lp.play(), ArrowRight: stepOnce, PageDown: stepOnce, n: stepOnce, ArrowLeft: undo, PageUp: undo,
+      r: reset, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); },
+    });
+    watch(c, paint);
+    start(); show(); speed(); paint();
+  }
+</script>

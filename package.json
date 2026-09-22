@@ -7,6 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "sync": "node scripts/sync.mjs",
+    "test": "node scripts/check-llna.ts",
     "check": "astro build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|discogs.com|goodreads.com|bandcamp.com|letterboxd.com|10.1103|cv.pdf'"
   },
   "dependencies": {

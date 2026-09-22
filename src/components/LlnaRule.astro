@@ -1,0 +1,147 @@
+---
+// The local rule of a Life-like network automaton, on its own: the interval diagram to click on, the
+// densities a node of some degree can see, and the mean-field curve that follows from both, with the
+// readings the paper uses to pick a rule. Self-contained with src/scripts/llna.ts, diagram.ts and
+// figure.ts. Props are the defaults; the URL query (?rule.r=&rule.b=&rule.s=&rule.k=) overrides them.
+import { PRESETS, RESOLUTIONS, presetOf } from '../scripts/llna';
+type Props = { r?: number; b?: number; s?: number; k?: number };
+const { r = 9, b = 8, s = 12, k = 8 } = Astro.props;
+---
+<figure class="fig" id="rule" data-llna-rule data-r={r} data-b={b} data-s={s} data-k={k} tabindex="-1">
+  <canvas role="img" aria-label="Local rule diagram and mean-field curve"></canvas>
+  <div class="controls" role="group" aria-label="Rule controls">
+    <label>rule <select name="preset">
+      <option value="">custom</option>
+      {PRESETS.map((p) => <option value={p.id} selected={p.id === presetOf({ r, B: b, S: s })}>{p.name}</option>)}
+    </select></label>
+    <label>resolution <select name="r">{RESOLUTIONS.map((x) => <option value={x} selected={x === r}>{x}</option>)}</select></label>
+    <label>β <input name="b" type="number" min="0" max={2 ** r - 1} value={b} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** r - 1} value={s} inputmode="numeric" /></label>
+    <label>degree k <input name="k" type="range" min="1" max="24" step="1" value={k} /> <output name="kv">{k}</output></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="info" class="status"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(380px, 58vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  .status { display: block; min-height: 1.4em; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { PRESETS, clampRule, presetOf, equivalent, selfEquivalent, meanField, hammingWeight, flipsTowardsHomogeneous, ruleName, type Rule } from '../scripts/llna';
+  import { draw, hit, type Geom } from '../scripts/diagram';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-llna-rule]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const presetIn = $<HTMLSelectElement>('preset'), rIn = $<HTMLSelectElement>('r'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s');
+    const kIn = $<HTMLInputElement>('k'), kv = $<HTMLOutputElement>('kv'), info = $<HTMLOutputElement>('info');
+    const d = el.dataset, url = urlState('rule', { r: d.r!, b: d.b!, s: d.s!, k: d.k! });
+
+    let rule: Rule = clampRule(+url.get('r'), +url.get('b'), +url.get('s'));
+    let k = Math.min(24, Math.max(1, Math.round(+url.get('k')) || 8));
+    let geom: Geom | null = null;
+
+    const slopeAtHalf = () => (meanField(rule, k, 0.505) - meanField(rule, k, 0.495)) / 0.01;
+    const name = (x: Rule) => ruleName(x);
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const pad = 12, top = Math.max(130, Math.round(h * 0.42));
+      geom = draw(ctx, { x: pad, y: pad, w: w - 2 * pad, h: top - pad }, rule, t, { k });
+      label(ctx, 'filled: alive next tick', w - pad - 4, pad + 8, t, { align: 'right', base: 'middle' });
+      // the mean-field curve for this degree, ⟨ρ next⟩ against ρ now
+      const y1 = top + 8, side = Math.min(w * 0.5, h - y1 - pad) - 30, px = pad + 36, py = y1 + 6;
+      const X = (v: number) => px + v * side, Y = (v: number) => py + (1 - v) * side;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(px + 0.5, py + 0.5, side, side);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted;
+      ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(1)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(0), Y(1)); ctx.lineTo(X(1), Y(0)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = t.ink; ctx.lineWidth = 2; ctx.beginPath();
+      for (let i = 0; i <= 200; i++) { const v = i / 200, m = meanField(rule, k, v); i ? ctx.lineTo(X(v), Y(m)) : ctx.moveTo(X(v), Y(m)); }
+      ctx.stroke();
+      const hw = hammingWeight(rule, k);
+      ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(X(0.5), Y(hw), 4, 0, 2 * Math.PI); ctx.fill();
+      label(ctx, 'ρ now', X(0.5), py + side + 14, t, { align: 'center' });
+      label(ctx, '0', X(0), py + side + 14, t, { align: 'center' }); label(ctx, '1', X(1), py + side + 14, t, { align: 'center' });
+      ctx.save(); ctx.translate(px - 8, Y(0.5)); ctx.rotate(-Math.PI / 2); label(ctx, 'expected ρ next', 0, 0, t, { align: 'center' }); ctx.restore();
+      label(ctx, '1', px - 8, Y(1) + 4, t, { align: 'right' }); label(ctx, '0', px - 8, Y(0), t, { align: 'right' });
+      // the readings, to the right of the plot
+      const tx = px + side + 24, lines = readings(), narrow = tx > w - 160;
+      if (!narrow) lines.forEach((s, i) => label(ctx, s, tx, py + 14 + i * 17, t, { size: 12, color: i === 0 ? t.ink : t.muted }));
+      info.value = lines.join(' · '); info.hidden = !narrow; // the readings sit in the canvas when there is room
+      c.setAttribute('aria-label', `Local rule diagram and mean-field curve for ${name(rule)} at degree ${k}. ${lines.join('. ')}`);
+    }
+
+    function readings(): string[] {
+      const eq = equivalent(rule), pre = PRESETS.find((p) => p.id === presetOf(rule));
+      const own = selfEquivalent(rule);
+      return [
+        `${name(rule)}${pre ? ` (${pre.name})` : ''}`,
+        own ? 'its own equivalent' : `equivalent: ${name(eq)}`,
+        `HW_${k} = ${hammingWeight(rule, k).toFixed(3)}`,
+        `slope at ½: ${slopeAtHalf().toFixed(2)}`,
+        `firing-squad criterion at k = ${k}: ${own && flipsTowardsHomogeneous(rule, k) ? 'met' : 'not met'}`,
+      ];
+    }
+
+    function show() {
+      presetIn.value = presetOf(rule); rIn.value = String(rule.r);
+      bIn.max = sIn.max = String(2 ** rule.r - 1); bIn.value = String(rule.B); sIn.value = String(rule.S);
+      kIn.value = String(k); kv.value = String(k);
+    }
+    function sync() { url.set('r', String(rule.r)); url.set('b', String(rule.B)); url.set('s', String(rule.S)); url.set('k', String(k)); }
+    function set(r: Rule) { rule = r; show(); sync(); paint(); }
+
+    presetIn.addEventListener('change', () => { const p = PRESETS.find((x) => x.id === presetIn.value); if (p) set({ ...p.rule }); });
+    rIn.addEventListener('change', () => set(clampRule(+rIn.value, rule.B, rule.S)));
+    bIn.addEventListener('change', () => set(clampRule(rule.r, +bIn.value, rule.S)));
+    sIn.addEventListener('change', () => set(clampRule(rule.r, rule.B, +sIn.value)));
+    kIn.addEventListener('input', () => { k = +kIn.value; kv.value = String(k); sync(); paint(); });
+    c.addEventListener('click', (e) => {
+      if (!geom) return;
+      const b = c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top, hx = hit(geom, x, y);
+      if (!hx) return;
+      const bit = 1 << hx.i;
+      set(hx.band === 'B' ? { ...rule, B: rule.B ^ bit } : { ...rule, S: rule.S ^ bit });
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+</script>

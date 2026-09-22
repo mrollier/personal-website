@@ -1,10 +1,12 @@
 // The parity rule on a network: a node's next state is the sum of its neighbours' states modulo 2,
-// with or without its own. Three families of random network, a force-directed layout for drawing
-// them, and the ordering of nodes by degree that the "importance" slider walks. Pure, no DOM.
+// with or without its own. Three families of random network plus a rewired torus lattice, a
+// force-directed layout for drawing them, and the ordering of nodes by degree that the "importance"
+// slider walks. Pure, no DOM.
 
-export type NetKind = 'ws' | 'er' | 'ba';
+export type NetKind = 'ws' | 'er' | 'ba' | 'lat';
 export type Net = {
   kind: NetKind; n: number;
+  side?: number;            // lattice family only: nodes sit on a side × side torus, index = y * side + x
   adj: number[][];          // neighbours of each node
   edges: [number, number][]; // each link once, i < j
   deg: Uint16Array;
@@ -13,17 +15,22 @@ export type Net = {
 };
 
 /** The one knob each family has, with the range the slider shows. */
-export const PARAM: Record<NetKind, { name: string; label: string; min: number; max: number; step: number; def: number; fmt: (v: number) => string }> = {
+export type RandomKind = Exclude<NetKind, 'lat'>;
+export const PARAM: Record<RandomKind, { name: string; label: string; min: number; max: number; step: number; def: number; fmt: (v: number) => string }> = {
   ws: { name: 'small world', label: 'rewiring', min: 0, max: 1, step: 0.01, def: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   er: { name: 'random', label: 'mean degree', min: 1, max: 10, step: 0.5, def: 4, fmt: (v) => v.toFixed(1) },
   ba: { name: 'scale-free', label: 'links per newcomer', min: 1, max: 5, step: 1, def: 2, fmt: (v) => String(v) },
 };
 
+/** The lattice family lives outside PARAM so the parity figure, which lists PARAM's keys, keeps its three families. */
+export const LATTICE = { name: 'lattice', label: 'rewiring', min: 0, max: 1, step: 0.01, def: 0, fmt: (v: number) => `${Math.round(v * 100)}%` };
+export const knob = (kind: NetKind) => (kind === 'lat' ? LATTICE : PARAM[kind]);
+
 export const clampParam = (kind: NetKind, v: number) => {
-  const p = PARAM[kind], x = Number.isFinite(v) ? v : p.def;
+  const p = knob(kind), x = Number.isFinite(v) ? v : p.def;
   return Math.min(p.max, Math.max(p.min, Math.round(x / p.step) * p.step));
 };
-export const clampN = (n: number, def = 100) => Math.min(250, Math.max(10, Math.round(n) || def));
+export const clampN = (n: number, def = 100, max = 250) => Math.min(max, Math.max(10, Math.round(n) || def));
 
 /** xorshift32, seeded, so a network can be reproduced from its seed in the address bar. */
 export function makeRng(seed: number): () => number {
@@ -42,11 +49,10 @@ function build(kind: NetKind, n: number, edges: [number, number][]): Net {
   return { kind, n, adj, edges, deg, xy: new Float32Array(2 * n), order };
 }
 
-/** Watts–Strogatz: a ring where each node links to its two neighbours on either side, then each link's far end is moved to a random node with probability p. */
-export function wattsStrogatz(n: number, p: number, rnd: () => number): Net {
-  const has = new Set<number>(), key = (i: number, j: number) => (i < j ? i * n + j : j * n + i);
-  const edges: [number, number][] = [];
-  for (let i = 0; i < n; i++) for (const d of [1, 2]) { const j = (i + d) % n; if (j !== i) { has.add(key(i, j)); edges.push([Math.min(i, j), Math.max(i, j)]); } }
+/** Each link's far end is moved to a random node with probability p, never doubling a link or looping a node to itself. In place. */
+export function rewire(n: number, edges: [number, number][], p: number, rnd: () => number): void {
+  const key = (i: number, j: number) => (i < j ? i * n + j : j * n + i);
+  const has = new Set<number>(edges.map(([i, j]) => key(i, j)));
   for (let k = 0; k < edges.length; k++) {
     if (rnd() >= p) continue;
     const [i, jOld] = edges[k];
@@ -56,7 +62,37 @@ export function wattsStrogatz(n: number, p: number, rnd: () => number): Net {
       has.delete(key(i, jOld)); has.add(key(i, j)); edges[k] = [Math.min(i, j), Math.max(i, j)]; break;
     }
   }
+}
+
+/** Watts–Strogatz: a ring where each node links to its two neighbours on either side, then rewired. */
+export function wattsStrogatz(n: number, p: number, rnd: () => number): Net {
+  const edges: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (const d of [1, 2]) { const j = (i + d) % n; if (j !== i) edges.push([Math.min(i, j), Math.max(i, j)]); }
+  rewire(n, edges, p, rnd);
   return build('ws', n, edges);
+}
+
+/** A side × side torus with the von Neumann (4) or Moore (8) neighbourhood, then rewired: Life's habitat at p = 0, the paper's small world in between, a tangle at p = 1. Nodes sit on the grid. */
+export function lattice(side: number, degree: 4 | 8, p: number, rnd: () => number): Net {
+  const n = side * side, at = (x: number, y: number) => ((y + side) % side) * side + ((x + side) % side);
+  const steps: [number, number][] = degree === 8 ? [[1, 0], [0, 1], [1, 1], [1, -1]] : [[1, 0], [0, 1]];
+  const seen = new Set<number>(), edges: [number, number][] = [];
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) for (const [dx, dy] of steps) {
+    const i = at(x, y), j = at(x + dx, y + dy), a = Math.min(i, j), b = Math.max(i, j);
+    if (a === b || seen.has(a * n + b)) continue; // a tiny torus meets itself
+    seen.add(a * n + b); edges.push([a, b]);
+  }
+  rewire(n, edges, p, rnd);
+  const net = build('lat', n, edges); net.side = side;
+  for (let i = 0; i < n; i++) { net.xy[2 * i] = (i % side + 0.5) / side; net.xy[2 * i + 1] = (Math.floor(i / side) + 0.5) / side; }
+  return net;
+}
+
+/** On a lattice: whether a link is one of the grid's own (torus distance 1), and whether it crosses the wrap. */
+export function latticeLink(net: Net, i: number, j: number): { grid: boolean; wraps: boolean } {
+  const L = net.side!, dx = Math.abs((i % L) - (j % L)), dy = Math.abs(Math.floor(i / L) - Math.floor(j / L));
+  const tx = Math.min(dx, L - dx), ty = Math.min(dy, L - dy);
+  return { grid: Math.max(tx, ty) === 1, wraps: tx !== dx || ty !== dy };
 }
 
 /** Erdős–Rényi: every pair linked with the probability that gives mean degree k. */
@@ -80,10 +116,12 @@ export function barabasiAlbert(n: number, m: number, rnd: () => number): Net {
   return build('ba', n, edges);
 }
 
-export function makeNet(kind: NetKind, n: number, param: number, seed: number): Net {
+/** For the lattice family n is rounded down to a square, and `degree` picks the neighbourhood. `lay` false skips the layout for a network that is only run, never drawn. */
+export function makeNet(kind: NetKind, n: number, param: number, seed: number, degree: 4 | 8 = 8, lay = true): Net {
   const rnd = makeRng(seed);
+  if (kind === 'lat') return lattice(Math.max(3, Math.floor(Math.sqrt(n))), degree, param, rnd);
   const net = kind === 'ws' ? wattsStrogatz(n, param, rnd) : kind === 'er' ? erdosRenyi(n, param, rnd) : barabasiAlbert(n, param, rnd);
-  layout(net, rnd);
+  if (lay) layout(net, rnd, n > 300 ? 120 : 250); // ponytail: O(n²) per iteration, fewer iterations past 300 nodes; a Barnes–Hut tree if larger nets are wanted
   return net;
 }
 

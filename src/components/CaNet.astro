@@ -3,7 +3,7 @@
 // node lights up first, from the most to the least connected. The network is drawn above, its
 // history below as rows of time with one column per node. Self-contained with src/scripts/net.ts and
 // src/scripts/figure.ts. Props are the defaults; the URL query (?net.kind=&net.p=&net.n=&net.self=&net.rank=&net.seed=) overrides them.
-import { PARAM, type NetKind } from '../scripts/net';
+import { PARAM, type RandomKind as NetKind } from '../scripts/net';
 type Props = { kind?: NetKind; p?: number; n?: number; self?: boolean; rank?: number; seed?: number };
 const { kind = 'ws', p = PARAM[kind].def, n = 100, self = false, rank = 1, seed = 1 } = Astro.props;
 const kinds = Object.keys(PARAM) as NetKind[];
@@ -59,7 +59,7 @@ const kinds = Object.keys(PARAM) as NetKind[];
 </style>
 
 <script>
-  import { PARAM, makeNet, stepNet, seedNet, count, clampParam, clampN, type Net, type NetKind } from '../scripts/net';
+  import { PARAM, makeNet, stepNet, seedNet, count, clampParam, clampN, type Net, type RandomKind as NetKind } from '../scripts/net';
   import { fit, tokens, watch, loop, fullscreen, urlState, keys, schedule, label } from '../scripts/figure';
 
   document.querySelectorAll<HTMLElement>('[data-ca-net]').forEach(mount);

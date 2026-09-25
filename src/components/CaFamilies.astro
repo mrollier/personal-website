@@ -1,0 +1,213 @@
+---
+// One row of cells and every knob of Ch. 2: the rule, its boundary condition, a synchrony rate, a second
+// rule drawn with a probability, a frozen allocation of columns to that second rule plus a clamped cell,
+// a wider neighbourhood, and a three-state totalistic variant. Self-contained with src/scripts/variants.ts,
+// wolfram.ts, eca.ts, raster.ts, palette.ts and figure.ts, and EcaTable.astro for the eight-case table.
+// Props are the defaults; the URL query under `fam.` overrides them.
+import EcaTable from './EcaTable.astro';
+import { BOUNDARIES } from '../scripts/variants';
+type Props = { rule?: number; n?: number };
+const { rule = 110, n = 160 } = Astro.props;
+---
+<figure class="fig" id="fam" data-families data-rule={rule} data-n={n} tabindex="-1">
+  <canvas role="img" aria-label={`Rule ${rule} on a row of ${n} cells, tick 0`}></canvas>
+  <div class="controls" role="group" aria-label="Rule">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <button name="random" type="button">random rule</button>
+    <label>radius <select name="radius"><option value="1">1</option><option value="2">2</option></select></label>
+    <label>states <select name="states"><option value="2">2</option><option value="3">3, totalistic</option></select></label>
+    <label>cells <input name="n" type="number" min="8" max="400" value={n} inputmode="numeric" /></label>
+    <button name="init" type="button" aria-pressed="true">random start</button>
+  </div>
+  <div class="controls" role="group" aria-label="Family">
+    <label>boundary <select name="bc">{BOUNDARIES.map((b) => <option value={b.id}>{b.name}</option>)}</select></label>
+    <button name="edge" type="button" hidden>edge cells: 0</button>
+    <label data-pdist hidden>weight <input name="pdist" type="range" min="0" max="1" step="0.05" value="0.5" /> <output name="pdv">50%</output></label>
+    <label>synchrony α <input name="alpha" type="range" min="0" max="1" step="0.01" value="1" /> <output name="av">100%</output></label>
+    <label>second rule ψ <input name="psi" type="number" min="0" max="255" value="204" inputmode="numeric" /></label>
+    <label>P(φ) <input name="p" type="range" min="0" max="1" step="0.01" value="1" /> <output name="pv">100%</output></label>
+    <label>share on ψ <input name="nu" type="range" min="0" max="1" step="0.01" value="0" /> <output name="nv">0%</output></label>
+    <button name="realloc" type="button">reallocate</button>
+    <button name="clamp" type="button" aria-pressed="false">clamp the middle cell</button>
+  </div>
+  <div class="controls" role="group" aria-label="Run">
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="40" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+  <div class="lut"><EcaTable rule={rule} interactive /></div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(300px, 50vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 5.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  [name="gen"] { min-width: 7em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .lut { min-width: 0; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig:is(:fullscreen, .full) .lut { display: none; }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow } from '../scripts/eca';
+  import { tableOf, ruleOf, equivalents, lambda, totalisticTable } from '../scripts/wolfram';
+  import { BOUNDARIES, defaults, stepVariant, allocate, nonUniformity, familySize, IDENTITY, type Boundary, type Config } from '../scripts/variants';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, type RGB } from '../scripts/palette';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-families]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIn = $<HTMLInputElement>('rule'), radiusIn = $<HTMLSelectElement>('radius'), statesIn = $<HTMLSelectElement>('states'), nIn = $<HTMLInputElement>('n'), initBtn = $<HTMLButtonElement>('init');
+    const bcIn = $<HTMLSelectElement>('bc'), edgeBtn = $<HTMLButtonElement>('edge'), pdistIn = $<HTMLInputElement>('pdist'), pdv = $<HTMLOutputElement>('pdv'), pdistBox = el.querySelector<HTMLElement>('[data-pdist]')!;
+    const alphaIn = $<HTMLInputElement>('alpha'), av = $<HTMLOutputElement>('av'), psiIn = $<HTMLInputElement>('psi'), pIn = $<HTMLInputElement>('p'), pv = $<HTMLOutputElement>('pv');
+    const nuIn = $<HTMLInputElement>('nu'), nv = $<HTMLOutputElement>('nv'), clampBtn = $<HTMLButtonElement>('clamp'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const lut = el.querySelector<HTMLElement>('.lut')!, bits = Array.from(lut.querySelectorAll<HTMLButtonElement>('[data-bit]'));
+    const d = el.dataset, url = urlState('fam', { rule: d.rule!, psi: String(IDENTITY), r: '1', k: '2', n: d.n!, init: 'random', bc: 'periodic', edge: '0', pd: '0.5', alpha: '1', p: '1', nu: '0', clamp: '0', seed: '1' });
+    const T = 128;
+    const isBc = (s: string): s is Boundary => BOUNDARIES.some((b) => b.id === s);
+
+    // State, the URL first.
+    let radius: 1 | 2 = url.get('r') === '2' ? 2 : 1, states: 2 | 3 = url.get('k') === '3' ? 3 : 2;
+    let rule = +url.get('rule') || 0, psi = +url.get('psi') || 0;
+    let n = Math.min(400, Math.max(8, Math.round(+url.get('n')) || 160));
+    let init: 'seed' | 'random' = url.get('init') === 'seed' ? 'seed' : 'random';
+    let bc: Boundary = isBc(url.get('bc')) ? (url.get('bc') as Boundary) : 'periodic';
+    let edge = url.get('edge') === '1' ? 1 : 0, pDist = clamp01(+url.get('pd'), 0.5), alpha = clamp01(+url.get('alpha'), 1), p = clamp01(+url.get('p'), 1), nu = clamp01(+url.get('nu'), 0);
+    let clamped = url.get('clamp') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let mask = new Uint8Array(n), rows: Uint8Array[] = [], rnd = makeRng(seed), raster = new Raster(n, T);
+
+    function clamp01(v: number, def: number) { return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : def; }
+    const maxRule = () => (states === 3 ? 3 ** (2 * (2 * radius + 1) + 1) - 1 : radius === 2 ? 4294967295 : 255);
+    const clampRule = (v: number) => Math.min(maxRule(), Math.max(0, Math.round(v) || 0));
+    const table = (v: number) => (states === 3 ? totalisticTable(v, radius) : tableOf(v, radius));
+    const elementary = () => radius === 1 && states === 2;
+
+    function config(): Config {
+      return { ...defaults(table(rule), table(psi), radius, states), boundary: bc, fixed: edge * (states - 1), inter: Math.floor(n / 3), pDist, alpha, p, mask, clamp: clamped ? n >> 1 : -1 };
+    }
+    function start() {
+      rnd = makeRng(seed * 131 + 7);
+      const row = seedRow(n, init, rnd);
+      if (states === 3 && init === 'random') for (let i = 0; i < n; i++) row[i] = Math.floor(rnd() * 3);
+      rows = [row];
+      for (let t = 0; t < 64; t++) advance(); // open on a picture, not a single row
+    }
+    function realloc() { mask = allocate(n, nu, makeRng(seed * 977 + 3)); }
+    function resize() { mask = new Uint8Array(n); raster = new Raster(n, T); realloc(); start(); }
+    const advance = () => { rows.push(stepVariant(rows[rows.length - 1], config(), rnd)); if (rows.length > T) rows.shift(); };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent);
+      const on: RGB[] = [panel, mix(panel, ink, 0.45), ink], onPsi: RGB[] = [mix(panel, acc, 0.15), mix(panel, acc, 0.55), acc];
+      const top = states === 3 ? 2 : 1;
+      raster.fill(panel);
+      for (let y = 0; y < rows.length; y++) {
+        const r = rows[y];
+        for (let x = 0; x < n; x++) raster.set(y * n + x, (mask[x] ? onPsi : on)[top === 1 ? r[x] * 2 : r[x]]);
+      }
+      raster.flush();
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const box = { x: 0, y: 0, w, h };
+      raster.blit(ctx, box);
+      if (clamped) { const cw = w / n, x = (n >> 1) * cw; ctx.strokeStyle = t.danger; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, 0.5, Math.max(1, cw) - 1, h - 1); }
+      if (bc === 'null') { ctx.fillStyle = t.line; const cw = w / n; ctx.fillRect(0, 0, cw * radius, h); ctx.fillRect(w - cw * radius, 0, cw * radius, h); }
+      label(ctx, `tick ${rows.length - 1}${rows.length >= T ? ' · scrolling' : ''}`, w - 6, h - 6, t, { align: 'right' });
+      gen.value = `tick ${rows.length - 1}`;
+      readout();
+    }
+
+    function readout() {
+      const parts: string[] = [];
+      if (elementary()) { const e = equivalents(rule); parts.push(`rule ${rule}`, e.mirror === rule ? 'its own mirror image' : `mirror image ${e.mirror}`, e.complement === rule ? 'its own complement' : `complement ${e.complement}`, `class of rule ${e.rep}`); }
+      else parts.push(states === 3 ? `code ${rule}` : `rule ${rule}`);
+      parts.push(`λ = ${lambda(table(rule)).toFixed(2)}`, `${familySize(radius, states)} rules`);
+      const nuNow = nonUniformity(mask);
+      if (alpha < 1) parts.push(`α = ${alpha.toFixed(2)}`);
+      if (p < 1) parts.push(`ψ = ${psi} with probability ${(1 - p).toFixed(2)}`);
+      if (nuNow > 0) parts.push(`ν = ${nuNow.toFixed(2)} on ψ = ${psi}`);
+      if (clamped) parts.push('middle cell clamped');
+      status.value = parts.join(' · ');
+      c.setAttribute('aria-label', `${parts[0]} on a row of ${n} cells, ${bc} boundary, tick ${rows.length - 1}`);
+    }
+
+    function show() {
+      ruleIn.max = psiIn.max = String(maxRule()); ruleIn.value = String(rule); psiIn.value = String(psi);
+      radiusIn.value = String(radius); statesIn.value = String(states); nIn.value = String(n);
+      initBtn.setAttribute('aria-pressed', String(init === 'random'));
+      bcIn.value = bc; edgeBtn.hidden = bc !== 'fixed'; edgeBtn.textContent = `edge cells: ${edge * (states - 1)}`; pdistBox.hidden = bc !== 'distributed';
+      pdistIn.value = String(pDist); pdv.value = `${Math.round(pDist * 100)}%`;
+      alphaIn.value = String(alpha); av.value = `${Math.round(alpha * 100)}%`; pIn.value = String(p); pv.value = `${Math.round(p * 100)}%`;
+      nuIn.value = String(nu); nv.value = `${Math.round(nu * 100)}%`; clampBtn.setAttribute('aria-pressed', String(clamped));
+      lut.hidden = !elementary();
+      if (elementary()) { const tb = tableOf(rule); for (const b of bits) { const k = +b.dataset.bit!; b.dataset.on = String(tb[k]); b.setAttribute('aria-pressed', String(tb[k] === 1)); b.textContent = String(tb[k]); } }
+    }
+    function sync() {
+      url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('r', String(radius)); url.set('k', String(states)); url.set('n', String(n)); url.set('init', init);
+      url.set('bc', bc); url.set('edge', String(edge)); url.set('pd', String(pDist)); url.set('alpha', String(alpha)); url.set('p', String(p)); url.set('nu', String(nu)); url.set('clamp', clamped ? '1' : '0'); url.set('seed', String(seed));
+    }
+    const apply = (restart = false) => { if (restart) start(); show(); sync(); paint(); };
+
+    const st = stepper(el, { advance, paint, reset: () => start(), undo: () => { if (rows.length > 1) rows.pop(); }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    $('step').addEventListener('click', st.step);
+    $('reset').addEventListener('click', st.reset);
+
+    ruleIn.addEventListener('change', () => { rule = clampRule(+ruleIn.value); apply(); });
+    psiIn.addEventListener('change', () => { psi = clampRule(+psiIn.value); apply(); });
+    $('random').addEventListener('click', () => { rule = clampRule(Math.floor(Math.random() * (maxRule() + 1))); apply(); });
+    radiusIn.addEventListener('change', () => { radius = radiusIn.value === '2' ? 2 : 1; rule = clampRule(rule); psi = clampRule(psi); st.loop.play(false); apply(true); });
+    statesIn.addEventListener('change', () => { states = statesIn.value === '3' ? 3 : 2; rule = clampRule(rule); psi = clampRule(psi); st.loop.play(false); apply(true); });
+    nIn.addEventListener('change', () => { n = Math.min(400, Math.max(8, Math.round(+nIn.value) || 160)); st.loop.play(false); resize(); show(); sync(); paint(); });
+    initBtn.addEventListener('click', () => { init = init === 'random' ? 'seed' : 'random'; st.loop.play(false); apply(true); });
+    bcIn.addEventListener('change', () => { if (isBc(bcIn.value)) bc = bcIn.value; apply(); });
+    edgeBtn.addEventListener('click', () => { edge = 1 - edge; apply(); });
+    pdistIn.addEventListener('input', () => { pDist = +pdistIn.value; pdv.value = `${Math.round(pDist * 100)}%`; sync(); });
+    alphaIn.addEventListener('input', () => { alpha = +alphaIn.value; av.value = `${Math.round(alpha * 100)}%`; sync(); readout(); });
+    pIn.addEventListener('input', () => { p = +pIn.value; pv.value = `${Math.round(p * 100)}%`; sync(); readout(); });
+    nuIn.addEventListener('input', () => { nu = +nuIn.value; nv.value = `${Math.round(nu * 100)}%`; realloc(); sync(); paint(); });
+    $('realloc').addEventListener('click', () => { seed++; realloc(); sync(); paint(); });
+    clampBtn.addEventListener('click', () => { clamped = !clamped; apply(); });
+    for (const b of bits) b.addEventListener('click', () => { if (!elementary()) return; const tb = tableOf(rule); tb[+b.dataset.bit!] ^= 1; rule = ruleOf(tb); apply(); });
+    // a click on a column hands that cell to ψ, or takes it back
+    c.addEventListener('click', (e) => { const b = c.getBoundingClientRect(), x = Math.floor(((e.clientX - b.left) / b.width) * n); if (x >= 0 && x < n) { mask[x] ^= 1; nu = nonUniformity(mask); show(); sync(); paint(); } });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    resize(); show(); paint();
+  }
+</script>

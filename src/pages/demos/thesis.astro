@@ -1,6 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Triptych from '../../components/Triptych.astro';
+import CaFamilies from '../../components/CaFamilies.astro';
+const built = new Set(['roadmap', 'families']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -130,7 +132,89 @@ const tabs = [
         </div>
       </section>
 
-      {tabs.slice(1).map((t) => (
+      <section role="tabpanel" id="families" aria-labelledby="tab-families" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Families</h2>
+          <p>
+            Here is the whole recipe once more, with the numbers in. A row of cells, each 0 or 1. Every cell
+            looks at itself and its two neighbours, three cells, so eight possible views. A rule says what the
+            cell becomes next for each of the eight, which makes 2<sup>8</sup> = 256 rules, numbered 0 to 255 by
+            reading the eight answers as a binary number. Everyone updates at once, and the row is a ring. That is
+            an <em>elementary</em> cellular automaton, and it is already enough for rule 110 to be a working
+            computer, in principle. Two symmetries cut the 256 down to 88 genuinely different rules: look at a
+            rule in a mirror, or swap the roles of 0 and 1, and you get a rule that draws the same pictures
+            reflected or inverted. The readout under the figure names both relatives.
+          </p>
+          <p>
+            Every research field that uses cellular automata bends one item of that recipe, and my review
+            paper sorted the bends into five families. The figure starts as the plain thing and every control
+            below it is one of the bends, so they can be mixed. Time runs down; once the picture is full it
+            scrolls.
+          </p>
+        </div>
+        <CaFamilies />
+        <div class="measure">
+          <p>
+            <strong>Edges.</strong> A real simulation has a first and a last cell, and something has to stand in
+            for the neighbour that is not there. The usual answer is to close the row into a ring. The other
+            seven answers in the <em>boundary</em> menu fix the missing neighbour at a constant, copy the edge
+            cell, mirror it, borrow a cell from elsewhere in the row, flip a coin every tick, or leave it
+            undefined and simply stop updating the cells that would need it. The choice looks like a detail and
+            is not: it decides whether information can leak in from the sides.
+          </p>
+          <p>
+            <strong>Asynchronous.</strong> Nature has no central clock. Lower the <em>synchrony</em> α and each
+            cell updates with that probability per tick, otherwise it waits. Rules that were tidy at α = 1 often
+            fall apart at α = 0.9, and a few become tidier.
+          </p>
+          <p>
+            <strong>Stochastic.</strong> Give each cell two rules, φ and a second rule ψ, and let it flip a
+            weighted coin every tick to choose between them: that is <em>P(φ)</em>. With ψ = 204, the rule that
+            leaves every cell as it is, this is exactly the asynchronous case. With two proper rules the row is
+            a Markov chain, and as the weight moves the behaviour can change abruptly, a phase transition. Two
+            rules that are each chaotic can even settle into a periodic pattern together.
+          </p>
+          <p>
+            <strong>Non-uniform.</strong> Instead of a coin every tick, decide once which cells follow ψ and
+            freeze that allocation. The <em>share on ψ</em> slider does it at random; a click on a column hands
+            that column over, and the columns on ψ are tinted blue. The share is the degree of non-uniformity
+            ν. The extreme case is one cell that does something different, and the <em>clamp</em> button makes
+            the middle cell never change at all. That single stuck cell is the seed of the last chapter, where
+            clamping one node tells us how much that node matters.
+          </p>
+          <p>
+            <strong>Extended neighbourhood.</strong> Set the <em>radius</em> to 2 and each cell sees five cells
+            instead of three, which makes 2<sup>32</sup>, over four billion, rules; the table is gone because it
+            no longer fits on a page. Push this further and the neighbourhood need not be the cells next door
+            at all, but whatever a cell is wired to. Then the row is a network, the rule has to treat all
+            neighbours alike because they no longer come in an order, and you have a network automaton, which
+            is what the rest of the thesis is about.
+          </p>
+          <p>
+            <strong>Multi-state.</strong> Set <em>states</em> to 3 and the rule space explodes to 3<sup>27</sup>, so
+            the figure keeps only the rules that look at the neighbourhood total, 3<sup>7</sup> = 2187 of them.
+            Three states drawn in grey, black and blank. A two-rule non-uniform automaton, by the way, is
+            secretly a four-state uniform one, which is one of the identities the review draws between the
+            families.
+          </p>
+          <p>
+            One number in the readout is worth knowing: λ, Langton's parameter, the share of the eight cases
+            that give a 1. It is the simplest example of a <em>genotype</em>, something read off the rule table
+            without running anything, and the thesis keeps asking how far such numbers predict
+            the <em>phenotype</em>, the picture the rule actually draws.
+          </p>
+          <p>
+            Things to try. Rule 30 with the boundary set to fixed and the edge cells at 0, from a single seed,
+            then the same with adiabatic edges. Rule 110 at synchrony 0.95. Rule 90 with ψ = 150 at P(φ) = 0.5.
+            Rule 30 with a third of the columns on ψ = 204. And the random rule button at radius 2, a few times.
+          </p>
+          <p class="meta status-line">
+            Ch. 2 condenses <a href={link('ca-taxonomy')}>{pub('ca-taxonomy').title}</a>, {pub('ca-taxonomy').venue} ({pub('ca-taxonomy').year}), with Kallil Zielinski, Aisling Daly, Odemir Bruno and Jan Baetens.
+          </p>
+        </div>
+      </section>
+
+      {tabs.filter((t) => !built.has(t.id)).map((t) => (
         <section role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden>
           <div class="measure">
             <h2>{t.name}</h2>

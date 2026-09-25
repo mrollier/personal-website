@@ -54,6 +54,34 @@ export function loop(el: HTMLElement, tick: (t: number, dt: number) => void): Lo
   return api;
 }
 
+export type Stepper = { loop: Loop; step(): void; reset(): void; undo(): void; keymap: Record<string, () => void> };
+
+/** Play, step, undo and reset for a figure that advances in ticks: the model clock runs at the speed
+ * slider's rate (2000 / 2^(v/10) ms per tick), at most 16 ticks per frame, and stops when `advance`
+ * returns true. `paint` runs once per frame that moved. The keymap matches the other figures. */
+export function stepper(el: HTMLElement, o: {
+  advance(): boolean | void; paint(): void; reset(): void; undo?(): void;
+  play: HTMLButtonElement; speed?: HTMLInputElement; onstop?(): void;
+}): Stepper {
+  let ms = 120, acc = 0;
+  const lp = loop(el, (_, dt) => {
+    acc += dt * 1000;
+    let k = 0, stop = false;
+    while (acc >= ms && k < 16) { acc -= ms; k++; if (o.advance()) { stop = true; break; } }
+    if (k === 16) acc = 0;
+    if (k) o.paint();
+    if (stop) lp.play(false);
+  });
+  lp.onchange = (on) => { o.play.textContent = on ? 'pause' : 'play'; o.play.setAttribute('aria-pressed', String(on)); if (on) acc = 0; else o.onstop?.(); };
+  const speed = () => { ms = 2000 / 2 ** (+(o.speed?.value ?? 40) / 10); };
+  o.speed?.addEventListener('input', speed); speed();
+  o.play.addEventListener('click', () => lp.play());
+  const step = () => { lp.play(false); o.advance(); o.paint(); };
+  const reset = () => { lp.play(false); o.reset(); o.paint(); };
+  const undo = () => { if (!o.undo) return; lp.play(false); o.undo(); o.paint(); };
+  return { loop: lp, step, reset, undo, keymap: { ' ': () => lp.play(), ArrowRight: step, PageDown: step, n: step, ArrowLeft: undo, PageUp: undo, r: reset } };
+}
+
 /** Many input events, one repaint per frame. */
 export function schedule(paint: () => void): () => void {
   let pending = false;

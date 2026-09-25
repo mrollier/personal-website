@@ -1,0 +1,117 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+const pubs = await getCollection('publications');
+const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
+// One tab per chapter of the thesis plus the cover; the hash picks the tab, so a chapter can be linked.
+const tabs = [
+  { id: 'roadmap', n: '1', name: 'Roadmap' },
+  { id: 'families', n: '2', name: 'Families' },
+  { id: 'networks', n: '3', name: 'Networks' },
+  { id: 'defects', n: '4', name: 'Defects' },
+  { id: 'two-numbers', n: '5', name: 'Two numbers' },
+  { id: 'synchronisation', n: '6', name: 'Synchronisation' },
+  { id: 'cnn', n: '7', name: 'CA as CNN' },
+  { id: 'cheating', n: '8', name: 'Cheating CNN' },
+  { id: 'jaggedness', n: '9', name: 'Jaggedness' },
+  { id: 'impact', n: '10', name: 'Impact' },
+  { id: 'answers', n: '11', name: 'Answers' },
+  { id: 'cover', n: '', name: 'Cover' },
+];
+---
+<Base title="The thesis, chapter by chapter" description="My PhD thesis on cellular automata and network automata as twelve interactive demos: one tab per chapter, each with the idea in plain words and a live simulation to play with." wide>
+  <div class="measure">
+    <h1>The thesis, chapter by chapter</h1>
+    <p>
+      My PhD thesis is called <em>The rich landscape of iterated simplicity: cellular automata and
+      network automata</em>. The whole of it turns on one observation. Take a row, a grid or a network of
+      cells, each on or off. Give every cell the same small rule about what to do next, based only on its
+      neighbours. Apply the rule to all cells at once, over and over. What comes out is anything from
+      dead calm to noise, with fractals, gliders, synchronised flashing and majority votes in between. The
+      thesis asks how much of that landscape can be read off the rule before running it, how the wiring
+      changes the answer, and what the whole thing has to do with neural networks.
+    </p>
+    <p>
+      Each tab below is one chapter, told in plain words with a figure you can play with. The figures
+      run in your browser, on a small scale; where the thesis needed a cluster, the number it found is
+      quoted next to the live version. The thesis was a joint degree of Ghent University and the
+      University of São Paulo, supervised by Jan Baetens and Odemir Bruno, with Aisling Daly as
+      co-supervisor. The papers behind the chapters are on the <a href="/research/">research page</a>; a
+      gentler first walk through cellular automata is the <a href="/demos/cellular-automata/">other demo</a>.
+    </p>
+  </div>
+
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Chapters">
+      <ul role="tablist" aria-orientation="vertical">
+        {tabs.map((t, i) => <li><a role="tab" id={`tab-${t.id}`} href={`#${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.n && <small>{t.n}</small>}{t.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="panels">
+
+      {tabs.map((t, i) => (
+        <section role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden={i !== 0}>
+          <div class="measure">
+            <h2>{t.name}</h2>
+            <p class="meta">This chapter's demo is on its way.</p>
+          </div>
+        </section>
+      ))}
+
+    </div>
+  </div>
+</Base>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs small { display: inline-block; width: 1.5em; font-family: var(--mono); font-size: 0.75em; color: var(--muted); }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .panels { min-width: 0; }
+  [role="tabpanel"]:focus { outline: none; }
+  [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
+  .formula { font-family: var(--mono); font-size: 0.9rem; padding: 0.5rem 0.8rem; border-left: 2px solid var(--line); }
+  .status-line { margin-top: 2rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs small { width: auto; margin-right: 0.3em; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>
+
+<script>
+  // The hash picks the tab: a tab's own id, or the id of anything inside a tab. Arrow keys walk the list.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+  const box = document.querySelector<HTMLElement>('.tabbed')!;
+
+  function show(id: string, scroll: boolean) {
+    let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+    if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+    if (i < 0) i = 0;
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+    // an anchor inside a tab scrolls to it; a tab change only scrolls back up when the reader was deep in the previous one
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+  }
+  const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  document.querySelector('[role="tablist"]')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+  });
+</script>

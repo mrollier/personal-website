@@ -19,7 +19,10 @@ import NuCaPainter from '../../components/NuCaPainter.astro';
 import MessagePass from '../../components/MessagePass.astro';
 import TableHunt from '../../components/TableHunt.astro';
 import LpExamples from '../../components/LpExamples.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'cnn', 'cheating', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
+import TwinEca from '../../components/TwinEca.astro';
+import Spectra from '../../components/Spectra.astro';
+import NetSpectrum from '../../components/NetSpectrum.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'defects', 'two-numbers', 'synchronisation', 'cnn', 'cheating', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -316,6 +319,99 @@ const tabs = [
           <p class="meta status-line">
             Ch. 3 is background; it introduces the networks and the measures the later chapters use. The
             thesis generated them with igraph; the figure regenerates them in the browser at a smaller size.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="defects" aria-labelledby="tab-defects" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Defects</h2>
+          <p>
+            Take a rule, a random row of cells, and a copy of that row with one cell flipped. Run both. The
+            cells where the two runs disagree form the <em>difference pattern</em>, the red picture below, and
+            how fast it grows is the natural measure of how sensitive a rule is. For a smooth system one would
+            write down a derivative and get a Lyapunov exponent. Here the smallest change is a whole cell, but a
+            derivative exists all the same: flip cell j, does cell i change next tick? Yes or no. That is the
+            <em>Boolean Jacobian</em>, a 0-1 matrix that depends on the current configuration, and it predicts the
+            difference pattern exactly for one tick. After that it generally fails, and it fails at once, not
+            gradually: a rule's response to two flips is not the sum of its responses to each, and there is no
+            small parameter to make the error small.
+          </p>
+          <p>
+            There is a second object, and telling the two apart is the chapter's first job. Multiply the
+            Jacobians along the run, over the integers rather than modulo 2, and the entries count the
+            <em>branching walks</em> along which influence can travel from the flipped cell to each cell at each
+            tick. Those counts can grow without bound, as 2<sup>t</sup> or 3<sup>t</sup>, and their growth rate
+            is what the Lyapunov spectrum of a discrete system actually measures. The difference pattern is the
+            same matrix applied in a different arithmetic: over the integers two walks arriving at one cell add,
+            over the binary field they cancel. In general neither determines the other. For exactly sixteen rules,
+            the <em>affine</em> ones, whose rule is a sum of some of the three inputs modulo 2, the difference
+            pattern is the parity of the walk counts at every tick, which is also why rules 90 and 150 draw the
+            Sierpiński triangle: their walk counts are binomial and trinomial coefficients. The figure runs the
+            twins, counts the walks on a logarithmic colour scale, and reports the first tick at which parity and
+            pattern part company.
+          </p>
+        </div>
+        <TwinEca />
+        <div class="measure">
+          <p>
+            For those sixteen rules everything can be written down. The Jacobian is constant, it is a circulant
+            matrix on a ring, and the spectrum of a circulant matrix is a discrete Fourier transform: the
+            singular values are σ<sub>k</sub> = |a∘ + (a₊ + a₋) cos θ + i (a₊ − a₋) sin θ| with θ = 2πk/N, and the
+            Lyapunov exponents are their logarithms, no simulation and no limit involved. The largest is always
+            the logarithm of the number of inputs the rule is sensitive to: ln 2 for rule 90, ln 3 for rule 150,
+            the largest of any elementary rule. The same holds on a torus in any dimension, so the parity rule
+            with four neighbours and yourself reaches ln 5, with eight ln 9, with twelve ln 13, and it holds for
+            the parity rule on any network whatsoever, where the Jacobian is the adjacency matrix itself, plus
+            the identity if a node counts itself. There the Lyapunov spectrum is, up to a logarithm and an
+            absolute value, the spectrum of the graph, and the chaos of the rule is a property of the wiring. A
+            consequence you can watch: under a rule like this any pattern reappears at t = 2, 4, 8, 16 as one
+            copy per sensitive input, shifted by that many cells, because at a power of two every walk count but
+            those is even.
+          </p>
+        </div>
+        <Spectra />
+        <div class="measure">
+          <p>
+            The network version below computes the eigenvalues of the adjacency matrix of a network you choose
+            and turns them into the spectrum. Since the largest eigenvalue of a connected graph is at least its
+            mean degree, the maximal exponent is positive on any connected network with more than one link per
+            node: in the walk-counting sense the parity rule is sensitive everywhere. Beside it the rule runs
+            twice from starts one node apart, and the red count of differing nodes shows what the spectrum does
+            not: it is bounded by the number of nodes, it saturates, and on a finite network it eventually cycles.
+            Exponential growth lives in the walk counts only.
+          </p>
+        </div>
+        <NetSpectrum />
+        <div class="measure">
+          <p>
+            For any rule that is not affine the spectrum has to be estimated, and the estimator is Benettin's:
+            carry an orthonormal frame along the run, multiply it by each Jacobian, re-orthonormalise, and average
+            the logarithms of the stretch factors after a burn-in. The exact spectra are what made the estimator
+            auditable, and the audit found something: the spectra of rules 60, 90 and 150 published in an earlier
+            paper had been computed by multiplying the matrices directly, which overflows and loses every
+            direction but the fastest, so their largest exponents were off and their lower tails missing. The
+            chapter recomputed all twelve rules from that paper with a burn-in and the affine ones came out at
+            exactly ln 2, ln 2 and ln 3. The button on the first figure runs the estimator on a ring of 48 in the
+            background and, for an affine rule, prints its error against the closed form.
+          </p>
+          <p>
+            What the chapter is careful not to claim is that any of this predicts the red picture. Across all 88
+            distinct elementary rules the sign of the maximal exponent is informative, since a rule with exponent
+            −∞ leaves no lasting damage, but its size is not: the affine rules have the largest exponents and
+            among the sparsest difference patterns. The spectrum is an exact, basis-free account of the roads
+            along which influence can travel through a rule and a wiring; how much traffic uses them is another
+            matter, and the next chapter measures that by simulation.
+          </p>
+          <p>
+            Things to try. Rule 30 in the twin figure and watch parity and pattern part at tick 2 or 3; then a
+            random affine rule and watch them never part. Rule 150 with 99 cells: a multiple of 3, so some
+            exponents are −∞. In the torus figure, count yourself off and play: four copies instead of five. In
+            the network figure, the ring at rewiring 0 with degree 6, then at 1, then preferential attachment at
+            α = 3 and look at where the top exponent lands relative to the mean degree.
+          </p>
+          <p class="meta status-line">
+            Ch. 4 is {pub('lyapunov-spectra').title}, with Jan Baetens, in its second review round at Chaos, Solitons &amp; Fractals; code at <a href={pub('lyapunov-spectra').url}>GitHub</a>.
           </p>
         </div>
       </section>

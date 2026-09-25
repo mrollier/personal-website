@@ -1,0 +1,171 @@
+---
+// The closed-form spectra of Ch. 4. On a ring: toggle which of the three inputs the affine rule is sensitive
+// to and read the exact σ_k curve and the histogram of Λ_k = ln σ_k for any N, no simulation. On a torus:
+// the σ_{k,l} field of the parity rule for the von Neumann, Moore and range-two neighbourhoods as a heatmap,
+// its spectrum, and the parity rule running on a small pattern so the copies at t = 2^m can be seen.
+// Self-contained with src/scripts/lyapunov.ts, grid.ts, raster.ts, palette.ts, figure.ts.
+---
+<figure class="fig" id="spec" data-spectra tabindex="-1">
+  <canvas role="img" aria-label="Exact Lyapunov spectra of affine rules on a ring and of parity rules on a torus"></canvas>
+  <div class="controls" role="group" aria-label="Setting">
+    <button name="ring" type="button" aria-pressed="true">ring</button>
+    <button name="torus" type="button" aria-pressed="false">torus</button>
+    <span data-ring>
+      <button name="am" type="button" aria-pressed="true">left a₋</button>
+      <button name="ac" type="button" aria-pressed="false">own a∘</button>
+      <button name="ap" type="button" aria-pressed="true">right a₊</button>
+      <label>cells N <input name="n" type="number" min="8" max="1000" value="101" inputmode="numeric" /></label>
+    </span>
+    <span data-torus hidden>
+      <button name="vn" type="button" aria-pressed="true">4 neighbours</button>
+      <button name="moore" type="button" aria-pressed="false">8</button>
+      <button name="vn2" type="button" aria-pressed="false">12</button>
+      <button name="self" type="button" aria-pressed="true">count yourself</button>
+      <button name="step" type="button">step</button>
+      <button name="play" type="button" aria-pressed="false">play</button>
+      <label>speed <input name="speed" type="range" min="0" max="80" value="20" /></label>
+      <button name="reset" type="button">reset</button>
+      <output name="gen">tick 0</output>
+    </span>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(360px, 54vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 8rem; accent-color: var(--accent); margin: 0; }
+  [name="gen"] { min-width: 6em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { affineSpectrum1d, affineSpectrum2d, HOOD_SIZE, type Hood2d } from '../scripts/lyapunov';
+  import { stepGrid, seedGrid } from '../scripts/grid';
+  import { histogram } from '../scripts/stats';
+  import { Raster } from '../scripts/raster';
+  import { parse, ramp } from '../scripts/palette';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  const RULE_OF: Record<string, number> = { '000': 0, '100': 240, '010': 204, '001': 170, '110': 60, '101': 90, '011': 102, '111': 150 };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ringBox = el.querySelector<HTMLElement>('[data-ring]')!, torusBox = el.querySelector<HTMLElement>('[data-torus]')!, nIn = $<HTMLInputElement>('n'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const url = urlState('spec', { mode: 'ring', a: '101', n: '101', hood: 'vn', self: '1' });
+    let mode: 'ring' | 'torus' = url.get('mode') === 'torus' ? 'torus' : 'ring', a = /^[01]{3}$/.test(url.get('a')) ? url.get('a') : '101', N = Math.min(1000, Math.max(8, Math.round(+url.get('n')) || 101));
+    let hood: Hood2d = ['vn', 'moore', 'vn2'].includes(url.get('hood')) ? (url.get('hood') as Hood2d) : 'vn', self = url.get('self') !== '0';
+    const L = 64, heat = new Raster(L, L), gridRaster = new Raster(L, L);
+    let grid = seedGrid(L, L, 'smiley'), tick = 0;
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      if (mode === 'ring') ring(t, w, h, pad); else torus(t, w, h, pad);
+    }
+    function ring(t: ReturnType<typeof tokens>, w: number, h: number, pad: number) {
+      const rule = RULE_OF[a], spec = affineSpectrum1d(rule, N), am = +a[0], ac = +a[1], ap = +a[2], sum = am + ac + ap;
+      const wide = w >= 640, lb: Box = wide ? { x: pad + 34, y: pad + 20, w: w * 0.55 - pad - 40, h: h - 2 * pad - 40 } : { x: pad + 34, y: pad + 20, w: w - 2 * pad - 40, h: (h - 3 * pad - 40) / 2 };
+      const rb: Box = wide ? { x: w * 0.55 + pad + 34, y: pad + 20, w: w * 0.45 - 2 * pad - 40, h: h - 2 * pad - 40 } : { x: pad + 34, y: lb.y + lb.h + 34, w: w - 2 * pad - 40, h: (h - 3 * pad - 40) / 2 - 14 };
+      // σ_k against k/N
+      const smax = Math.max(1, sum), X = (v: number) => lb.x + v * lb.w, Y = (v: number) => lb.y + (1 - v / smax) * lb.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(lb.x + 0.5, lb.y + 0.5, lb.w, lb.h);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(lb.x, Y(1) + 0.5); ctx.lineTo(lb.x + lb.w, Y(1) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath();
+      for (let k = 0; k <= N; k++) { const th = (2 * Math.PI * k) / N, s = Math.hypot(ac + (ap + am) * Math.cos(th), (ap - am) * Math.sin(th)); k ? ctx.lineTo(X(k / N), Y(s)) : ctx.moveTo(X(k / N), Y(s)); }
+      ctx.stroke();
+      label(ctx, `singular values σ_k of the constant Jacobian, k/N from 0 to 1`, lb.x, lb.y - 6, t, { color: t.ink });
+      label(ctx, '1', lb.x - 4, Y(1) + 4, t, { align: 'right', size: 10 }); label(ctx, String(smax), lb.x - 4, lb.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', lb.x - 4, lb.y + lb.h, t, { align: 'right', size: 10 });
+      // histogram of Λ_k
+      const finite = Array.from(spec).filter((v) => v > -Infinity), minus = N - finite.length;
+      label(ctx, `Lyapunov spectrum Λ_k = ln σ_k, ${N} values${minus ? `, ${minus} at −∞` : ''}`, rb.x, rb.y - 6, t, { color: t.ink });
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(rb.x + 0.5, rb.y + 0.5, rb.w, rb.h);
+      if (finite.length) {
+        const lo = Math.min(-2, ...finite), hi = Math.max(0.2, ...finite), hg = histogram(finite, 30, lo, hi), m = Math.max(1, ...Array.from(hg.counts)), bw = rb.w / 30;
+        ctx.fillStyle = t.ink;
+        for (let i = 0; i < 30; i++) { const hh = (hg.counts[i] / m) * (rb.h - 8); ctx.fillRect(rb.x + i * bw + 0.5, rb.y + rb.h - hh, Math.max(1, bw - 1), hh); }
+        const xz = rb.x + ((0 - lo) / (hi - lo)) * rb.w; ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(xz, rb.y); ctx.lineTo(xz, rb.y + rb.h); ctx.stroke(); ctx.setLineDash([]);
+        label(ctx, lo.toFixed(1), rb.x, rb.y + rb.h + 12, t, { size: 10 }); label(ctx, '0', xz, rb.y + rb.h + 12, t, { size: 10, align: 'center' }); label(ctx, hi.toFixed(1), rb.x + rb.w, rb.y + rb.h + 12, t, { size: 10, align: 'right' });
+      } else label(ctx, 'every exponent is −∞: a defect vanishes at once', rb.x + rb.w / 2, rb.y + rb.h / 2, t, { align: 'center' });
+      status.value = `rule ${rule}: next = ${[am ? 'left' : '', ac ? 'own' : '', ap ? 'right' : ''].filter(Boolean).join(' ⊕ ') || '0'} · ${sum} sensitive input${sum === 1 ? '' : 's'} · maximal exponent ln ${sum} = ${sum ? Math.log(sum).toFixed(3) : '−∞'}${sum === 3 && N % 3 === 0 ? ' · N is a multiple of 3, so some σ_k vanish' : ''} · no simulation involved`;
+      c.setAttribute('aria-label', status.value);
+    }
+    function torus(t: ReturnType<typeof tokens>, w: number, h: number, pad: number) {
+      const { sigma, spectrum, max } = affineSpectrum2d(hood, self, L), ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent), bg = parse(t.bg);
+      const wide = w >= 700, side = wide ? Math.min((w - 4 * pad) / 3, h - 2 * pad - 40) : Math.min((w - 3 * pad) / 2, (h - 3 * pad - 60) / 2);
+      const b1: Box = { x: pad, y: pad + 16, w: side, h: side }, b2: Box = wide ? { x: 2 * pad + side, y: pad + 16, w: side, h: side } : { x: 2 * pad + side, y: pad + 16, w: side, h: side }, b3: Box = wide ? { x: 3 * pad + 2 * side, y: pad + 16, w: side, h: side } : { x: pad, y: b1.y + side + 40, w: w - 2 * pad, h: h - b1.y - side - 40 - pad - 20 };
+      const smax = HOOD_SIZE[hood] + (self ? 1 : 0), r3 = ramp([panel, acc, ink]);
+      for (let k = 0; k < L; k++) for (let l = 0; l < L; l++) heat.set(((k + L / 2) % L) * L + ((l + L / 2) % L), r3(sigma[k * L + l] / smax)); // centre the zero wavenumber
+      heat.flush(); heat.blit(ctx, b1, true); ctx.strokeStyle = t.line; ctx.strokeRect(b1.x + 0.5, b1.y + 0.5, b1.w - 1, b1.h - 1);
+      label(ctx, `σ_{k,l} = |a∘ + K(k,l)| over the wavenumbers, 0 in the centre`, b1.x, b1.y - 4, t, { size: 10, color: t.ink });
+      // the pattern
+      for (let i = 0; i < L * L; i++) gridRaster.set(i, grid[i] ? ink : bg);
+      gridRaster.flush(); gridRaster.blit(ctx, b2); ctx.strokeStyle = t.line; ctx.strokeRect(b2.x + 0.5, b2.y + 0.5, b2.w - 1, b2.h - 1);
+      const pow = tick > 0 && (tick & (tick - 1)) === 0;
+      label(ctx, `the parity rule on a ${L} × ${L} torus, tick ${tick}${pow ? `: ${smax} copies` : ''}`, b2.x, b2.y - 4, t, { size: 10, color: pow ? t.accent : t.ink });
+      // spectrum histogram
+      const finite = Array.from(spectrum).filter((v) => v > -Infinity), lo = Math.min(-2, ...finite), hi = Math.max(max, 0.2), hg = histogram(finite, 30, lo, hi), m = Math.max(1, ...Array.from(hg.counts)), bw = b3.w / 30;
+      ctx.strokeStyle = t.line; ctx.strokeRect(b3.x + 0.5, b3.y + 0.5, b3.w, b3.h);
+      ctx.fillStyle = t.ink; for (let i = 0; i < 30; i++) { const hh = (hg.counts[i] / m) * (b3.h - 8); ctx.fillRect(b3.x + i * bw + 0.5, b3.y + b3.h - hh, Math.max(1, bw - 1), hh); }
+      const xm = b3.x + ((max - lo) / (hi - lo)) * b3.w; ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xm, b3.y); ctx.lineTo(xm, b3.y + b3.h); ctx.stroke(); ctx.lineWidth = 1;
+      label(ctx, `spectrum, ${L * L} exponents; blue: the maximum ln ${smax} = ${max.toFixed(3)}`, b3.x, b3.y - 4, t, { size: 10, color: t.ink });
+      label(ctx, lo.toFixed(1), b3.x, b3.y + b3.h + 12, t, { size: 10 }); label(ctx, hi.toFixed(1), b3.x + b3.w, b3.y + b3.h + 12, t, { size: 10, align: 'right' });
+      gen.value = `tick ${tick}`;
+      status.value = `${HOOD_SIZE[hood]} neighbours${self ? ' and the cell itself' : ''}: ${smax} sensitive inputs, so the maximal exponent is ln ${smax} · at t = 2, 4, 8, 16, … the pattern reappears as ${smax} copies, one per sensitive input`;
+      c.setAttribute('aria-label', status.value);
+    }
+    const advance = () => { grid = stepGrid(grid, L, L, hood, self); tick++; };
+    const st = stepper(el, { advance, paint, reset: () => { grid = seedGrid(L, L, 'smiley'); tick = 0; }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    function show() {
+      $('ring').setAttribute('aria-pressed', String(mode === 'ring')); $('torus').setAttribute('aria-pressed', String(mode === 'torus')); ringBox.hidden = mode !== 'ring'; torusBox.hidden = mode !== 'torus';
+      $('am').setAttribute('aria-pressed', a[0]); $('ac').setAttribute('aria-pressed', a[1]); $('ap').setAttribute('aria-pressed', a[2]); nIn.value = String(N);
+      for (const hd of ['vn', 'moore', 'vn2'] as const) $(hd).setAttribute('aria-pressed', String(hood === hd)); $('self').setAttribute('aria-pressed', String(self));
+    }
+    function sync() { url.set('mode', mode); url.set('a', a); url.set('n', String(N)); url.set('hood', hood); url.set('self', self ? '1' : '0'); }
+    const apply = () => { show(); sync(); paint(); };
+    $('ring').addEventListener('click', () => { mode = 'ring'; st.loop.play(false); apply(); });
+    $('torus').addEventListener('click', () => { mode = 'torus'; apply(); });
+    $('am').addEventListener('click', () => { a = (a[0] === '1' ? '0' : '1') + a.slice(1); apply(); });
+    $('ac').addEventListener('click', () => { a = a[0] + (a[1] === '1' ? '0' : '1') + a[2]; apply(); });
+    $('ap').addEventListener('click', () => { a = a.slice(0, 2) + (a[2] === '1' ? '0' : '1'); apply(); });
+    nIn.addEventListener('change', () => { N = Math.min(1000, Math.max(8, Math.round(+nIn.value) || 101)); apply(); });
+    for (const hd of ['vn', 'moore', 'vn2'] as const) $(hd).addEventListener('click', () => { hood = hd; st.reset(); apply(); });
+    $('self').addEventListener('click', () => { self = !self; st.reset(); apply(); });
+    $('step').addEventListener('click', st.step); $('reset').addEventListener('click', st.reset);
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-spectra]').forEach(mount);
+</script>

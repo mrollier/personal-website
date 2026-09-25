@@ -9,4 +9,6 @@ import './check-sync.ts';
 import './check-consensus.ts';
 import './check-tep.ts';
 import './check-cnn.ts';
+import './check-linalg.ts';
+import './check-lyapunov.ts';
 console.log('all checks passed');

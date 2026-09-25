@@ -1,0 +1,157 @@
+---
+// The parity rule on a network (Ch. 4): its Lyapunov spectrum is the graph's own spectrum, Λ_k = ln|λ_k + a∘|.
+// The eigenvalues are computed in the worker for a network of up to 300 nodes and shown as a histogram with the
+// maximal exponent ln(λ_max + a∘) marked; beside it the parity rule runs twice from starts that differ in one
+// node, with the Boolean difference in red, to show how loosely the two are related. Self-contained with
+// src/scripts/lyapunov.ts, family.ts, net.ts, jobs.ts, stats.ts, figure.ts.
+import { FAMS, FAM_NAME } from '../scripts/family';
+type Props = { kind?: 'ws' | 'lat' | 'npa' };
+const { kind = 'ws' } = Astro.props;
+---
+<figure class="fig" id="nsp" data-netspectrum data-kind={kind} tabindex="-1">
+  <canvas role="img" aria-label="A network running the parity rule with its difference pattern, and the histogram of its Lyapunov spectrum"></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    {FAMS.map((f) => <button name={f} type="button" aria-pressed={f === kind}>{FAM_NAME[f]}</button>)}
+    <label><span data-plabel>rewiring p</span> <input name="param" type="range" min="0" max="1" step="0.05" value="0.1" /> <output name="pv"></output></label>
+    <label><span data-klabel>degree</span> <select name="k"></select></label>
+    <label>nodes <input name="n" type="number" min="20" max="300" value="200" inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+    <button name="self" type="button" aria-pressed="false">count yourself</button>
+  </div>
+  <div class="controls" role="group" aria-label="Run">
+    <button name="spectrum" type="button">compute the spectrum</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(400px, 60vh, 640px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  [name="gen"] { min-width: 6em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, fixSize, specOf, type Fam } from '../scripts/family';
+  import { networkParitySpectrum, type SpectrumResult } from '../scripts/lyapunov';
+  import { buildNet, stepNet, latticeLink, makeRng, type Net } from '../scripts/net';
+  import { histogram } from '../scripts/stats';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const famBtns = Object.fromEntries(FAMS.map((f) => [f, $<HTMLButtonElement>(f)])) as Record<Fam, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!, kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, nIn = $<HTMLInputElement>('n');
+    const selfBtn = $<HTMLButtonElement>('self'), specBtn = $<HTMLButtonElement>('spectrum'), prog = $<HTMLProgressElement>('prog'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const url = urlState('nsp', { kind: el.dataset.kind!, p: '', k: '6', n: '200', self: '0', seed: '1' }), isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
+    const jobs = new Jobs();
+    let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'ws', param = fixParam(kind, url.get('p') === '' ? (kind === 'npa' ? 1 : 0.1) : +url.get('p')), k = fixDegree(kind, +url.get('k'));
+    let n = fixSize(kind, +url.get('n'), 300), self = url.get('self') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let net: Net = buildNet(specOf(kind, n, k, param), seed), a = new Uint8Array(n), b = new Uint8Array(n), dT: number[] = [], tick = 0, spec: SpectrumResult | null = null;
+
+    function start() { const rnd = makeRng(seed * 19 + 3); a = new Uint8Array(net.n); for (let i = 0; i < net.n; i++) a[i] = rnd() < 0.5 ? 1 : 0; b = a.slice(); b[net.order[0]] ^= 1; dT = [1]; tick = 0; }
+    const advance = () => { a = stepNet(a, net, self); b = stepNet(b, net, self); let m = 0; for (let i = 0; i < net.n; i++) m += a[i] ^ b[i]; dT.push(m); tick++; if (dT.length > 400) dT.shift(); };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680, cap = 16;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - cap, w * 0.5) : Math.min(w - 2 * pad, h * 0.5);
+      const nb: Box = { x: wide ? pad : (w - side) / 2, y: pad, w: side, h: side };
+      const col: Box = wide ? { x: nb.x + side + pad + 34, y: pad + 20, w: w - side - 3 * pad - 40, h: h - 2 * pad - 40 } : { x: pad + 34, y: nb.y + side + cap + pad + 16, w: w - 2 * pad - 40, h: h - side - cap - 3 * pad - 40 };
+      const X = (i: number) => nb.x + net.xy[2 * i] * nb.w, Y = (i: number) => nb.y + net.xy[2 * i + 1] * nb.h;
+      ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath(); for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); } ctx.stroke();
+      const rad = kind === 'lat' ? Math.min(7, (0.36 * nb.w) / net.side!) : Math.max(2, Math.min(6, (0.45 * nb.w) / Math.sqrt(net.n)));
+      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < net.n; i++) { if (a[i] !== pass) continue; ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI); if (a[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); } }
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < net.n; i++) if (a[i] !== b[i]) { ctx.moveTo(X(i) + rad + 2, Y(i)); ctx.arc(X(i), Y(i), rad + 2, 0, 2 * Math.PI); } ctx.stroke();
+      label(ctx, `${FAM_NAME[kind]} · ${net.n} nodes · parity rule${self ? ', counting yourself' : ''} · red: where the twin run differs`, nb.x + 2, nb.y + nb.h + 13, t);
+      // right column: difference count trace on top, spectrum histogram below
+      const tb: Box = { x: col.x, y: col.y, w: col.w, h: Math.max(60, col.h * 0.3) }, hb: Box = { x: col.x, y: tb.y + tb.h + 44, w: col.w, h: col.h - tb.h - 66 };
+      const Tn = Math.max(40, dT.length - 1);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(tb.x + 0.5, tb.y + 0.5, tb.w, tb.h);
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 1.5; ctx.beginPath(); dT.forEach((v, i) => { const x = tb.x + (i / Tn) * tb.w, y = tb.y + (1 - v / net.n) * tb.h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+      label(ctx, `nodes that differ: ${dT[dT.length - 1]} of ${net.n} · bounded, unlike the walk counts`, tb.x, tb.y - 5, t, { color: t.ink });
+      label(ctx, 'all', tb.x - 4, tb.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', tb.x - 4, tb.y + tb.h, t, { align: 'right', size: 10 });
+      ctx.strokeStyle = t.line; ctx.strokeRect(hb.x + 0.5, hb.y + 0.5, hb.w, hb.h);
+      if (spec) {
+        const sp = networkParitySpectrum(spec.eig, self), finite = Array.from(sp).filter((v) => v > -Infinity), lo = Math.min(-2, ...finite), hi = Math.max(sp[0], 0.5), hg = histogram(finite, 30, lo, hi), m = Math.max(1, ...Array.from(hg.counts)), bw = hb.w / 30;
+        ctx.fillStyle = t.ink; for (let i = 0; i < 30; i++) { const hh = (hg.counts[i] / m) * (hb.h - 8); ctx.fillRect(hb.x + i * bw + 0.5, hb.y + hb.h - hh, Math.max(1, bw - 1), hh); }
+        const xm = hb.x + ((sp[0] - lo) / (hi - lo)) * hb.w, xd = hb.x + ((Math.log(spec.meanDegree) - lo) / (hi - lo)) * hb.w;
+        ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xm, hb.y); ctx.lineTo(xm, hb.y + hb.h); ctx.stroke();
+        ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xd, hb.y); ctx.lineTo(xd, hb.y + hb.h); ctx.stroke(); ctx.setLineDash([]);
+        label(ctx, `Λ_k = ln|λ_k + a∘|, ${spec.n} values · blue: max ${sp[0].toFixed(3)} · dotted: ln⟨k⟩`, hb.x, hb.y - 5, t, { color: t.ink, size: 10 });
+        label(ctx, lo.toFixed(1), hb.x, hb.y + hb.h + 12, t, { size: 10 }); label(ctx, hi.toFixed(1), hb.x + hb.w, hb.y + hb.h + 12, t, { size: 10, align: 'right' });
+        status.value = `spectrum from the adjacency eigenvalues: top exponent ${sp[0].toFixed(3)}, ${finite.filter((v) => v > 0).length} of ${spec.n} positive, ${spec.n - finite.length} at −∞ · λ_max = ${spec.eig[spec.n - 1].toFixed(2)}, mean degree ${spec.meanDegree.toFixed(2)}`;
+      } else { label(ctx, 'press "compute the spectrum"', hb.x + hb.w / 2, hb.y + hb.h / 2, t, { align: 'center' }); label(ctx, 'the Lyapunov spectrum of the parity rule, from the graph alone', hb.x, hb.y - 5, t, { color: t.ink }); status.value = `the parity rule: a node's next state is the sum of its neighbours' states${self ? ' and its own' : ''}, modulo 2 · its Jacobian is the adjacency matrix${self ? ' plus the identity' : ''}, so the spectrum needs no simulation`; }
+      gen.value = `tick ${tick}`;
+      c.setAttribute('aria-label', status.value);
+    }
+    function show() {
+      for (const f of FAMS) famBtns[f].setAttribute('aria-pressed', String(f === kind));
+      const P = FAM_PARAM[kind]; plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(param); pv.value = P.fmt(param);
+      klabel.textContent = kind === 'npa' ? 'links per newcomer' : kind === 'lat' ? 'neighbours' : 'degree';
+      kIn.innerHTML = FAM_DEGREES[kind].map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${kind === 'npa' ? x / 2 : x}</option>`).join('');
+      nIn.value = String(n); selfBtn.setAttribute('aria-pressed', String(self));
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('n', String(n)); url.set('self', self ? '1' : '0'); url.set('seed', String(seed)); }
+    const st = stepper(el, { advance, paint, reset: start, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const rebuild = () => { jobs.cancel(); prog.hidden = true; specBtn.disabled = false; spec = null; st.loop.play(false); k = fixDegree(kind, k); param = fixParam(kind, param); n = fixSize(kind, n, 300); net = buildNet(specOf(kind, n, k, param), seed); start(); show(); sync(); paint(); };
+    for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = f === 'npa' ? 1 : 0.1; k = f === 'lat' ? 4 : 6; rebuild(); });
+    paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(); });
+    paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
+    kIn.addEventListener('change', () => { k = +kIn.value; rebuild(); });
+    nIn.addEventListener('change', () => { n = +nIn.value; rebuild(); });
+    $('regen').addEventListener('click', () => { seed++; rebuild(); });
+    selfBtn.addEventListener('click', () => { self = !self; st.loop.play(false); start(); show(); sync(); paint(); });
+    $('step').addEventListener('click', st.step); $('reset').addEventListener('click', st.reset);
+    specBtn.addEventListener('click', async () => {
+      prog.hidden = false; prog.value = 0; specBtn.disabled = true;
+      try { spec = await jobs.run<SpectrumResult>('spectrum', { spec: specOf(kind, n, k, param), seed }, (p) => { prog.value = p; }); }
+      catch (err) { if (!(err instanceof Cancelled)) status.value = `the spectrum failed: ${(err as Error).message}`; }
+      prog.hidden = true; specBtn.disabled = false; paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    start(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-netspectrum]').forEach(mount);
+</script>

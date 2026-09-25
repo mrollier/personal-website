@@ -1,0 +1,155 @@
+---
+// Twin worlds (Ch. 4): the same rule run twice from starts that differ in one cell. Three synced rasters:
+// the spacetime diagram, the Boolean difference pattern, and the walk counts of tangent space on a log
+// colour scale, with the running estimate of the maximal Lyapunov exponent and a badge that says whether
+// the parity of the walk counts still equals the difference pattern, which it does for ever only for the
+// sixteen affine rules. A button estimates the whole spectrum with Benettin's method in the worker.
+// Self-contained with src/scripts/lyapunov.ts, eca.ts, jobs.ts, raster.ts, palette.ts, figure.ts.
+type Props = { rule?: number; n?: number; t?: number };
+const { rule = 90, n = 101, t = 100 } = Astro.props;
+---
+<figure class="fig" id="twin" data-twineca data-rule={rule} data-n={n} data-t={t} tabindex="-1">
+  <canvas role="img" aria-label="Spacetime diagram, difference pattern and walk counts of two runs that differ in one cell"></canvas>
+  <div class="controls" role="group" aria-label="Rule and start">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <button name="random" type="button">random rule</button>
+    <button name="affine" type="button">random affine rule</button>
+    <label>cells <input name="n" type="number" min="31" max="201" value={n} inputmode="numeric" /></label>
+    <label>ticks <input name="t" type="number" min="20" max="200" value={t} inputmode="numeric" /></label>
+    <button name="restart" type="button">new start</button>
+    <output name="flip"></output>
+  </div>
+  <div class="controls" role="group" aria-label="Spectrum">
+    <button name="benettin" type="button">estimate the spectrum on a ring of 48</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(440px, 68vh, 720px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { AFFINE, isAffine, gradient, twinRun, walkCounts, affineSpectrum1d, type Twin, type Walks, type BenettinResult } from '../scripts/lyapunov';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, ramp } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIn = $<HTMLInputElement>('rule'), nIn = $<HTMLInputElement>('n'), tIn = $<HTMLInputElement>('t'), flipOut = $<HTMLOutputElement>('flip'), benBtn = $<HTMLButtonElement>('benettin'), prog = $<HTMLProgressElement>('prog'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('twin', { rule: d.rule!, n: d.n!, t: d.t!, flip: '', seed: '1' });
+    const jobs = new Jobs();
+    let rule = Math.min(255, Math.max(0, Math.round(+url.get('rule')) || 0)), N = Math.min(201, Math.max(31, Math.round(+url.get('n')) || 101)), T = Math.min(200, Math.max(20, Math.round(+url.get('t')) || 100));
+    let flipAt = url.get('flip') === '' ? N >> 1 : Math.min(N - 1, Math.max(0, Math.round(+url.get('flip')))), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let twin!: Twin, walks!: Walks, rasters: Raster[] = [], spectrum: BenettinResult | null = null, partial: Float64Array | null = null, top: Box | null = null;
+
+    function build() { flipAt = Math.min(N - 1, flipAt); twin = twinRun(rule, N, T, flipAt, seed); walks = walkCounts(rule, twin); rasters = [0, 1, 2].map(() => new Raster(N, T + 1)); spectrum = null; partial = null; }
+    const firstDisagreement = () => walks.agree.findIndex((v) => !v);
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, ink = parse(t.ink), bg = parse(t.bg), acc = parse(t.accent), danger = parse(t.danger), panel = parse(t.panel);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const wide = w >= 700, traceH = Math.max(90, h * 0.22), cols = wide ? 3 : 1;
+      const cellW = wide ? (w - pad * 4) / 3 : w - 2 * pad, rasterH = wide ? h - traceH - 3 * pad - 34 : (h - traceH - 5 * pad - 34 * 3) / 3;
+      const boxes: Box[] = [0, 1, 2].map((i) => (wide ? { x: pad + i * (cellW + pad), y: pad + 14, w: cellW, h: rasterH } : { x: pad, y: pad + 14 + i * (rasterH + 34), w: cellW, h: rasterH }));
+      top = boxes[0];
+      // find the largest log count to scale colours
+      let maxLog = 0; for (const row of walks.logs) for (let i = 0; i < N; i++) if (row[i] > maxLog) maxLog = row[i];
+      const ramp3 = ramp([panel, acc, ink]);
+      for (let y = 0; y <= T; y++) for (let x = 0; x < N; x++) {
+        rasters[0].set(y * N + x, twin.a[y][x] ? ink : bg);
+        rasters[1].set(y * N + x, twin.diff[y][x] ? danger : bg);
+        const v = walks.logs[y][x]; rasters[2].set(y * N + x, v === -Infinity ? bg : ramp3(maxLog > 0 ? 0.15 + 0.85 * (v / maxLog) : 1));
+      }
+      rasters.forEach((r, i) => { r.flush(); r.blit(ctx, boxes[i]); ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(boxes[i].x + 0.5, boxes[i].y + 0.5, boxes[i].w - 1, boxes[i].h - 1); });
+      // the flipped cell
+      const cw = boxes[0].w / N; ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.strokeRect(boxes[0].x + flipAt * cw, boxes[0].y - 3, Math.max(2, cw), 5);
+      const names = [`spacetime diagram of rule ${rule}, ${N} cells, ${T} ticks down`, 'difference pattern Δs: cells where the twin differs', `walk counts δs, log colour: up to e^${maxLog.toFixed(1)} ≈ ${maxLog > 80 ? '10^' + Math.round(maxLog / Math.LN10) : Math.round(Math.exp(maxLog)).toLocaleString('en')}`];
+      boxes.forEach((b, i) => label(ctx, names[i], b.x, b.y - 4, t, { size: 10, color: t.ink }));
+      // trace of the running estimate
+      const tb: Box = { x: pad + 34, y: h - pad - traceH + 16, w: w - 2 * pad - 40, h: traceH - 30 };
+      const lo = -0.5, hi = 1.3, Y = (v: number) => tb.y + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * tb.h, X = (i: number) => tb.x + (i / T) * tb.w;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(tb.x + 0.5, tb.y + 0.5, tb.w, tb.h);
+      for (const [v, name] of [[Math.log(2), 'ln 2'], [Math.log(3), 'ln 3'], [0, '0']] as const) { ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(tb.x, Y(v) + 0.5); ctx.lineTo(tb.x + tb.w, Y(v) + 0.5); ctx.stroke(); ctx.setLineDash([]); label(ctx, name, tb.x - 4, Y(v) + 4, t, { align: 'right', size: 10 }); }
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath();
+      let started = false; for (let i = 1; i <= T; i++) { const v = walks.running[i]; if (v === -Infinity) continue; if (!started) { ctx.moveTo(X(i), Y(v)); started = true; } else ctx.lineTo(X(i), Y(v)); }
+      ctx.stroke();
+      const g = gradient(rule), affine = g !== null, dis = firstDisagreement();
+      label(ctx, `running estimate (1/t)·ln‖δsᵗ‖∞ → ${walks.running[T] === -Infinity ? '−∞' : walks.running[T].toFixed(3)}${affine ? ` · exact: ln ${g![0] + g![1] + g![2]} = ${(g![0] + g![1] + g![2] > 0 ? Math.log(g![0] + g![1] + g![2]) : -Infinity).toFixed(3)}` : ''}`, tb.x, tb.y - 5, t, { color: t.ink });
+      label(ctx, `tick 0 … ${T}`, tb.x + tb.w - 4, tb.y + tb.h + 12, t, { align: 'right', size: 10 });
+      const badge = affine ? `rule ${rule} is affine: the parity of the walk counts is the difference pattern at every tick` : dis < 0 ? `rule ${rule} is not affine, yet parity and pattern agreed for all ${T} ticks here` : `rule ${rule} is not affine: parity of the walk counts and the difference pattern part at tick ${dis}`;
+      label(ctx, badge, tb.x, tb.y + tb.h + 24, t, { size: 11, color: affine ? t.accent : t.danger });
+      flipOut.value = `flipped cell ${flipAt} (click the top row to move it)`;
+      let text = badge;
+      if (spectrum || partial) {
+        const sp = spectrum ? spectrum.spectrum : partial!, exact = affine ? affineSpectrum1d(rule, 48) : null;
+        text = `Benettin on a ring of 48, burn-in 200, 400 ticks${spectrum ? '' : ' (running)'}: top exponent ${sp[0].toFixed(3)}${exact ? `, exact ${exact[0].toFixed(3)}` : ''} · ${Array.from(sp).filter((v) => v > 1e-6).length} of 48 positive${exact ? ` · mean absolute error ${(Array.from(sp).reduce((a, v, i) => a + (exact[i] > -Infinity ? Math.abs(v - exact[i]) : 0), 0) / 48).toFixed(3)}` : ''}`;
+      }
+      status.value = text;
+      c.setAttribute('aria-label', `Rule ${rule}, twin runs differing in cell ${flipAt}. ${badge}`);
+    }
+    function show() { ruleIn.value = String(rule); nIn.value = String(N); tIn.value = String(T); }
+    function sync() { url.set('rule', String(rule)); url.set('n', String(N)); url.set('t', String(T)); url.set('flip', String(flipAt)); url.set('seed', String(seed)); }
+    const redo = () => { jobs.cancel(); prog.hidden = true; benBtn.disabled = false; build(); show(); sync(); paint(); };
+    ruleIn.addEventListener('change', () => { rule = Math.min(255, Math.max(0, Math.round(+ruleIn.value) || 0)); redo(); });
+    $('random').addEventListener('click', () => { rule = Math.floor(Math.random() * 256); redo(); });
+    $('affine').addEventListener('click', () => { const pool = AFFINE.filter((r) => r !== rule && r !== 0 && r !== 255); rule = pool[Math.floor(Math.random() * pool.length)]; redo(); });
+    nIn.addEventListener('change', () => { N = Math.min(201, Math.max(31, Math.round(+nIn.value) || 101)); flipAt = N >> 1; redo(); });
+    tIn.addEventListener('change', () => { T = Math.min(200, Math.max(20, Math.round(+tIn.value) || 100)); redo(); });
+    $('restart').addEventListener('click', () => { seed++; redo(); });
+    c.addEventListener('click', (e) => {
+      if (!top) return;
+      const b = c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      if (y < top.y - 8 || y > top.y + top.h || x < top.x || x > top.x + top.w) return;
+      flipAt = Math.min(N - 1, Math.max(0, Math.floor(((x - top.x) / top.w) * N))); redo();
+    });
+    benBtn.addEventListener('click', async () => {
+      prog.hidden = false; prog.value = 0; benBtn.disabled = true; spectrum = null; partial = null;
+      try {
+        spectrum = await jobs.run<BenettinResult>('benettin', { rule, N: 48, burn: 200, T: 400, seed }, (p, part) => { prog.value = p; partial = part as Float64Array; paint(); });
+      } catch (err) { if (!(err instanceof Cancelled)) status.value = `the estimate failed: ${(err as Error).message}`; }
+      prog.hidden = true; benBtn.disabled = false; paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    build(); show(); paint();
+    void isAffine;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-twineca]').forEach(mount);
+</script>

@@ -1,0 +1,118 @@
+---
+// One recipe on three substrates, stepping together: rule 110 on a row of cells, the Game of Life on
+// a torus, and the parity rule on a small-world network. Decorative opener for the thesis page; plays
+// itself once visible. Self-contained with src/scripts/eca.ts, life.ts, net.ts, raster.ts, palette.ts and figure.ts.
+---
+<figure class="fig" id="tri" data-triptych tabindex="-1">
+  <canvas role="img" aria-label="Rule 110 on a row of cells, the Game of Life on a grid, and the parity rule on a network, running side by side"></canvas>
+  <div class="controls" role="group" aria-label="Run">
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">new start</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(180px, 34vw, 400px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  [name="gen"] { min-width: 7em; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { step as stepRow, seedRow } from '../scripts/eca';
+  import { stepLife, randomLife } from '../scripts/life';
+  import { buildNet, makeRng, stepNet, type Net } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse } from '../scripts/palette';
+  import { fit, tokens, watch, stepper, fullscreen, keys, label, reducedMotion } from '../scripts/figure';
+
+  document.querySelectorAll<HTMLElement>('[data-triptych]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, gen = $<HTMLOutputElement>('gen');
+    const W = 101, ROWS = 101, L = 64, N = 150, RULE = 110;
+    const rowRaster = new Raster(W, ROWS), gridRaster = new Raster(L, L);
+    let seed = 1, tick = 0, rows: Uint8Array[] = [], grid = new Uint8Array(L * L), scratch = new Uint8Array(L * L);
+    let net: Net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'), s = new Uint8Array(N), started = false;
+
+    function start() {
+      const rnd = makeRng(seed * 31 + 7);
+      tick = 0; rows = [seedRow(W, 'random', rnd)];
+      grid = randomLife(L, L, 0.35, rnd);
+      s = new Uint8Array(N); s[net.order[0]] = 1; // the best-connected node
+    }
+    function advance() {
+      rows.push(stepRow(rows[rows.length - 1], RULE)); if (rows.length > ROWS) rows.shift();
+      stepLife(grid, L, L, scratch); [grid, scratch] = [scratch, grid];
+      s = stepNet(s, net, false);
+      tick++;
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 10, on = parse(t.ink), off = parse(t.panel);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      // three squares across, as large as the box allows, centred
+      const bw = (w - 4 * pad) / 3, side = Math.floor(Math.min(bw, h - 2 * pad - 16)), y0 = Math.floor((h - 16 - side) / 2);
+      const boxes = Array.from({ length: 3 }, (_, i) => ({ x: Math.floor(pad + i * (bw + pad) + (bw - side) / 2), y: y0, w: side, h: side }));
+      // row: history scrolling up, the newest row at the bottom
+      rowRaster.fill(off);
+      for (let i = 0; i < rows.length; i++) rowRaster.setRow(ROWS - rows.length + i, rows[i], on, off);
+      rowRaster.flush(); rowRaster.blit(ctx, boxes[0]);
+      // grid
+      for (let i = 0; i < L * L; i++) gridRaster.set(i, grid[i] ? on : off);
+      gridRaster.flush(); gridRaster.blit(ctx, boxes[1]);
+      // network
+      const b = boxes[2], X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
+      for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      const rad = Math.max(2, Math.min(5, (0.45 * b.w) / Math.sqrt(N)));
+      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < N; i++) {
+        if (s[i] !== pass) continue;
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        if (s[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+      }
+      for (const [k, name] of [[0, `rule 110 · a row of ${W} cells`], [1, `the Game of Life · ${L} × ${L} torus`], [2, `the parity rule · small world of ${N} nodes`]] as const) {
+        ctx.strokeStyle = t.line; ctx.strokeRect(boxes[k].x + 0.5, boxes[k].y + 0.5, boxes[k].w - 1, boxes[k].h - 1);
+        label(ctx, name, boxes[k].x + 2, boxes[k].y + boxes[k].h + 12, t);
+      }
+      gen.value = `tick ${tick}`;
+      if (!started) { started = true; if (!reducedMotion()) st.loop.play(true); }
+    }
+
+    const st = stepper(el, { advance, paint, reset: () => { seed++; net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'); start(); }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    $('step').addEventListener('click', st.step);
+    $('reset').addEventListener('click', st.reset);
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    start(); paint();
+  }
+</script>

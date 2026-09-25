@@ -1,8 +1,28 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Triptych from '../../components/Triptych.astro';
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
+const link = (id: string) => { const p = pub(id); return p.doi ? `https://doi.org/${p.doi}` : p.url; };
+const papers: [string, string, string][] = [
+  ['ca-taxonomy', 'review article', 'families'],
+  ['life-on-graphs', 'research article', 'two-numbers'],
+  ['cnn-classification', 'book chapter', 'cheating'],
+  ['cnn-nonuniform', 'conference paper', 'cnn'],
+  ['lyapunov-spectra', 'under review', 'defects'],
+  ['shape-irregularity', 'under review, second author', 'jaggedness'],
+  ['node-importance', 'in preparation', 'impact'],
+];
+const questions: [string, string, string][] = [
+  ['defects', 'Defects', 'Flip one cell. For which rules can you say exactly where the flip will go, and how does the wiring set how fast it spreads?'],
+  ['two-numbers', 'Two numbers', 'What has to be true for the Game of Life to make sense on a network, and how much do two numbers computed from the rule alone tell you about what it will do?'],
+  ['synchronisation', 'Synchronisation', 'Out of a quarter of a million rules, can you pick the handful that make a whole network flash in step without trying them all, and where does the network let them down?'],
+  ['cnn', 'CA as CNN', 'Can a neural network reproduce a cellular automaton exactly, with no learning at all, and is it any faster?'],
+  ['cheating', 'Cheating CNN', 'When a neural network sorts automata by their behaviour, is it looking at the behaviour or reading the rule off the pixels?'],
+  ['jaggedness', 'Jaggedness', 'What makes a rule good at telling networks apart, and can that steer the search for good rules?'],
+  ['impact', 'Impact', 'If a network is heading for a unanimous vote, how few nodes do you need to nudge to flip the result, and are they the ones the textbooks call central?'],
+];
 // One tab per chapter of the thesis plus the cover; the hash picks the tab, so a chapter can be linked.
 const tabs = [
   { id: 'roadmap', n: '1', name: 'Roadmap' },
@@ -49,8 +69,69 @@ const tabs = [
     </nav>
     <div class="panels">
 
-      {tabs.map((t, i) => (
-        <section role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden={i !== 0}>
+      <section role="tabpanel" id="roadmap" aria-labelledby="tab-roadmap" tabindex="0">
+        <div class="measure">
+          <h2>Roadmap</h2>
+          <p>
+            Two ants meeting is easy to describe; the colony's foraging is not. One neuron is tractable; a brain
+            is not. The rules for elementary particles fit on a page, and out of them come weather, life and
+            thought. Whether that kind of richness can come <em>purely</em> from simple rules applied over and
+            over is an old argument in science, and this thesis adds a piece to it by studying the cleanest
+            cases we have: cellular automata, and their cousins on networks.
+          </p>
+          <p>
+            A <em>cellular automaton</em> is a grid of cells, each in one of a few states, where every cell
+            updates at the same moment by one fixed rule that looks only at its neighbours. Even the smallest
+            version, one row of on-or-off cells looking left and right, draws a remarkable variety of pictures,
+            and Conway's Game of Life on a grid can host gliders, oscillators and, given patience, a computer.
+            Real systems, though, are rarely wired as grids. Cells, people and proteins interact along sparse,
+            uneven networks with hubs and shortcuts. Put the same rule on such a network and you have
+            a <em>network automaton</em>, a much less studied object, and the thesis's home ground.
+          </p>
+        </div>
+        <Triptych />
+        <div class="measure">
+          <p class="meta">
+            One recipe, three substrates: rule 110 on a ring of cells (time runs down), the Game of Life on a
+            torus, and the parity rule on a small-world network, all stepping together. Space plays and pauses
+            once the figure has focus; → steps; f is fullscreen.
+          </p>
+          <h3>Three things the thesis sets out to do</h3>
+          <ol>
+            <li><strong>Get the mathematics in order.</strong> Sort the sprawling literature on cellular automata into a
+              few families, say precisely what a Life-like rule means on a network, and work out by hand what can be
+              worked out by hand. The recurring idea is a <em>genotype</em> and a <em>phenotype</em>: a few numbers read off
+              the rule, and the behaviour the rule produces when run.</li>
+            <li><strong>Separate the wiring from the rule.</strong> The picture an automaton draws depends on the network it
+              lives on and on the rule it follows. Where the two can be told apart, ask exactly how the network's
+              shape changes what the rule does.</li>
+            <li><strong>Use these systems both ways.</strong> As objects to study, and as instruments: a rule run on an unknown
+              network says something about that network. And as a bridge to machine learning, because a cellular
+              automaton is a convolutional neural network with its weights written down by hand, and a network
+              automaton is a message-passing network in the same way.</li>
+          </ol>
+          <h3>One question per chapter</h3>
+          <ul class="questions">
+            {questions.map(([id, name, q]) => <li><a href={`#${id}`}>{name}</a> {q}</li>)}
+          </ul>
+          <p>
+            The two chapters before those, <a href="#families">Families</a> and <a href="#networks">Networks</a>, set up
+            the vocabulary, and <a href="#answers">Answers</a> collects what came out. The <a href="#cover">Cover</a> tab is
+            about the picture on the front.
+          </p>
+          <h3>The papers behind the chapters</h3>
+          <ul class="papers">
+            {papers.map(([id, kind, tab]) => <li>{link(id) ? <a href={link(id)}>{pub(id).title}</a> : pub(id).title}<span class="meta"> · {kind} · <a href={`#${tab}`}>{tabs.find((t) => t.id === tab)!.name}</a></span></li>)}
+          </ul>
+          <p class="meta">
+            Joint PhD of Ghent University (Bioscience Engineering: Mathematical Modelling) and the University of São
+            Paulo (Physics), 2026. Supervisors Jan M. Baetens and Odemir M. Bruno, co-supervisor Aisling J. Daly.
+          </p>
+        </div>
+      </section>
+
+      {tabs.slice(1).map((t) => (
+        <section role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden>
           <div class="measure">
             <h2>{t.name}</h2>
             <p class="meta">This chapter's demo is on its way.</p>
@@ -77,6 +158,9 @@ const tabs = [
   [role="tabpanel"]:focus { outline: none; }
   [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
   .formula { font-family: var(--mono); font-size: 0.9rem; padding: 0.5rem 0.8rem; border-left: 2px solid var(--line); }
+  .questions, .papers { padding-left: 1.2rem; }
+  .questions li, .papers li { margin-bottom: 0.5rem; }
+  .questions a { font-weight: 600; }
   .status-line { margin-top: 2rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
   @media (max-width: 800px) {
     .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }

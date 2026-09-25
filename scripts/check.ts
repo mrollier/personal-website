@@ -4,4 +4,5 @@ import './check-net.ts';
 import './check-life.ts';
 import './check-variants.ts';
 import './check-centrality.ts';
+import './check-genotype.ts';
 console.log('all checks passed');

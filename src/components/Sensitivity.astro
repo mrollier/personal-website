@@ -1,0 +1,207 @@
+---
+// The second of the two numbers of Ch. 5: the Boolean sensitivity of a Life-like rule, split into identity
+// and neighbourhood sensitivity on the rule diagram, the Derrida curve whose slope at the origin it is, and
+// both numbers for every degree, weighted by the degree distribution of a chosen network family.
+// Self-contained with src/scripts/llna.ts, genotype.ts, diagram.ts, net.ts, palette.ts and figure.ts.
+// Props are the defaults; the URL query under `sens.` overrides them. Accepts a rule by `llna:rule` event.
+import { PRESETS, RESOLUTIONS, presetOf } from '../scripts/llna';
+type Props = { r?: number; b?: number; s?: number; k?: number };
+const { r = 9, b = 72, s = 12, k = 8 } = Astro.props;
+---
+<figure class="fig" id="sens" data-sensitivity data-r={r} data-b={b} data-s={s} data-k={k} tabindex="-1">
+  <canvas role="img" aria-label="Rule diagram with its sensitive intervals, the Derrida curve, and Hamming weight and Boolean sensitivity per degree"></canvas>
+  <div class="controls" role="group" aria-label="Rule">
+    <label>rule <select name="preset">
+      <option value="">custom</option>
+      {PRESETS.map((p) => <option value={p.id} selected={p.id === presetOf({ r, B: b, S: s })}>{p.name}</option>)}
+    </select></label>
+    <label>resolution <select name="r">{RESOLUTIONS.map((x) => <option value={x} selected={x === r}>{x}</option>)}</select></label>
+    <label>β <input name="b" type="number" min="0" max={2 ** r - 1} value={b} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** r - 1} value={s} inputmode="numeric" /></label>
+    <label>degree k <input name="k" type="range" min="1" max="24" step="1" value={k} /> <output name="kv">{k}</output></label>
+    <label>density ρ <input name="rho" type="range" min="0.05" max="0.95" step="0.05" value="0.5" /> <output name="rv">0.50</output></label>
+    <label>P(k) of <select name="fam">
+      <option value="lat">a grid, eight neighbours</option>
+      <option value="ws">a ring rewired, p = 0.2</option>
+      <option value="er">a random network</option>
+      <option value="npa">preferential attachment</option>
+    </select></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="info" class="status"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(480px, 70vh, 700px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { PRESETS, clampRule, presetOf, phi, hammingWeight, equivalent, ruleName, type Rule } from '../scripts/llna';
+  import { sensitivity, bound, derrida } from '../scripts/genotype';
+  import { draw, hit, type Geom } from '../scripts/diagram';
+  import { buildNet, type NetSpec } from '../scripts/net';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  const FAMILIES: Record<string, NetSpec> = {
+    lat: { kind: 'lat', side: 17, degree: 8, p: 0 },
+    ws: { kind: 'ws', n: 300, k: 8, p: 0.2 },
+    er: { kind: 'er', n: 300, k: 8 },
+    npa: { kind: 'npa', n: 300, m: 4, alpha: 1 },
+  };
+  const KMAX = 24;
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const presetIn = $<HTMLSelectElement>('preset'), rIn = $<HTMLSelectElement>('r'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s');
+    const kIn = $<HTMLInputElement>('k'), kv = $<HTMLOutputElement>('kv'), rhoIn = $<HTMLInputElement>('rho'), rv = $<HTMLOutputElement>('rv'), famIn = $<HTMLSelectElement>('fam'), info = $<HTMLOutputElement>('info');
+    const d = el.dataset, url = urlState('sens', { r: d.r!, b: d.b!, s: d.s!, k: d.k!, rho: '0.5', fam: 'lat' });
+
+    let rule: Rule = clampRule(+url.get('r'), +url.get('b'), +url.get('s'));
+    let k = Math.min(KMAX, Math.max(1, Math.round(+url.get('k')) || 8)), rho = Math.min(0.95, Math.max(0.05, +url.get('rho') || 0.5));
+    let fam = url.get('fam') in FAMILIES ? url.get('fam') : 'lat', geom: Geom | null = null;
+    const pk = new Map<string, Float64Array>();
+    function degrees(): Float64Array {
+      let p = pk.get(fam);
+      if (!p) { const net = buildNet(FAMILIES[fam], 1, 'none'); p = new Float64Array(KMAX + 1); for (let i = 0; i < net.n; i++) p[Math.min(KMAX, net.deg[i])] += 1 / net.n; pk.set(fam, p); }
+      return p;
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const top = Math.max(150, Math.round(h * 0.34));
+      geom = draw(ctx, { x: pad, y: pad, w: w - 2 * pad, h: top - pad }, rule, t, { k });
+      marks(t, geom);
+      const wide = w >= 620, gap = 24;
+      const lower: Box = { x: pad, y: top + 26, w: w - 2 * pad, h: h - top - 26 - pad };
+      const left: Box = wide ? { x: lower.x + 36, y: lower.y + 6, w: Math.min(lower.h - 40, lower.w * 0.42), h: Math.min(lower.h - 40, lower.w * 0.42) } : { x: lower.x + 36, y: lower.y + 6, w: lower.w - 40, h: (lower.h - 60) / 2 };
+      const right: Box = wide ? { x: left.x + left.w + gap + 28, y: lower.y + 6, w: lower.w - left.w - gap - 64, h: left.h } : { x: lower.x + 36, y: left.y + left.h + 40, w: lower.w - 40, h: (lower.h - 60) / 2 };
+      derridaPlot(t, left);
+      bars(t, right);
+      readout();
+    }
+
+    /** IS: intervals filled in exactly one row, tinted; NS: the steps between reachable densities where a row changes colour, marked on the axis. */
+    function marks(t: ReturnType<typeof tokens>, g: Geom) {
+      const { r, B, S } = rule;
+      ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = t.accent;
+      for (let i = 0; i < r; i++) if (((B >> i) ^ (S >> i)) & 1) ctx.fillRect(g.x0 + i * g.cw, g.bandB.y, g.cw, g.bandS.y + g.bandS.h - g.bandB.y);
+      ctx.restore();
+      ctx.fillStyle = t.accent;
+      for (let q = 0; q < k; q++) {
+        const jump = (phi(0, q, k, rule) ^ phi(0, q + 1, k, rule)) | (phi(1, q, k, rule) ^ phi(1, q + 1, k, rule));
+        if (!jump) continue;
+        const x = g.x0 + ((q + 0.5) / k) * g.cw * r, y = g.axisY + 6;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.closePath(); ctx.fill();
+      }
+      label(ctx, 'tinted: the node’s own state decides (IS) · ▲ one neighbour more or fewer decides (NS)', g.x0, g.bandB.y - (g.strip ? g.strip.h + 8 : 6), t, { size: 10 });
+    }
+
+    function derridaPlot(t: ReturnType<typeof tokens>, b: Box) {
+      const X = (v: number) => b.x + v * b.w, Y = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(1)); ctx.stroke(); ctx.setLineDash([]);
+      const n = 60, ys: number[] = [];
+      for (let i = 0; i <= n; i++) ys.push(derrida(rule, k, rho, i / n));
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath();
+      ys.forEach((v, i) => (i ? ctx.lineTo(X(i / n), Y(v)) : ctx.moveTo(X(i / n), Y(v))));
+      ctx.stroke();
+      const slope = derrida(rule, k, rho, 1e-5) / 1e-5, end = Math.min(1, 1 / Math.max(slope, 1e-9));
+      ctx.setLineDash([2, 3]); ctx.strokeStyle = t.accent; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(end), Y(Math.min(1, slope * end))); ctx.stroke(); ctx.setLineDash([]);
+      label(ctx, 'share differing now δ', X(0.5), b.y + b.h + 14, t, { align: 'center' });
+      ctx.save(); ctx.translate(b.x - 10, Y(0.5)); ctx.rotate(-Math.PI / 2); label(ctx, 'expected share differing next', 0, 0, t, { align: 'center' }); ctx.restore();
+      label(ctx, '0', b.x - 4, Y(0) + 4, t, { align: 'right', size: 10 }); label(ctx, '1', b.x - 4, Y(1) + 8, t, { align: 'right', size: 10 });
+      label(ctx, `Derrida curve at ρ = ${rho.toFixed(2)}, k = ${k}`, b.x, b.y - 6, t, { color: t.ink });
+      label(ctx, `slope at 0: ${slope.toFixed(2)}${Math.abs(rho - 0.5) < 1e-9 ? ' = BS' : ''} ${slope > 1 ? '· a small defect grows' : '· a small defect dies out'}`, b.x + 6, b.y + 14, t, { color: t.accent });
+    }
+
+    function bars(t: ReturnType<typeof tokens>, b: Box) {
+      const p = degrees(), bw = b.w / KMAX, top = 1.05;
+      let hwN = 0, bsN = 0, pmax = 0;
+      for (let kk = 1; kk <= KMAX; kk++) { const hw = hammingWeight(rule, kk), bs = sensitivity(rule, kk).BS / (kk + 1); hwN += p[kk] * hw; bsN += p[kk] * sensitivity(rule, kk).BS; pmax = Math.max(pmax, p[kk]); }
+      const Y = (v: number) => b.y + b.h - (v / top) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.x, Y(0) + 0.5); ctx.lineTo(b.x + b.w, Y(0) + 0.5); ctx.stroke();
+      ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(b.x, Y(0.5) + 0.5); ctx.lineTo(b.x + b.w, Y(0.5) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+      for (let kk = 1; kk <= KMAX; kk++) {
+        const x = b.x + (kk - 1) * bw, hw = hammingWeight(rule, kk), bs = sensitivity(rule, kk).BS / (kk + 1);
+        ctx.fillStyle = t.ink; ctx.fillRect(x + 1, Y(hw), bw * 0.45 - 1, Y(0) - Y(hw));
+        ctx.fillStyle = t.accent; ctx.fillRect(x + bw * 0.5, Y(bs), bw * 0.45 - 1, Y(0) - Y(bs));
+        if (kk === k) { ctx.strokeStyle = t.danger; ctx.strokeRect(x + 0.5, b.y + 0.5, bw - 1, b.h - 1); }
+        if (p[kk] > 0) { const rad = 2 + 6 * Math.sqrt(p[kk] / pmax); ctx.beginPath(); ctx.arc(x + bw / 2, b.y - 10, rad, 0, 2 * Math.PI); ctx.fillStyle = t.bg; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+        if (kk % 4 === 0 || kk === 1) label(ctx, String(kk), x + bw / 2, b.y + b.h + 12, t, { align: 'center', size: 10 });
+      }
+      label(ctx, 'degree k', b.x + b.w / 2, b.y + b.h + 24, t, { align: 'center' });
+      label(ctx, 'per degree: HW_k black, BS_k / (k + 1) blue · circles: P(k)', b.x, b.y - 24, t, { color: t.ink });
+      label(ctx, `weighted by P(k): HW = ${hwN.toFixed(3)}, BS = ${bsN.toFixed(2)}`, b.x + b.w, Y(1) + 12, t, { align: 'right', size: 11, color: t.ink });
+      label(ctx, '½', b.x - 4, Y(0.5) + 4, t, { align: 'right', size: 10 }); label(ctx, '1', b.x - 4, Y(1) + 4, t, { align: 'right', size: 10 });
+    }
+
+    function readout() {
+      const s = sensitivity(rule, k), hw = hammingWeight(rule, k), eq = equivalent(rule), pre = PRESETS.find((p) => p.id === presetOf(rule));
+      const lines = [`${ruleName(rule)}${pre ? ` (${pre.name})` : ''}`, `HW_${k} = ${hw.toFixed(3)}`, `BS_${k} = ${s.BS.toFixed(2)} = IS ${s.IS.toFixed(2)} + NS ${s.NS.toFixed(2)}`, `bound 2(k+1)·min(HW, 1−HW) = ${bound(hw, k).toFixed(2)}`, `equivalent ${ruleName(eq)}: same BS, HW ${(1 - hw).toFixed(3)}`];
+      info.value = lines.join(' · ');
+      c.setAttribute('aria-label', `Sensitivity of ${ruleName(rule)} at degree ${k}. ${lines.join('. ')}`);
+    }
+
+    function show() {
+      presetIn.value = presetOf(rule); rIn.value = String(rule.r);
+      bIn.max = sIn.max = String(2 ** rule.r - 1); bIn.value = String(rule.B); sIn.value = String(rule.S);
+      kIn.value = String(k); kv.value = String(k); rhoIn.value = String(rho); rv.value = rho.toFixed(2); famIn.value = fam;
+    }
+    function sync() { url.set('r', String(rule.r)); url.set('b', String(rule.B)); url.set('s', String(rule.S)); url.set('k', String(k)); url.set('rho', String(rho)); url.set('fam', fam); }
+    const set = (x: Rule) => { rule = x; show(); sync(); paint(); };
+    const repaint = schedule(paint);
+
+    presetIn.addEventListener('change', () => { const p = PRESETS.find((x) => x.id === presetIn.value); if (p) set({ ...p.rule }); });
+    rIn.addEventListener('change', () => set(clampRule(+rIn.value, rule.B, rule.S)));
+    bIn.addEventListener('change', () => set(clampRule(rule.r, +bIn.value, rule.S)));
+    sIn.addEventListener('change', () => set(clampRule(rule.r, rule.B, +sIn.value)));
+    kIn.addEventListener('input', () => { k = +kIn.value; kv.value = String(k); sync(); repaint(); });
+    rhoIn.addEventListener('input', () => { rho = +rhoIn.value; rv.value = rho.toFixed(2); sync(); repaint(); });
+    famIn.addEventListener('change', () => { fam = famIn.value in FAMILIES ? famIn.value : 'lat'; sync(); paint(); });
+    el.addEventListener('llna:rule', (e) => { const x = (e as CustomEvent<Rule>).detail; set(clampRule(x.r, x.B, x.S)); });
+    c.addEventListener('click', (e) => {
+      if (!geom) return;
+      const b = c.getBoundingClientRect(), hx = hit(geom, e.clientX - b.left, e.clientY - b.top);
+      if (!hx) return;
+      const bit = 1 << hx.i;
+      set(hx.band === 'B' ? { ...rule, B: rule.B ^ bit } : { ...rule, S: rule.S ^ bit });
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-sensitivity]').forEach(mount);
+</script>

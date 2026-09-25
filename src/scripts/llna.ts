@@ -57,7 +57,8 @@ export function step(s: Uint8Array, net: Net, rule: Rule, out = new Uint8Array(n
   return out;
 }
 
-const mirror = (x: number, r: number) => { let y = 0; for (let i = 0; i < r; i++) if ((x >> i) & 1) y |= 1 << (r - 1 - i); return y; };
+/** The bitmask read back to front: the set of intervals mirrored round ½. */
+export const mirror = (x: number, r: number) => { let y = 0; for (let i = 0; i < r; i++) if ((x >> i) & 1) y |= 1 << (r - 1 - i); return y; };
 
 /** The rule that does the same with all states swapped, Eq. (2.4): complement of the mirrored survive set becomes the born set, and vice versa. */
 const withPart = (rule: Rule, part?: Partition): Rule => (part ? { ...rule, part } : rule);

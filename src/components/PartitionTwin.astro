@@ -1,0 +1,141 @@
+---
+// Appendix C of the thesis, complementation symmetry: a rule and its equivalent run side by side on the same
+// network, one from a random start and the other from that start with every state swapped. Under the
+// thesis's mirrored cut of the density axis the two runs stay exact negatives of each other; under the
+// older uniform cut they drift apart wherever a density lands on an interval boundary. Self-contained with
+// src/scripts/llna.ts, net.ts, figure.ts. Props are the defaults; the URL query under `ptwin.` overrides them.
+type Props = { r?: number; b?: number; s?: number };
+const { r = 5, b = 6, s = 28 } = Astro.props;
+---
+<figure class="fig" id="ptwin" data-ptwin data-r={r} data-b={b} data-s={s} tabindex="-1">
+  <canvas role="img" aria-label="A rule and its equivalent running on the same network from complementary starts"></canvas>
+  <div class="controls" role="group" aria-label="Cut and rule">
+    <button name="pal" type="button" aria-pressed="true">mirrored cut (thesis)</button>
+    <button name="uni" type="button" aria-pressed="false">uniform cut (older work)</button>
+    <label>β <input name="b" type="number" min="0" max={2 ** r - 1} value={b} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** r - 1} value={s} inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+  </div>
+  <div class="controls" role="group" aria-label="Run">
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="30" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(340px, 54vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  [name="gen"] { min-width: 7em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); white-space: pre-wrap; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { clampRule, equivalent, step, randomState, ruleName, mirror, type Rule, type Partition } from '../scripts/llna';
+  import { buildNet, makeRng, type Net } from '../scripts/net';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const palBtn = $<HTMLButtonElement>('pal'), uniBtn = $<HTMLButtonElement>('uni'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('ptwin', { b: d.b!, s: d.s!, part: 'pal', seed: '1' }), r = +d.r!, N = 120;
+    let part: Partition = url.get('part') === 'uni' ? 'uni' : 'pal', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let base = clampRule(r, +url.get('b'), +url.get('s'));
+    let net: Net = buildNet({ kind: 'er', n: N, k: 6 }, seed), a: Uint8Array = new Uint8Array(N), b2: Uint8Array = new Uint8Array(N), mis: number[] = [], tick = 0;
+    const ruleA = (): Rule => ({ ...base, part }), ruleB = (): Rule => ({ ...equivalent(base), part });
+
+    function start() {
+      const rnd = makeRng(seed * 31 + 5);
+      a = randomState(N, 0.5, rnd); b2 = a.map((v) => v ^ 1); mis = [0]; tick = 0;
+    }
+    function mismatch(): number { let m = 0; for (let i = 0; i < N; i++) m += (a[i] ^ 1) !== b2[i] ? 1 : 0; return m / N; }
+    function advance() { a = step(a, net, ruleA()); b2 = step(b2, net, ruleB()); mis.push(mismatch()); tick++; if (mis.length > 400) mis.shift(); }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 620;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const traceH = 70, avail = h - 2 * pad - traceH - 40;
+      const side = wide ? Math.min(avail, (w - 3 * pad) / 2) : Math.min((avail - pad) / 2, w - 2 * pad);
+      const L: Box = wide ? { x: pad, y: pad, w: side, h: side } : { x: (w - side) / 2, y: pad, w: side, h: side };
+      const R: Box = wide ? { x: 2 * pad + side, y: pad, w: side, h: side } : { x: (w - side) / 2, y: 2 * pad + side, w: side, h: side };
+      drawNet(t, L, a, null, `${ruleName(ruleA())} from a random start`);
+      drawNet(t, R, b2, a, `${ruleName(ruleB())} from the negative of that start`);
+      const T: Box = { x: pad + 30, y: h - pad - traceH, w: w - 2 * pad - 34, h: traceH - 16 };
+      const n = Math.max(60, mis.length - 1);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(T.x + 0.5, T.y + 0.5, T.w, T.h);
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 1.5; ctx.beginPath();
+      mis.forEach((v, i) => { const x = T.x + (i / n) * T.w, y = T.y + (1 - v) * T.h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke();
+      label(ctx, `share of nodes where the two runs are not negatives of each other: ${(mis[mis.length - 1] * 100).toFixed(1)}%`, T.x, T.y - 5, t, { color: t.ink });
+      label(ctx, '1', T.x - 4, T.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', T.x - 4, T.y + T.h, t, { align: 'right', size: 10 });
+      gen.value = `tick ${tick}`;
+      readout();
+    }
+    function drawNet(t: ReturnType<typeof tokens>, b: Box, s: Uint8Array, ref: Uint8Array | null, title: string) {
+      const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
+      for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      const rad = Math.max(2.5, Math.min(6, (0.45 * b.w) / Math.sqrt(N)));
+      for (let i = 0; i < N; i++) {
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        if (s[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+      }
+      if (ref) { ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < N; i++) if ((ref[i] ^ 1) !== s[i]) { ctx.moveTo(X(i) + rad + 3, Y(i)); ctx.arc(X(i), Y(i), rad + 3, 0, 2 * Math.PI); } ctx.stroke(); }
+      label(ctx, title, b.x + 2, b.y + b.h + 13, t);
+    }
+    function bits(x: number) { return x.toString(2).padStart(r, '0').split('').reverse().join(''); } // interval 0 on the left
+    function readout() {
+      const all = (1 << r) - 1, eq = equivalent(base);
+      const line = (name: string, x: number, into: string) => `${name} = ${bits(x)} (${x}) → mirror ${bits(mirror(x, r))} → toggle ${bits(all & ~mirror(x, r))} = ${all & ~mirror(x, r)} = ${into}`;
+      status.value = `${line('β', base.B, 'σ′')}\n${line('σ', base.S, 'β′')}\nso ${ruleName(base)} and ${ruleName(eq)} are negatives of each other, ${part === 'pal' ? 'exactly, under the mirrored cut' : 'except where a density lands on a boundary under the uniform cut'}`;
+    }
+    function show() { palBtn.setAttribute('aria-pressed', String(part === 'pal')); uniBtn.setAttribute('aria-pressed', String(part === 'uni')); bIn.value = String(base.B); sIn.value = String(base.S); }
+    function sync() { url.set('b', String(base.B)); url.set('s', String(base.S)); url.set('part', part); url.set('seed', String(seed)); }
+
+    const st = stepper(el, { advance, paint, reset: start, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    $('step').addEventListener('click', st.step); $('reset').addEventListener('click', st.reset);
+    palBtn.addEventListener('click', () => { part = 'pal'; st.loop.play(false); start(); show(); sync(); paint(); });
+    uniBtn.addEventListener('click', () => { part = 'uni'; st.loop.play(false); start(); show(); sync(); paint(); });
+    bIn.addEventListener('change', () => { base = clampRule(r, +bIn.value, base.S); st.loop.play(false); start(); show(); sync(); paint(); });
+    sIn.addEventListener('change', () => { base = clampRule(r, base.B, +sIn.value); st.loop.play(false); start(); show(); sync(); paint(); });
+    $('regen').addEventListener('click', () => { seed++; net = buildNet({ kind: 'er', n: N, k: 6 }, seed); st.loop.play(false); start(); sync(); paint(); });
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    start(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-ptwin]').forEach(mount);
+</script>

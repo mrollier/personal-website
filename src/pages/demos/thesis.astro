@@ -3,7 +3,12 @@ import Base from '../../layouts/Base.astro';
 import Triptych from '../../components/Triptych.astro';
 import CaFamilies from '../../components/CaFamilies.astro';
 import NetZoo from '../../components/NetZoo.astro';
-const built = new Set(['roadmap', 'families', 'networks']); // tabs with content; the rest show a placeholder
+import LlnaRule from '../../components/LlnaRule.astro';
+import LlnaRun from '../../components/LlnaRun.astro';
+import Sensitivity from '../../components/Sensitivity.astro';
+import RuleScatter from '../../components/RuleScatter.astro';
+import PartitionTwin from '../../components/PartitionTwin.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -300,6 +305,113 @@ const tabs = [
           <p class="meta status-line">
             Ch. 3 is background; it introduces the networks and the measures the later chapters use. The
             thesis generated them with igraph; the figure regenerates them in the browser at a smaller size.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="two-numbers" aria-labelledby="tab-two-numbers" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Two numbers</h2>
+          <p>
+            From here on the thesis lives on networks, and the rule it runs is the Game of Life stretched to
+            fit. Life's rule counts neighbours: born with exactly three, survive with two or three. On a network
+            one node has two neighbours and the next has twenty, so counting will not do. Count the <em>share</em>
+            instead: ρ, the fraction of a node's neighbours that are on, a number between 0 and 1. Cut the unit
+            interval into r equal pieces and let the rule say, for each piece, whether a dead node is born there
+            and whether a live node survives there. Two sets of pieces, <em>born</em> B and <em>survive</em> S,
+            written as the binary numbers β and σ, and the rule is φ<sup>r</sup><sub>β,σ</sub>. With r = 9 on a grid of
+            eight neighbours the nine pieces are the nine possible counts and Life is back as φ<sup>9</sup><sub>8,12</sub>.
+            We called the family <em>Life-like network automata</em>; there are 2<sup>2r</sup> rules at each r.
+          </p>
+          <p>
+            The first job of the chapter was to make that definition consistent, and the trap is at the edges of
+            the pieces. Swapping every on for off is a symmetry cellular automata have always had, and to keep it
+            on a network the cut of the density axis has to mirror round ½: below the middle a piece includes its
+            left end, above the middle its right end, the middle piece is closed at both ends, and r has to be odd
+            for there to be a middle piece. With that cut, every rule has an <em>equivalent</em> rule that does the
+            same thing with the colours swapped, and 2<sup>r</sup> rules are their own equivalent. Earlier work
+            used the obvious cut, every piece closed on the left, and the symmetry quietly breaks whenever a
+            density lands exactly on a boundary, which on a network with small degrees happens all the time. The
+            last figure on this tab shows the break happening.
+          </p>
+          <p>
+            The diagram below is the rule, and its mean-field curve is the first of the two numbers: at ρ = ½
+            the curve's height is the <em>Hamming weight</em>, the share of all inputs that give a live node. It is
+            the same diagram as on the <a href="/demos/cellular-automata/#life-on-graphs">other demo</a>, where the
+            curve is explained at more length.
+          </p>
+        </div>
+        <LlnaRule />
+        <div class="measure">
+          <p>
+            The second number is the <em>Boolean sensitivity</em>: pick a random input, flip one of its k + 1
+            bits, the node's own state or one neighbour's, and count how often the outcome changes, averaged over
+            everything. It splits in two on the diagram. <em>Identity sensitivity</em> counts the pieces filled in
+            only one of the two rows, where the node's own state decides; <em>neighbourhood sensitivity</em>
+            counts how often a row changes colour between one reachable density and the next, the jaggedness of
+            the picture. Both are tinted and marked in the figure. The sensitivity is also the slope at the origin
+            of the <em>Derrida curve</em>: take two copies of a random configuration that differ in a share δ of
+            the nodes, run both one tick, and ask what share differs now. A slope above 1 means a small
+            difference grows, below 1 it dies. And it is the expected number of ones in a row of the Jacobian of
+            the previous chapter, which is why the two chapters belong together. Neither number needs a
+            simulation; both need only the rule and the degree.
+          </p>
+          <p>
+            The degree matters more than one would think. Slide k and watch the marks move: a node with four
+            neighbours can only see the densities 0, ¼, ½, ¾ and 1, so it skips half the pieces of a nine-piece
+            rule, and a node with twenty-four sees almost only the middle piece. On a network with a spread of
+            degrees the honest numbers are the averages over that spread, which the bars on the right show for
+            four kinds of network; for the hub-heavy family it makes a visible difference.
+          </p>
+        </div>
+        <Sensitivity />
+        <div class="measure">
+          <p>
+            The two numbers are not independent. Every flip that changes the outcome joins an input that gives 1
+            to one that gives 0, so a rule with few 1s cannot be very sensitive: BS ≤ 2(k + 1)·min(HW, 1 − HW),
+            a tent with its top at HW = ½, where the parity rule sits with every flip counting. Below is every
+            rule of one resolution as a dot under that tent. Click one and it lands in the figure above.
+          </p>
+        </div>
+        <RuleScatter />
+        <div class="measure">
+          <p>
+            So much for the genotype. The phenotype is what the rule does when run, and the chapter measured two
+            time series to match the two numbers: the share of nodes that are on, and the share that differs
+            between two runs started one node apart. The rule below, Morley, φ<sup>9</sup><sub>328,52</sub>, shows
+            how much the network has to say about both: on the grid it converges gradually, on a rewired grid
+            suddenly, and on a random network sometimes not at all, with sharp transitions in between as the
+            start density or the rewiring changes. The thesis then ran all 528 non-equivalent rules of resolution
+            5 on 900-node grids, plain, rewired and random, 900 samples each, and correlated genotype with
+            phenotype: the Hamming weight predicts the final share on with R = 0.70 to 0.73, the sensitivity
+            predicts the final share differing with R = 0.54 to 0.55. Good enough to throw away most of a rule
+            space without running it; not good enough to skip running the rest. That is the sentence the next
+            chapters lean on.
+          </p>
+        </div>
+        <LlnaRun mode="defect" preset="morley" />
+        <div class="measure">
+          <p>
+            One last figure, for the appendix on the symmetry. Below, a rule and its equivalent run side by side
+            on the same random network, one from a random start and the other from the exact negative of that
+            start. Under the thesis's mirrored cut of the density axis the two runs stay negatives of each other
+            for ever, and the red rings never appear. Switch to the older uniform cut and the rings appear on the
+            first tick at nodes whose degree is a multiple of five, where a density sits exactly on a boundary
+            and the two cuts disagree; from there the difference spreads. The readout works through the bit
+            arithmetic: mirror the survive set, toggle it, and you have the born set of the equivalent rule.
+          </p>
+        </div>
+        <PartitionTwin />
+        <div class="measure">
+          <p>
+            Things to try. HighLife at k = 4 and at k = 12 in the sensitivity figure: same rule, different
+            numbers. The parity preset from the other page, φ<sup>3</sup><sub>2,5</sub>, at resolution 3: the
+            sensitivity is k + 1 at every degree the pieces can resolve. In the scatter, resolution 7 at degree 6,
+            and hunt for the corners of the tent. In the Morley figure, the lattice at 50% on, then 75%, then the
+            same on the random network.
+          </p>
+          <p class="meta status-line">
+            Ch. 5 is the first half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}), with Lucas de Oliveira, Odemir Bruno and Jan Baetens; code at <a href="https://github.com/mrollier/essential-metrics-life-on-graphs">GitHub</a>.
           </p>
         </div>
       </section>

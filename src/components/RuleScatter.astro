@@ -1,0 +1,112 @@
+---
+// Every non-equivalent rule of one resolution as a dot: Hamming weight against Boolean sensitivity at one
+// degree, under the bound that ties the two. Hover names a rule; a click sends it to the sensitivity figure
+// (the element named by `target`) by a `llna:rule` event. Self-contained with src/scripts/llna.ts,
+// genotype.ts and figure.ts. Props are the defaults; the URL query under `sc.` overrides them.
+type Props = { r?: 3 | 5 | 7; k?: number; target?: string };
+const { r = 5, k = 3, target = 'sens' } = Astro.props;
+---
+<figure class="fig" id="sc528" data-rulescatter data-r={r} data-k={k} data-target={target} tabindex="-1">
+  <canvas role="img" aria-label="Hamming weight against Boolean sensitivity for every rule of one resolution"></canvas>
+  <div class="controls" role="group" aria-label="Scatter controls">
+    <label>resolution <select name="r"><option value="3">3 (36 rules)</option><option value="5">5 (528 rules)</option><option value="7">7 (8256 rules)</option></select></label>
+    <label>degree k <input name="k" type="range" min="1" max="24" step="1" value={k} /> <output name="kv">{k}</output></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="info" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(320px, 52vh, 520px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: crosshair;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { ruleName, equivalent, type Rule } from '../scripts/llna';
+  import { scatter, bound, jaggedness } from '../scripts/genotype';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const rIn = $<HTMLSelectElement>('r'), kIn = $<HTMLInputElement>('k'), kv = $<HTMLOutputElement>('kv'), info = $<HTMLOutputElement>('info');
+    const d = el.dataset, url = urlState('sc', { r: d.r!, k: d.k! }), target = d.target!;
+    let r = [3, 5, 7].includes(+url.get('r')) ? +url.get('r') : 5, k = Math.min(24, Math.max(1, Math.round(+url.get('k')) || 3));
+    let pts = scatter(r, k), hover = -1, picked = -1, box: Box | null = null;
+    const X = (v: number) => box!.x + v * box!.w, Y = (v: number) => box!.y + (1 - v / (k + 1)) * box!.h;
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      box = { x: pad + 34, y: pad + 18, w: w - 2 * pad - 46, h: h - 2 * pad - 44 };
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w, box.h);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(X(0.5), box.y); ctx.lineTo(X(0.5), box.y + box.h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(box.x, Y(1)); ctx.lineTo(box.x + box.w, Y(1)); ctx.stroke(); ctx.setLineDash([]);
+      // the bound: a tent with its top at HW = ½
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(0.5), Y(bound(0.5, k))); ctx.lineTo(X(1), Y(0)); ctx.stroke();
+      ctx.fillStyle = t.ink; ctx.globalAlpha = r === 7 ? 0.35 : 0.7;
+      for (let i = 0; i < pts.length; i++) { const p = pts[i]; ctx.fillRect(X(p.hw) - 1.5, Y(p.bs) - 1.5, 3, 3); }
+      ctx.globalAlpha = 1;
+      for (const [i, col] of [[hover, t.muted], [picked, t.danger]] as const) if (i >= 0 && i < pts.length) { ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(pts[i].hw), Y(pts[i].bs), 6, 0, 2 * Math.PI); ctx.stroke(); }
+      label(ctx, 'Hamming weight HW_k: 0', box.x, box.y + box.h + 14, t); label(ctx, '½', X(0.5), box.y + box.h + 14, t, { align: 'center' }); label(ctx, '1', box.x + box.w, box.y + box.h + 14, t, { align: 'right' });
+      ctx.save(); ctx.translate(box.x - 22, Y((k + 1) / 2)); ctx.rotate(-Math.PI / 2); label(ctx, `Boolean sensitivity BS_k, 0 … ${k + 1}`, 0, 0, t, { align: 'center' }); ctx.restore();
+      label(ctx, '1', box.x - 4, Y(1) + 4, t, { align: 'right', size: 10 });
+      label(ctx, `${pts.length} rules at resolution ${r}, degree ${k} · blue: the bound 2(k+1)·min(HW, 1−HW) · click a dot to send it to the sensitivity figure`, box.x, box.y - 6, t, { color: t.ink });
+    }
+    function nearest(e: MouseEvent): number {
+      if (!box) return -1;
+      const b = c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      let best = -1, bd = 10 * 10;
+      for (let i = 0; i < pts.length; i++) { const dx = X(pts[i].hw) - x, dy = Y(pts[i].bs) - y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = i; } }
+      return best;
+    }
+    function describe(i: number) {
+      if (i < 0) { info.value = ''; return; }
+      const p = pts[i], j = jaggedness(p.rule);
+      info.value = `${ruleName(p.rule)} · HW_${k} = ${p.hw.toFixed(3)} · BS_${k} = ${p.bs.toFixed(2)} · jaggedness ${j.J} (${j.Jbar.toFixed(2)}) · equivalent ${ruleName(equivalent(p.rule))}`;
+    }
+    const repaint = schedule(paint);
+    c.addEventListener('mousemove', (e) => { const i = nearest(e); if (i !== hover) { hover = i; describe(hover >= 0 ? hover : picked); repaint(); } });
+    c.addEventListener('mouseleave', () => { hover = -1; describe(picked); repaint(); });
+    c.addEventListener('click', (e) => {
+      const i = nearest(e); if (i < 0) return;
+      picked = i; describe(i); paint();
+      const rule: Rule = { ...pts[i].rule };
+      document.getElementById(target)?.dispatchEvent(new CustomEvent('llna:rule', { detail: rule }));
+      document.getElementById(target)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    rIn.addEventListener('change', () => { r = +rIn.value; pts = scatter(r, k); picked = hover = -1; url.set('r', String(r)); describe(-1); paint(); });
+    kIn.addEventListener('input', () => { k = +kIn.value; kv.value = String(k); pts = scatter(r, k); url.set('k', String(k)); describe(picked); repaint(); });
+    rIn.value = String(r); kIn.value = String(k); kv.value = String(k);
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-rulescatter]').forEach(mount);
+</script>

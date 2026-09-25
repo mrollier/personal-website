@@ -1,7 +1,8 @@
 // Self-check for src/scripts/variants.ts and wolfram.ts. Run: npm test
 import assert from 'node:assert/strict';
 import { step, seedRow } from '../src/scripts/eca.ts';
-import { tableOf, ruleOf, mirrorRule, complementRule, equivalents, lambda, totalisticTable, totalisticCode } from '../src/scripts/wolfram.ts';
+import { tableOf, ruleOf, mirrorRule, complementRule, equivalents, lambda, totalisticTable, totalisticCode, recoverTable, recoveredRule, augment } from '../src/scripts/wolfram.ts';
+import { evolve } from '../src/scripts/eca.ts';
 import { defaults, stepVariant, extend, allocate, nonUniformity, IDENTITY } from '../src/scripts/variants.ts';
 import { makeRng } from '../src/scripts/net.ts';
 
@@ -50,5 +51,16 @@ const m = allocate(200, 0.3, rnd); assert.equal(nonUniformity(m), 0.3); assert.e
 // Three states: totalistic code 2186 (all twos) turns everything to 2; the sum of a radius-1 neighbourhood runs 0 … 6.
 const three = { ...defaults(totalisticTable(2186), totalisticTable(0)), states: 3 as const };
 assert.ok(stepVariant(row, three, rnd).every((v) => v === 2));
+
+// Reading the rule off a diagram (Ch. 8): a 64 × 64 diagram of rule 30 gives all eight entries from its first row, no conflicts;
+// inverting the diagram of a rule that is not its own complement yields the complement's table; mirroring yields the mirror's;
+// noise breeds conflicts; coarse-graining keeps the size.
+const diag = evolve(seedRow(64, 'random', makeRng(8)), 30, 63);
+const rec = recoverTable(diag, 1); assert.equal(rec.found, 8); assert.ok(rec.conflicts.every((v) => v === 0)); assert.equal(recoveredRule(rec), 30);
+assert.equal(recoveredRule(recoverTable(augment(diag, 'invert', rnd))), complementRule(30));
+assert.equal(recoveredRule(recoverTable(augment(diag, 'mirror', rnd))), mirrorRule(30));
+const noisy = recoverTable(augment(diag, 'noise', makeRng(2), 0.1)); assert.ok(noisy.conflicts.some((v) => v === 1));
+const coarse = augment(diag, 'coarse', rnd); assert.equal(coarse.length, 64); assert.equal(coarse[0].length, 64); assert.deepEqual(Array.from(coarse[0]), Array.from(coarse[1]));
+assert.equal(recoveredRule(recoverTable([diag[0], diag[1]].map((r) => r.slice(0, 4)))), null); // four cells cannot show all eight neighbourhoods
 
 console.log('variants ok');

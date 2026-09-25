@@ -1,0 +1,163 @@
+---
+// Reading the rule off the pixels (Ch. 8): a 64 × 64 spacetime diagram, a T-tetromino that scans it cell by
+// cell, three cells and the one below the middle, and the rule table filling in as it goes. Usually all
+// eight entries are in by the end of the first row. The augmentations of the chapter can be applied to the
+// diagram to see what the scan then recovers: the mirror rule, the complement, contradictions, or nothing.
+// Self-contained with src/scripts/eca.ts, wolfram.ts, raster.ts, palette.ts, figure.ts.
+type Props = { rule?: number };
+const { rule = 110 } = Astro.props;
+---
+<figure class="fig" id="hunt" data-tablehunt data-rule={rule} tabindex="-1">
+  <canvas role="img" aria-label="A spacetime diagram being scanned by a T-tetromino, and the rule table it recovers"></canvas>
+  <div class="controls" role="group" aria-label="Diagram">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <button name="random" type="button">random rule</button>
+    <button name="restart" type="button">new start</button>
+    <label>augment <select name="aug">
+      <option value="">nothing</option>
+      <option value="invert">invert the colours</option>
+      <option value="mirror">mirror left and right</option>
+      <option value="coarse">coarse-grain 2 × 2</option>
+      <option value="noise">salt-and-pepper noise</option>
+    </select></label>
+    <label data-noise hidden>noise <input name="noise" type="range" min="0.01" max="0.2" step="0.01" value="0.05" /> <output name="nv">5%</output></label>
+  </div>
+  <div class="controls" role="group" aria-label="Scan">
+    <button name="step" type="button">one cell</button>
+    <button name="row" type="button">one row</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="60" /></label>
+    <button name="reset" type="button">rewind</button>
+    <output name="gen">0 cells scanned</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(380px, 56vh, 600px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  [name="gen"] { min-width: 9em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow, evolve } from '../scripts/eca';
+  import { augment, equivalents, type Augment } from '../scripts/wolfram';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix } from '../scripts/palette';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIn = $<HTMLInputElement>('rule'), augIn = $<HTMLSelectElement>('aug'), noiseIn = $<HTMLInputElement>('noise'), nv = $<HTMLOutputElement>('nv'), noiseBox = el.querySelector<HTMLElement>('[data-noise]')!, gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const url = urlState('hunt', { rule: el.dataset.rule!, aug: '', noise: '0.05', seed: '1' }), W = 64, T = 64;
+    let rule = Math.min(255, Math.max(0, Math.round(+url.get('rule')) || 0)), aug = (['invert', 'mirror', 'coarse', 'noise'].includes(url.get('aug')) ? url.get('aug') : '') as Augment | '';
+    let noise = Math.min(0.2, Math.max(0.01, +url.get('noise') || 0.05)), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let clean: Uint8Array[] = [], rows: Uint8Array[] = [], pos = 0;
+    const raster = new Raster(W, T), bits = new Int8Array(8), conflicts = new Uint8Array(8), seen = new Uint32Array(8);
+
+    function build() { clean = evolve(seedRow(W, 'random', makeRng(seed * 13 + 1)), rule, T - 1); rows = aug ? augment(clean, aug, makeRng(seed * 7 + 2), noise) : clean; pos = 0; }
+    function scanUpTo(p: number) {
+      bits.fill(-1); conflicts.fill(0); seen.fill(0);
+      for (let k = 0; k < p; k++) {
+        const t = Math.floor(k / W), x = k % W, r = rows[t];
+        const n = (r[(x + W - 1) % W] << 2) | (r[x] << 1) | r[(x + 1) % W], out = rows[t + 1][x];
+        seen[n]++; if (bits[n] < 0) bits[n] = out; else if (bits[n] !== out) conflicts[n] = 1;
+      }
+    }
+    const advance = () => { pos = Math.min(W * (T - 1), pos + 1); return pos >= W * (T - 1); };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 640, ink = parse(t.ink), bg = parse(t.bg), acc = parse(t.accent);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      scanUpTo(pos);
+      const side = wide ? Math.min(h - 2 * pad - 16, w * 0.5) : Math.min(w - 2 * pad, h * 0.5);
+      const db: Box = { x: pad, y: pad, w: side, h: side }, col: Box = wide ? { x: pad + side + pad + 8, y: pad, w: w - side - 3 * pad - 8, h: h - 2 * pad } : { x: pad, y: pad + side + 30, w: w - 2 * pad, h: h - side - 3 * pad - 30 };
+      const scannedRows = Math.floor(pos / W);
+      for (let y = 0; y < T; y++) for (let x = 0; x < W; x++) { const on = rows[y][x], done = y < scannedRows || (y === scannedRows && x < pos % W); raster.set(y * W + x, on ? (done || y > scannedRows + 1 ? ink : ink) : done ? mix(bg, acc, 0.12) : bg); }
+      raster.flush(); raster.blit(ctx, db);
+      const cw = db.w / W, ch = db.h / T;
+      if (pos < W * (T - 1)) { // the tetromino: three cells on row t and the one below the middle
+        const tt = Math.floor(pos / W), x = pos % W;
+        ctx.strokeStyle = t.danger; ctx.lineWidth = 2;
+        ctx.strokeRect(db.x + (x - 1) * cw + 1, db.y + tt * ch + 1, 3 * cw - 2, ch - 2);
+        ctx.strokeRect(db.x + x * cw + 1, db.y + (tt + 1) * ch + 1, cw - 2, ch - 2);
+      }
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(db.x + 0.5, db.y + 0.5, db.w - 1, db.h - 1);
+      label(ctx, `${aug ? `${augIn.options[augIn.selectedIndex].text} · ` : ''}rule ${rule}, 64 × 64, time down · scanned cells tinted`, db.x, db.y + db.h + 13, t);
+      // the table filling in
+      const cellW = Math.min(52, (col.w - 8) / 8), x0 = col.x + (col.w - cellW * 8) / 2, y0 = col.y + 30;
+      label(ctx, 'the rule table, as recovered by the scan (case 111 first)', col.x, col.y + 12, t, { color: t.ink });
+      for (let k = 0; k < 8; k++) {
+        const n = 7 - k, x = x0 + k * cellW;
+        for (let b = 0; b < 3; b++) { const on = (n >> (2 - b)) & 1; ctx.fillStyle = on ? t.ink : t.bg; ctx.fillRect(x + b * (cellW / 3) + 2, y0, cellW / 3 - 4, cellW / 3 - 4); ctx.strokeStyle = t.line; ctx.strokeRect(x + b * (cellW / 3) + 2.5, y0 + 0.5, cellW / 3 - 4, cellW / 3 - 4); }
+        const oy = y0 + cellW / 3 + 6, v = bits[n];
+        ctx.fillStyle = v < 0 ? t.panel : v ? t.ink : t.bg; ctx.fillRect(x + cellW / 3 + 2, oy, cellW / 3 - 4, cellW / 3 - 4);
+        ctx.strokeStyle = conflicts[n] ? t.danger : v < 0 ? t.muted : t.line; ctx.lineWidth = conflicts[n] ? 2 : 1; ctx.strokeRect(x + cellW / 3 + 2.5, oy + 0.5, cellW / 3 - 4, cellW / 3 - 4);
+        label(ctx, v < 0 ? '?' : conflicts[n] ? '!' : String(v), x + cellW / 2, oy + cellW / 3 + 10, t, { align: 'center', size: 11, color: conflicts[n] ? t.danger : t.ink });
+        label(ctx, seen[n] ? `×${seen[n]}` : '', x + cellW / 2, oy + cellW / 3 + 22, t, { align: 'center', size: 9 });
+      }
+      ctx.lineWidth = 1;
+      const found = Array.from(bits).filter((v) => v >= 0).length, bad = Array.from(conflicts).filter((v) => v).length;
+      let verdictText: string;
+      if (bad) verdictText = `${bad} contradiction${bad > 1 ? 's' : ''}: no rule produced this picture`;
+      else if (found < 8) verdictText = `${found} of 8 entries known, ${8 - found} never seen so far`;
+      else { let n = 0; for (let i = 7; i >= 0; i--) n = n * 2 + bits[i]; const e = equivalents(rule); verdictText = n === rule ? `all 8 known: rule ${n}, the rule that drew it` : n === e.mirror ? `all 8 known: rule ${n}, the mirror image of rule ${rule}` : n === e.complement ? `all 8 known: rule ${n}, the complement of rule ${rule}` : n === e.both ? `all 8 known: rule ${n}, rule ${rule} mirrored and inverted` : `all 8 known: rule ${n}, not rule ${rule} at all`; }
+      const ly = y0 + cellW + 50;
+      label(ctx, verdictText, col.x, ly, t, { color: bad ? t.danger : t.ink, size: 12 });
+      label(ctx, `${pos} cells scanned, ${scannedRows} full row${scannedRows === 1 ? '' : 's'}`, col.x, ly + 20, t);
+      label(ctx, 'a network that can see three cells and the one below can do exactly this', col.x, ly + 44, t, { size: 10 });
+      label(ctx, 'and needs no idea what the picture as a whole looks like', col.x, ly + 58, t, { size: 10 });
+      gen.value = `${pos} cells scanned`; status.value = verdictText;
+      c.setAttribute('aria-label', `Rule ${rule}${aug ? `, ${aug}` : ''}: ${verdictText} after ${pos} cells`);
+    }
+    function show() { ruleIn.value = String(rule); augIn.value = aug; noiseBox.hidden = aug !== 'noise'; noiseIn.value = String(noise); nv.value = `${Math.round(noise * 100)}%`; }
+    function sync() { url.set('rule', String(rule)); url.set('aug', aug); url.set('noise', String(noise)); url.set('seed', String(seed)); }
+    const st = stepper(el, { advance, paint, reset: () => { pos = 0; }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const redo = () => { st.loop.play(false); build(); show(); sync(); paint(); };
+    ruleIn.addEventListener('change', () => { rule = Math.min(255, Math.max(0, Math.round(+ruleIn.value) || 0)); redo(); });
+    $('random').addEventListener('click', () => { rule = Math.floor(Math.random() * 256); redo(); });
+    $('restart').addEventListener('click', () => { seed++; redo(); });
+    augIn.addEventListener('change', () => { aug = augIn.value as Augment | ''; redo(); });
+    noiseIn.addEventListener('input', () => { noise = +noiseIn.value; nv.value = `${Math.round(noise * 100)}%`; redo(); });
+    $('step').addEventListener('click', st.step);
+    $('row').addEventListener('click', () => { st.loop.play(false); pos = Math.min(W * (T - 1), (Math.floor(pos / W) + 1) * W); paint(); });
+    $('reset').addEventListener('click', st.reset);
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    build(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-tablehunt]').forEach(mount);
+</script>

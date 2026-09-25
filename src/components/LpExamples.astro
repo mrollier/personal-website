@@ -1,0 +1,81 @@
+---
+// One 64 × 64 spacetime diagram per behavioural class of Li and Packard (Ch. 8), from a random start,
+// with a rule chosen as a textbook example of each: the reader should be able to name the class from the
+// picture, which is what the chapter asks of a network. Self-contained with src/scripts/eca.ts, raster.ts,
+// palette.ts, figure.ts.
+const classes = [
+  { name: 'null', rule: 0, blurb: 'everything dies' },
+  { name: 'fixed point', rule: 4, blurb: 'settles and stays' },
+  { name: 'periodic', rule: 51, blurb: 'flashes for ever' },
+  { name: 'locally chaotic', rule: 73, blurb: 'chaos between walls' },
+  { name: 'chaotic', rule: 30, blurb: 'noise everywhere' },
+];
+---
+<figure class="fig" id="lpx" data-lpexamples data-rules={classes.map((c) => c.rule).join(',')} data-names={classes.map((c) => `${c.name}|${c.blurb}`).join(';')} tabindex="-1">
+  <canvas role="img" aria-label="Five spacetime diagrams, one per Li–Packard class"></canvas>
+  <div class="controls" role="group" aria-label="Examples">
+    <button name="restart" type="button">new random starts</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(200px, 26vw, 300px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow, evolve } from '../scripts/eca';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, keys, label } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const rules = el.dataset.rules!.split(',').map(Number), names = el.dataset.names!.split(';').map((s) => s.split('|'));
+    const W = 64, T = 64, rasters = rules.map(() => new Raster(W, T));
+    let seed = 1, diagrams: Uint8Array[][] = [];
+    function build() { diagrams = rules.map((r, i) => evolve(seedRow(W, 'random', makeRng(seed * 31 + i)), r, T - 1)); }
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 10, ink = parse(t.ink), bg = parse(t.bg);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const n = rules.length, cw = (w - pad * (n + 1)) / n, side = Math.min(cw, h - 2 * pad - 30);
+      rules.forEach((r, i) => {
+        const x = pad + i * (cw + pad) + (cw - side) / 2, y = pad;
+        for (let yy = 0; yy < T; yy++) for (let xx = 0; xx < W; xx++) rasters[i].set(yy * W + xx, diagrams[i][yy][xx] ? ink : bg);
+        rasters[i].flush(); rasters[i].blit(ctx, { x, y, w: side, h: side });
+        ctx.strokeStyle = t.line; ctx.strokeRect(x + 0.5, y + 0.5, side - 1, side - 1);
+        label(ctx, names[i][0], x, y + side + 13, t, { color: t.ink, size: 11 });
+        label(ctx, `rule ${r} · ${names[i][1]}`, x, y + side + 26, t, { size: 10 });
+      });
+    }
+    el.querySelector<HTMLButtonElement>('[name="restart"]')!.addEventListener('click', () => { seed++; build(); paint(); });
+    const full = fullscreen(el, el.querySelector<HTMLButtonElement>('[name="full"]')!);
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    build(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-lpexamples]').forEach(mount);
+</script>

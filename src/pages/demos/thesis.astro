@@ -17,7 +17,9 @@ import Rasters from '../../components/Rasters.astro';
 import CnnRow from '../../components/CnnRow.astro';
 import NuCaPainter from '../../components/NuCaPainter.astro';
 import MessagePass from '../../components/MessagePass.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'cnn', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
+import TableHunt from '../../components/TableHunt.astro';
+import LpExamples from '../../components/LpExamples.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'cnn', 'cheating', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -584,6 +586,65 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 7 is <a href={link('cnn-nonuniform')}>{pub('cnn-nonuniform').title}</a>, {pub('cnn-nonuniform').venue} ({pub('cnn-nonuniform').year}), with Aisling Daly, Odemir Bruno and Jan Baetens; code at <a href="https://github.com/mrollier/emulating-and-learning-CAs">GitHub</a>.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="cheating" aria-labelledby="tab-cheating" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Cheating CNN</h2>
+          <p>
+            People have sorted the 256 elementary rules by behaviour since Wolfram's four classes. The chapter
+            uses the five of Li and Packard, because every rule gets exactly one and you can see the class in the
+            picture: <em>null</em>, everything dies; <em>fixed point</em>, it settles; <em>periodic</em>, it repeats
+            with a short period; <em>locally chaotic</em>, chaos fenced in by walls; <em>chaotic</em>, noise
+            throughout. There are 24, 97, 89, 10 and 36 rules in them. Below is one example of each, from a
+            random start. You can name them at a glance, and so, it seemed, could a convolutional network:
+            earlier papers trained one on spacetime diagrams and reported 98 to 100 percent.
+          </p>
+        </div>
+        <LpExamples />
+        <div class="measure">
+          <p>
+            The chapter's question is what that network was looking at. Here is the trouble. Take three
+            neighbouring cells in one row and the cell below the middle one: a T-shaped tetromino. That is one
+            entry of the rule table, read straight off the pixels. Slide it along the first row of a 64-cell
+            diagram from a random start and you will meet all eight neighbourhoods more than 99 times in a
+            hundred. So a network whose filters are 3 wide and 2 tall can simply read the rule, and since every
+            rule has one class, it can then output the class without ever looking at the behaviour. The thesis
+            built that network by hand, the same eight detectors as the previous tab plus a readout, 2,360 fixed
+            numbers, and it identified the rule in 99.87 percent of diagrams. Then it trained the standard network
+            from the earlier papers, with its 3 × 2 filters, and asked it not for the class but for the rule: it
+            got the exact rule right 99.85 percent of the time. The high class accuracies were real, and they
+            proved nothing about recognising behaviour. The figure lets you do the scan yourself.
+          </p>
+        </div>
+        <TableHunt />
+        <div class="measure">
+          <p>
+            Two things can push a network away from the cheat. One is architecture: filters no tetromino fits in,
+            2 × 2 instead of 3 × 2; a wide field of view, 8 × 8 cells instead of 5 × 3, so it has room to see a
+            pattern; and a tiny final layer, so it has no room to memorise 256 rules. The trimmed network has 389
+            parameters against 7,301. The other is data augmentation, feeding the network altered pictures whose
+            class has not changed but whose rule table has: colours inverted, left and right swapped, 2 × 2 blocks
+            averaged, or noise sprinkled in. Try each in the figure and see what the scan recovers: the
+            complement, the mirror image, contradictions, or a table that makes no sense, while the picture is
+            plainly still periodic or still chaotic. With the first three augmentations, and not the noise, which
+            did not help, the trimmed network reached 98.17 percent on the class while its ability to name the
+            rule fell to 61 percent over the 88 genuinely different rules. That is the chapter's honest verdict on
+            itself: a shift towards the behaviour, not a clean break from the rule. Its remaining mistakes are the
+            human ones, periodic diagrams called fixed point, and locally chaotic, the smallest class, recognised
+            least often. And no rule was ever held out of training, which the chapter names as its main
+            limitation.
+          </p>
+          <p>
+            Things to try. Rule 30, then press play and watch the table complete within the first row. Rule 59
+            and a few new starts: three white cells in a row are rare, so one entry can stay unknown. Invert rule
+            110 and see rule 137 come out; mirror it and get 124. Coarse-grain anything and watch the table
+            contradict itself.
+          </p>
+          <p class="meta status-line">
+            Ch. 8 is <a href={link('cnn-classification')}>{pub('cnn-classification').title}</a>, {pub('cnn-classification').venue} ({pub('cnn-classification').year}), with Aisling Daly and Jan Baetens. The class examples above are textbook choices; the full rule-to-class table is in Li and Packard's 1990 paper.
           </p>
         </div>
       </section>

@@ -1,0 +1,211 @@
+---
+// The consensus sandbox of Ch. 10: a consensus-seeking rule on one of the thesis's three network families,
+// from a balanced start that is known to end all-on. Click nodes to clamp them dead for the whole run and
+// see whether the network still gets there: the clamped run is drawn, red rings mark where it differs from
+// the untouched run, and the traces show both densities. Self-contained with src/scripts/consensus.ts,
+// family.ts, llna.ts, net.ts, figure.ts. The URL query under `clamp.` overrides the props.
+import { FAMS, FAM_NAME, allBestRules } from '../scripts/family';
+import { ruleName } from '../scripts/llna';
+type Props = { kind?: 'ws' | 'lat' | 'npa'; n?: number };
+const { kind = 'npa', n = 200 } = Astro.props;
+const rules = allBestRules();
+---
+<figure class="fig" id="clamp" data-consensus data-kind={kind} data-n={n} tabindex="-1">
+  <canvas role="img" aria-label="A network running a consensus-seeking rule, with clamped nodes and the difference to the untouched run"></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    {FAMS.map((f) => <button name={f} type="button" aria-pressed={f === kind}>{FAM_NAME[f]}</button>)}
+    <label><span data-plabel>power α</span> <input name="param" type="range" min="0" max="3" step="0.5" value="1" /> <output name="pv"></output></label>
+    <label><span data-klabel>degree</span> <select name="k"></select></label>
+    <label><span data-nlabel>nodes</span> <input name="n" type="number" min="20" max="400" value={n} inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+  </div>
+  <div class="controls" role="group" aria-label="Rule and run">
+    <label>rule <select name="rule">{rules.map((r, i) => <option value={`${r.B},${r.S}`} selected={i === 0}>{ruleName(r)}</option>)}</select></label>
+    <output name="best"></output>
+    <button name="reconf" type="button">new start</button>
+    <button name="unclamp" type="button">release all</button>
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="20" /></label>
+    <button name="reset" type="button">reset</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(420px, 66vh, 700px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  [name="gen"] { min-width: 7em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, fixSize, specOf, bestRules, type Fam } from '../scripts/family';
+  import { stepClamped, consensusStart } from '../scripts/consensus';
+  import { step, density, randomState, ruleName, type Rule } from '../scripts/llna';
+  import { buildNet, makeRng, latticeLink, type Net } from '../scripts/net';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const famBtns = Object.fromEntries(FAMS.map((f) => [f, $<HTMLButtonElement>(f)])) as Record<Fam, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, nIn = $<HTMLInputElement>('n'), nlabel = el.querySelector<HTMLElement>('[data-nlabel]')!;
+    const ruleIn = $<HTMLSelectElement>('rule'), best = $<HTMLOutputElement>('best'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('clamp', { kind: d.kind!, p: '', k: '8', n: d.n!, rule: '', seed: '1', cs: '1' });
+    const isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
+    const T = 100, CAP = 4096;
+
+    let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'npa';
+    let param = fixParam(kind, url.get('p') === '' ? NaN : +url.get('p')), k = fixDegree(kind, +url.get('k')), n = fixSize(kind, +url.get('n'), kind === 'npa' ? 250 : 400);
+    let seed = Math.max(1, Math.round(+url.get('seed')) || 1), cs = Math.max(1, Math.round(+url.get('cs')) || 1);
+    let rule: Rule = parseRule(url.get('rule')) ?? bestRules(kind, k, param)[0]?.rule ?? { r: 9, B: 464, S: 488 };
+    let net: Net = buildNet(specOf(kind, n, k, param), seed), clampSet = new Int8Array(n).fill(-1);
+    let s0 = new Uint8Array(n), hist: Uint8Array[] = [], twin: Uint8Array[] = [], rhoA: number[] = [], rhoB: number[] = [], conditioned = true;
+
+    function parseRule(s: string): Rule | null { const m = s.match(/^(\d+),(\d+)$/); return m ? { r: 9, B: +m[1], S: +m[2] } : null; }
+    function start() {
+      const rnd = makeRng(cs * 7919 + seed);
+      const found = consensusStart(net, rule, T, rnd, 6);
+      conditioned = !!found; s0 = found ?? randomState(n, 0.5, rnd);
+      hist = [s0.slice()]; rhoA = [density(s0)];
+      const t0 = s0.slice(); for (let i = 0; i < n; i++) if (clampSet[i] >= 0) t0[i] = clampSet[i];
+      twin = [t0]; rhoB = [density(t0)];
+    }
+    function advance() {
+      const a = step(hist[hist.length - 1], net, rule); hist.push(a); rhoA.push(density(a));
+      const b = stepClamped(twin[twin.length - 1], net, rule, clampSet); twin.push(b); rhoB.push(density(b));
+      if (hist.length > CAP) { hist.shift(); twin.shift(); }
+      return done();
+    }
+    const frozen = (rho: number[]) => rho.length > 2 && (rho[rho.length - 1] === 0 || rho[rho.length - 1] === 1) && rho[rho.length - 1] === rho[rho.length - 2];
+    const done = () => (frozen(rhoA) && frozen(rhoB)) || rhoA.length > T;
+    const clampedNodes = () => { const out: number[] = []; for (let i = 0; i < n; i++) if (clampSet[i] >= 0) out.push(i); return out; };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680, cap = 16;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - cap, w * 0.58) : Math.min(w - 2 * pad, h * 0.55);
+      const nb: Box = { x: wide ? pad : (w - side) / 2, y: pad, w: side, h: side };
+      const tb: Box = wide ? { x: nb.x + side + pad + 30, y: pad + 20, w: w - side - 3 * pad - 34, h: h - 2 * pad - 60 } : { x: pad + 30, y: nb.y + side + cap + pad + 16, w: w - 2 * pad - 34, h: h - side - cap - 3 * pad - 40 };
+      drawNet(t, nb); drawTraces(t, tb); state();
+    }
+    function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      const s = twin[twin.length - 1], ref = hist[hist.length - 1];
+      ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath();
+      for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      const rad = kind === 'lat' ? Math.min(7, (0.36 * b.w) / net.side!) : Math.max(2, Math.min(6, (0.45 * b.w) / Math.sqrt(n)));
+      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) {
+        if (s[i] !== pass) continue;
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        if (s[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); }
+      }
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < n; i++) if (s[i] !== ref[i]) { ctx.moveTo(X(i) + rad + 2, Y(i)); ctx.arc(X(i), Y(i), rad + 2, 0, 2 * Math.PI); }
+      ctx.stroke();
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 2.5; ctx.beginPath();
+      for (const i of clampedNodes()) { ctx.moveTo(X(i) + rad + 4, Y(i)); ctx.arc(X(i), Y(i), rad + 4, 0, 2 * Math.PI); }
+      ctx.stroke();
+      label(ctx, `${FAM_NAME[kind]} · ${n} nodes · ${net.edges.length} links · ${clampedNodes().length ? `${clampedNodes().length} clamped dead (red)` : 'click a node to clamp it dead'}`, b.x + 2, b.y + b.h + 13, t);
+    }
+    function drawTraces(t: ReturnType<typeof tokens>, b: Box) {
+      const Tn = Math.max(40, rhoA.length - 1), X = (i: number) => b.x + (i / Tn) * b.w, Y = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1;
+      for (const v of [0, 0.5, 1]) { ctx.beginPath(); ctx.moveTo(b.x, Y(v) + 0.5); ctx.lineTo(b.x + b.w, Y(v) + 0.5); ctx.stroke(); }
+      const line = (ys: number[], color: string, width: number) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ys.forEach((v, i) => (i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)))); ctx.stroke(); };
+      line(rhoA, t.muted, 1.5); line(rhoB, t.accent, 2.5);
+      label(ctx, 'share on: untouched run (grey), clamped run (blue)', b.x, b.y - 6, t, { color: t.ink });
+      label(ctx, '1', b.x - 4, Y(1) + 4, t, { align: 'right' }); label(ctx, '½', b.x - 4, Y(0.5) + 4, t, { align: 'right' }); label(ctx, '0', b.x - 4, Y(0) + 4, t, { align: 'right' });
+      label(ctx, `tick 0 … ${Tn}`, b.x + b.w - 4, b.y + b.h + 12, t, { align: 'right' });
+    }
+    function verdict(): string {
+      const a = rhoA[rhoA.length - 1], bb = rhoB[rhoB.length - 1], tick = rhoA.length - 1;
+      const A = frozen(rhoA) ? `untouched run: all ${a ? 'on' : 'off'}` : `untouched run: ${(a * 100).toFixed(0)}% on`;
+      if (!clampedNodes().length) return `${A} at tick ${tick}${conditioned ? '' : ' (no start that reaches consensus was found; this one may not)'}`;
+      const B = frozen(rhoB) ? (bb === 0 ? 'the clamp reversed it: all off' : bb === 1 ? 'the clamp had no effect: all on' : '') : `the clamped run sits at ${(bb * 100).toFixed(0)}% on${done() ? ', a mixed end state' : ''}`;
+      return `${A}; ${B} at tick ${tick}`;
+    }
+    function state() {
+      gen.value = `tick ${rhoA.length - 1}`; status.value = verdict();
+      const list = bestRules(kind, k, param), mine = list.find((x) => x.rule.B === rule.B && x.rule.S === rule.S);
+      best.value = list.length ? `thesis: ${mine ? `${mine.pct}% reach consensus with this rule` : `best here ${ruleName(list[0].rule)}, ${list[0].pct}%`}` : 'thesis: no rule reaches consensus here';
+      if (!st.loop.playing) c.setAttribute('aria-label', `${FAM_NAME[kind]} network of ${n} nodes running ${ruleName(rule)}. ${status.value}`);
+    }
+    function show() {
+      for (const f of FAMS) famBtns[f].setAttribute('aria-pressed', String(f === kind));
+      const P = FAM_PARAM[kind]; plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(param); pv.value = P.fmt(param);
+      klabel.textContent = kind === 'npa' ? 'links per newcomer' : kind === 'lat' ? 'neighbours' : 'degree';
+      kIn.innerHTML = FAM_DEGREES[kind].map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${kind === 'npa' ? x / 2 : x}</option>`).join('');
+      nlabel.textContent = kind === 'lat' ? 'side' : 'nodes'; nIn.min = kind === 'lat' ? '5' : '20'; nIn.max = kind === 'lat' ? '20' : kind === 'npa' ? '250' : '400'; nIn.value = String(kind === 'lat' ? Math.round(Math.sqrt(n)) : n);
+      ruleIn.value = `${rule.B},${rule.S}`;
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('n', String(n)); url.set('rule', `${rule.B},${rule.S}`); url.set('seed', String(seed)); url.set('cs', String(cs)); }
+
+    const st = stepper(el, { advance, paint, reset: () => { hist = [hist[0]]; twin = [twin[0]]; rhoA = [rhoA[0]]; rhoB = [rhoB[0]]; }, undo: () => { if (hist.length > 1) { hist.pop(); twin.pop(); rhoA.pop(); rhoB.pop(); } }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const rebuild = (pickRule = false) => { st.loop.play(false); n = fixSize(kind, n, kind === 'npa' ? 250 : 400); k = fixDegree(kind, k); param = fixParam(kind, param); if (pickRule) rule = bestRules(kind, k, param)[0]?.rule ?? rule; net = buildNet(specOf(kind, n, k, param), seed); clampSet = new Int8Array(n).fill(-1); start(); show(); sync(); paint(); };
+    for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = FAM_PARAM[f].def; rebuild(true); });
+    paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(true); });
+    paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
+    kIn.addEventListener('change', () => { k = +kIn.value; rebuild(true); });
+    nIn.addEventListener('change', () => { n = kind === 'lat' ? Math.round(+nIn.value) ** 2 : +nIn.value; rebuild(); });
+    $('regen').addEventListener('click', () => { seed++; rebuild(); });
+    ruleIn.addEventListener('change', () => { rule = parseRule(ruleIn.value) ?? rule; st.loop.play(false); start(); sync(); paint(); });
+    $('reconf').addEventListener('click', () => { cs++; st.loop.play(false); start(); sync(); paint(); });
+    $('unclamp').addEventListener('click', () => { clampSet.fill(-1); st.loop.play(false); start(); paint(); });
+    $('step').addEventListener('click', st.step); $('reset').addEventListener('click', st.reset);
+    c.addEventListener('click', (e) => {
+      const r = c.getBoundingClientRect(), sz = fit(c); if (!sz) return;
+      const x = e.clientX - r.left, y = e.clientY - r.top, pad = 12, wide = sz.w >= 680;
+      const side = wide ? Math.min(sz.h - 2 * pad - 16, sz.w * 0.58) : Math.min(sz.w - 2 * pad, sz.h * 0.55), bx = wide ? pad : (sz.w - side) / 2;
+      let bestI = -1, bd = 14 * 14;
+      for (let i = 0; i < n; i++) { const dx = bx + net.xy[2 * i] * side - x, dy = pad + net.xy[2 * i + 1] * side - y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; bestI = i; } }
+      if (bestI < 0) return;
+      clampSet[bestI] = clampSet[bestI] >= 0 ? -1 : 0;
+      st.loop.play(false);
+      // rerun the twin from the same start with the new clamps, keeping the untouched history's start
+      const t0 = s0.slice(); for (let i = 0; i < n; i++) if (clampSet[i] >= 0) t0[i] = clampSet[i];
+      hist = [s0.slice()]; rhoA = [density(s0)]; twin = [t0]; rhoB = [density(t0)];
+      while (!done()) advance();
+      paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    start(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-consensus]').forEach(mount);
+</script>

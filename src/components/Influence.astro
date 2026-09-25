@@ -1,0 +1,173 @@
+---
+// The interventional method of Ch. 10: clamp every node dead in turn, over a handful of consensus
+// realisations that would otherwise end all-on, and score each node by how far the network then falls
+// from all-on, η = 1 − ⟨ρᵀ⟩. The network is coloured by η as the worker fills it in; on the right η is
+// scattered against a chosen centrality with the Spearman rank correlation. Self-contained with
+// src/scripts/consensus.ts, family.ts, centrality.ts, stats.ts, jobs.ts, palette.ts, figure.ts.
+import { FAMS, FAM_NAME } from '../scripts/family';
+import { CENTRALITIES } from '../scripts/centrality';
+type Props = { kind?: 'ws' | 'lat' | 'npa' };
+const { kind = 'npa' } = Astro.props;
+---
+<figure class="fig" id="eta" data-influence data-kind={kind} tabindex="-1">
+  <canvas role="img" aria-label="A network coloured by each node's dynamical importance, with the score scattered against a centrality"></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    {FAMS.map((f) => <button name={f} type="button" aria-pressed={f === kind}>{FAM_NAME[f]}</button>)}
+    <label><span data-plabel>power α</span> <input name="param" type="range" min="0" max="3" step="0.5" value="1" /> <output name="pv"></output></label>
+    <label><span data-klabel>degree</span> <select name="k"></select></label>
+    <button name="regen" type="button">new network</button>
+  </div>
+  <div class="controls" role="group" aria-label="Score">
+    <button name="run" type="button">score every node</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <label>against <select name="c">{CENTRALITIES.map((c) => <option value={c.id} selected={c.id === 'deg'}>{c.name}</option>)}</select></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(400px, 62vh, 640px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, specOf, bestRules, type Fam } from '../scripts/family';
+  import { CENTRALITIES, centrality, type Centrality } from '../scripts/centrality';
+  import { spearman } from '../scripts/stats';
+  import { ruleName } from '../scripts/llna';
+  import { buildNet, latticeLink, type Net } from '../scripts/net';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import type { EtaResult } from '../scripts/consensus';
+  import { parse, mix, css } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const famBtns = Object.fromEntries(FAMS.map((f) => [f, $<HTMLButtonElement>(f)])) as Record<Fam, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, cIn = $<HTMLSelectElement>('c');
+    const runBtn = $<HTMLButtonElement>('run'), prog = $<HTMLProgressElement>('prog'), status = $<HTMLOutputElement>('status');
+    const url = urlState('eta', { kind: el.dataset.kind!, p: '', k: '8', c: 'deg', seed: '1' }), isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
+    const jobs = new Jobs(), N = 120, SEEDS = 10;
+    let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'npa', param = fixParam(kind, url.get('p') === '' ? NaN : +url.get('p')), k = fixDegree(kind, +url.get('k'));
+    let by: Centrality = CENTRALITIES.some((x) => x.id === url.get('c')) ? (url.get('c') as Centrality) : 'deg', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    const size = () => (kind === 'lat' ? 11 * 11 : N);
+    let net: Net = buildNet(specOf(kind, size(), k, param), seed), res: EtaResult | null = null, scored = 0;
+    const cache = new Map<Centrality, Float64Array>();
+    const cent = (id: Centrality) => { let v = cache.get(id); if (!v) { v = centrality(id, net); cache.set(id, v); } return v; };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680, cap = 16;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - cap, w * 0.55) : Math.min(w - 2 * pad, h * 0.5);
+      const nb: Box = { x: wide ? pad : (w - side) / 2, y: pad, w: side, h: side };
+      const sb: Box = wide ? { x: nb.x + side + pad + 36, y: pad + 20, w: w - side - 3 * pad - 44, h: h - 2 * pad - 60 } : { x: pad + 36, y: nb.y + side + cap + pad + 16, w: w - 2 * pad - 44, h: h - side - cap - 3 * pad - 44 };
+      drawNet(t, nb); drawScatter(t, sb); readout();
+    }
+    function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      const n = net.n, X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath();
+      for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      const rad = kind === 'lat' ? Math.min(8, (0.36 * b.w) / net.side!) : Math.max(2.5, Math.min(7, (0.45 * b.w) / Math.sqrt(n)));
+      const line = parse(t.line), acc = parse(t.accent), ink = parse(t.ink);
+      const order = Array.from({ length: n }, (_, i) => i); if (res) order.sort((a, b2) => res!.eta[a] - res!.eta[b2]);
+      for (const i of order) {
+        const v = res && i < scored ? res.eta[i] : -1;
+        ctx.beginPath(); ctx.arc(X(i), Y(i), v >= 0 ? rad * (0.6 + 1.2 * Math.sqrt(v)) : rad * 0.7, 0, 2 * Math.PI);
+        ctx.fillStyle = v >= 0 ? css(mix(mix(line, acc, Math.min(1, v * 1.6)), ink, Math.max(0, v - 0.6) * 2.5)) : t.panel; ctx.fill();
+        ctx.strokeStyle = v >= 0 ? t.bg : t.muted; ctx.lineWidth = 0.75; ctx.stroke();
+      }
+      const rule = bestRules(kind, k, param)[0];
+      label(ctx, `${FAM_NAME[kind]} · ${n} nodes · ${rule ? ruleName(rule.rule) : 'no rule'} · ${res ? `η from ${res.realisations} realisations, dark and large is high` : 'press "score every node"'}`, b.x + 2, b.y + b.h + 13, t);
+    }
+    function drawScatter(t: ReturnType<typeof tokens>, b: Box) {
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      const cd = CENTRALITIES.find((x) => x.id === by)!;
+      label(ctx, `dynamical importance η against ${cd.name}`, b.x, b.y - 6, t, { color: t.ink });
+      label(ctx, '1', b.x - 4, b.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', b.x - 4, b.y + b.h, t, { align: 'right', size: 10 });
+      ctx.save(); ctx.translate(b.x - 22, b.y + b.h / 2); ctx.rotate(-Math.PI / 2); label(ctx, 'η = 1 − ⟨ρᵀ⟩ with the node clamped dead', 0, 0, t, { align: 'center' }); ctx.restore();
+      label(ctx, `${cd.name} →`, b.x + b.w, b.y + b.h + 14, t, { align: 'right' });
+      if (!res) return;
+      const v = cent(by); let lo = Infinity, hi = -Infinity; for (let i = 0; i < net.n; i++) { lo = Math.min(lo, v[i]); hi = Math.max(hi, v[i]); }
+      const span = hi - lo || 1;
+      ctx.fillStyle = t.ink; ctx.globalAlpha = 0.7;
+      for (let i = 0; i < scored; i++) { ctx.beginPath(); ctx.arc(b.x + ((v[i] - lo) / span) * (b.w - 8) + 4, b.y + (1 - res.eta[i]) * (b.h - 8) + 4, 3, 0, 2 * Math.PI); ctx.fill(); }
+      ctx.globalAlpha = 1;
+      if (scored === net.n) label(ctx, `Spearman ρ_S = ${spearman(res.eta, v).toFixed(2)}`, b.x + b.w - 6, b.y + 16, t, { align: 'right', color: t.accent, size: 12 });
+    }
+    function readout() {
+      const rule = bestRules(kind, k, param)[0];
+      if (!rule) { status.value = 'the thesis found no consensus rule for this setting, so there is nothing to probe'; return; }
+      if (!res) { status.value = `probe ${ruleName(rule.rule)} (${rule.pct}% consensus in the thesis) · ${SEEDS} realisations, every node clamped dead in turn, 100 ticks each`; return; }
+      const parts = [`${scored} of ${net.n} nodes scored`];
+      if (scored === net.n) {
+        let top = 0; for (let i = 1; i < net.n; i++) if (res.eta[i] > res.eta[top]) top = i;
+        parts.push(`most important: node ${top}, η = ${res.eta[top].toFixed(2)}, degree ${net.deg[top]}`);
+        parts.push('ρ_S: ' + CENTRALITIES.map((cd) => `${cd.symbol} ${spearman(res!.eta, cent(cd.id)).toFixed(2)}`).join(', '));
+        const rev = Array.from(res.flips).filter((f) => f >= 0.5).length; parts.push(`${rev} node${rev === 1 ? '' : 's'} reverse the consensus in at least half the realisations`);
+      }
+      status.value = parts.join(' · ');
+    }
+    function show() {
+      for (const f of FAMS) famBtns[f].setAttribute('aria-pressed', String(f === kind));
+      const P = FAM_PARAM[kind]; plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(param); pv.value = P.fmt(param);
+      klabel.textContent = kind === 'npa' ? 'links per newcomer' : kind === 'lat' ? 'neighbours' : 'degree';
+      kIn.innerHTML = FAM_DEGREES[kind].map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${kind === 'npa' ? x / 2 : x}</option>`).join('');
+      cIn.value = by; runBtn.disabled = !bestRules(kind, k, param).length;
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('c', by); url.set('seed', String(seed)); }
+    const rebuild = () => { jobs.cancel(); prog.hidden = true; res = null; scored = 0; cache.clear(); k = fixDegree(kind, k); param = fixParam(kind, param); net = buildNet(specOf(kind, size(), k, param), seed); show(); sync(); paint(); };
+    for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = FAM_PARAM[f].def; rebuild(); });
+    paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(); });
+    paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
+    kIn.addEventListener('change', () => { k = +kIn.value; rebuild(); });
+    $('regen').addEventListener('click', () => { seed++; rebuild(); });
+    cIn.addEventListener('change', () => { by = cIn.value as Centrality; sync(); paint(); });
+    const repaint = schedule(paint);
+    runBtn.addEventListener('click', async () => {
+      const rule = bestRules(kind, k, param)[0]; if (!rule) return;
+      prog.hidden = false; prog.value = 0; runBtn.disabled = true; res = null; scored = 0;
+      try {
+        res = await jobs.run<EtaResult>('eta', { spec: specOf(kind, size(), k, param), rule: rule.rule, seeds: SEEDS, seed, T: 100 }, (p, partial) => { prog.value = p; res = partial as EtaResult; scored = Math.round(p * net.n); repaint(); });
+        scored = net.n;
+      } catch (err) { if (!(err instanceof Cancelled)) status.value = `the scan failed: ${(err as Error).message}`; }
+      prog.hidden = true; runBtn.disabled = false; paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-influence]').forEach(mount);
+</script>

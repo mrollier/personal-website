@@ -1,0 +1,154 @@
+---
+// The observational method of Ch. 10: on consensus realisations that end all-on, swap the state of the most
+// central live node with that of the least central dead node, again and again, and rerun. The curve is the
+// share that has flipped after m swaps, against a random-swap reference; m₉₀ is where it passes 90%.
+// Runs in the worker. Self-contained with src/scripts/consensus.ts, family.ts, centrality.ts, jobs.ts, figure.ts.
+import { FAMS, FAM_NAME } from '../scripts/family';
+import { CENTRALITIES } from '../scripts/centrality';
+type Props = { kind?: 'ws' | 'lat' | 'npa' };
+const { kind = 'npa' } = Astro.props;
+---
+<figure class="fig" id="swap" data-swapcurve data-kind={kind} tabindex="-1">
+  <canvas role="img" aria-label="Share of runs whose consensus flipped against the number of centrality-ranked state swaps"></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    {FAMS.map((f) => <button name={f} type="button" aria-pressed={f === kind}>{FAM_NAME[f]}</button>)}
+    <label><span data-plabel>power α</span> <input name="param" type="range" min="0" max="3" step="0.5" value="1" /> <output name="pv"></output></label>
+    <label><span data-klabel>degree</span> <select name="k"></select></label>
+  </div>
+  <div class="controls" role="group" aria-label="Swaps">
+    <label>rank by <select name="c">{CENTRALITIES.map((c) => <option value={c.id} selected={c.id === 'clo'}>{c.name}</option>)}</select></label>
+    <button name="run" type="button">run 20 realisations</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <output name="best"></output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(340px, 52vh, 520px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, specOf, bestRules, type Fam } from '../scripts/family';
+  import { CENTRALITIES, type Centrality } from '../scripts/centrality';
+  import { ruleName } from '../scripts/llna';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import type { SwapPoint } from '../scripts/consensus';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const famBtns = Object.fromEntries(FAMS.map((f) => [f, $<HTMLButtonElement>(f)])) as Record<Fam, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, cIn = $<HTMLSelectElement>('c');
+    const runBtn = $<HTMLButtonElement>('run'), prog = $<HTMLProgressElement>('prog'), best = $<HTMLOutputElement>('best'), status = $<HTMLOutputElement>('status');
+    const url = urlState('swap', { kind: el.dataset.kind!, p: '', k: '8', c: 'clo' }), isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
+    const jobs = new Jobs(), N = 300, SWAPS = 30, SEEDS = 20;
+    let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'npa', param = fixParam(kind, url.get('p') === '' ? NaN : +url.get('p')), k = fixDegree(kind, +url.get('k'));
+    let by: Centrality = CENTRALITIES.some((x) => x.id === url.get('c')) ? (url.get('c') as Centrality) : 'clo';
+    let curves: { by: Centrality | 'random'; pts: SwapPoint[] }[] = [], phase = '';
+
+    const size = () => (kind === 'lat' ? 17 * 17 : N);
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const b: Box = { x: pad + 34, y: pad + 20, w: w - 2 * pad - 44, h: h - 2 * pad - 46 };
+      const X = (m: number) => b.x + (m / SWAPS) * b.w, Y = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(b.x, Y(0.9) + 0.5); ctx.lineTo(b.x + b.w, Y(0.9) + 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x, Y(0.5) + 0.5); ctx.lineTo(b.x + b.w, Y(0.5) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+      label(ctx, '90%', b.x - 4, Y(0.9) + 4, t, { align: 'right', size: 10 }); label(ctx, '½', b.x - 4, Y(0.5) + 4, t, { align: 'right', size: 10 });
+      label(ctx, '1', b.x - 4, Y(1) + 8, t, { align: 'right', size: 10 }); label(ctx, '0', b.x - 4, Y(0), t, { align: 'right', size: 10 });
+      for (const m of [0, 5, 10, 15, 20, 25, 30]) label(ctx, String(m), X(m), b.y + b.h + 12, t, { align: 'center', size: 10 });
+      label(ctx, 'number of swaps m', b.x + b.w / 2, b.y + b.h + 26, t, { align: 'center' });
+      ctx.save(); ctx.translate(b.x - 24, b.y + b.h / 2); ctx.rotate(-Math.PI / 2); label(ctx, 'share flipped, 1 − ⟨ρᵀ⟩', 0, 0, t, { align: 'center' }); ctx.restore();
+      for (const cv of curves) {
+        const col = cv.by === 'random' ? t.muted : t.accent;
+        ctx.strokeStyle = col; ctx.lineWidth = cv.by === 'random' ? 1.5 : 2.5; ctx.beginPath();
+        cv.pts.forEach((q, i) => (i ? ctx.lineTo(X(q.m), Y(q.flipped)) : ctx.moveTo(X(q.m), Y(q.flipped)))); ctx.stroke();
+        const last = cv.pts[cv.pts.length - 1];
+        label(ctx, cv.by === 'random' ? `random swaps (${last.realisations} realisations)` : `by ${CENTRALITIES.find((x) => x.id === cv.by)!.name} (${last.realisations} realisations)`, X(SWAPS) - 4, Y(last.flipped) - 6, t, { align: 'right', color: col });
+      }
+      if (!curves.length) label(ctx, phase || 'press "run 20 realisations"', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' });
+      const rule = bestRules(kind, k, param)[0];
+      label(ctx, `${FAM_NAME[kind]} · ${FAM_PARAM[kind].label.split(' ')[1]} = ${FAM_PARAM[kind].fmt(param)} · ${size()} nodes · ${rule ? ruleName(rule.rule) : 'no rule'}`, b.x, b.y - 6, t, { color: t.ink });
+    }
+    const m90 = (pts: SwapPoint[]) => { for (const q of pts) if (q.flipped >= 0.9) return q.m; return null; };
+    function readout() {
+      const rule = bestRules(kind, k, param)[0];
+      best.value = rule ? `thesis's best rule here: ${ruleName(rule.rule)}, ${rule.pct}% consensus` : 'the thesis found no consensus rule here';
+      const parts: string[] = [];
+      for (const cv of curves) { const m = m90(cv.pts); parts.push(`${cv.by === 'random' ? 'random' : CENTRALITIES.find((x) => x.id === cv.by)!.name}: ${m === null ? 'never reaches 90% within 30 swaps' : `m₉₀ = ${m}`}`); }
+      status.value = parts.join(' · ') || (phase ? phase : '');
+    }
+    function show() {
+      for (const f of FAMS) famBtns[f].setAttribute('aria-pressed', String(f === kind));
+      const P = FAM_PARAM[kind]; plabel.textContent = P.label; paramIn.min = String(P.min); paramIn.max = String(P.max); paramIn.step = String(P.step); paramIn.value = String(param); pv.value = P.fmt(param);
+      klabel.textContent = kind === 'npa' ? 'links per newcomer' : kind === 'lat' ? 'neighbours' : 'degree';
+      kIn.innerHTML = FAM_DEGREES[kind].map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${kind === 'npa' ? x / 2 : x}</option>`).join('');
+      cIn.value = by; runBtn.disabled = !bestRules(kind, k, param).length;
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('c', by); }
+    const reset = () => { jobs.cancel(); prog.hidden = true; curves = []; phase = ''; k = fixDegree(kind, k); param = fixParam(kind, param); show(); sync(); readout(); paint(); };
+    for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = FAM_PARAM[f].def; reset(); });
+    paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); reset(); });
+    paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
+    kIn.addEventListener('change', () => { k = +kIn.value; reset(); });
+    cIn.addEventListener('change', () => { by = cIn.value as Centrality; reset(); });
+    const repaint = schedule(paint);
+    runBtn.addEventListener('click', async () => {
+      const rule = bestRules(kind, k, param)[0]; if (!rule) return;
+      curves = []; prog.hidden = false; prog.value = 0; runBtn.disabled = true;
+      const spec = specOf(kind, size(), k, param);
+      try {
+        for (const who of [by, 'random'] as const) {
+          phase = who === 'random' ? 'now the random reference …' : 'ranking and swapping …'; readout();
+          const pts = await jobs.run<SwapPoint[]>('swap-curve', { spec, rule: rule.rule, by: who, swaps: SWAPS, seeds: SEEDS, seed: 7, T: 100 }, (p, partial) => {
+            prog.value = (who === 'random' ? 0.5 : 0) + p / 2;
+            const i = curves.findIndex((x) => x.by === who); const entry = { by: who, pts: partial as SwapPoint[] }; if (i < 0) curves.push(entry); else curves[i] = entry;
+            readout(); repaint();
+          });
+          const i = curves.findIndex((x) => x.by === who); if (i < 0) curves.push({ by: who, pts }); else curves[i] = { by: who, pts };
+        }
+        phase = '';
+      } catch (err) { if (!(err instanceof Cancelled)) status.value = `the run failed: ${(err as Error).message}`; }
+      prog.hidden = true; runBtn.disabled = false; readout(); paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); readout(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-swapcurve]').forEach(mount);
+</script>

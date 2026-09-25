@@ -9,7 +9,10 @@ import Sensitivity from '../../components/Sensitivity.astro';
 import RuleScatter from '../../components/RuleScatter.astro';
 import PartitionTwin from '../../components/PartitionTwin.astro';
 import GenotypeFilter from '../../components/GenotypeFilter.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation']); // tabs with content; the rest show a placeholder
+import Consensus from '../../components/Consensus.astro';
+import SwapCurve from '../../components/SwapCurve.astro';
+import Influence from '../../components/Influence.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'impact']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -503,6 +506,92 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 6 is the second half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}). The synchroniser and majority figures are the ones from the <a href="/demos/cellular-automata/#firing-squad">other demo</a>.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="impact" aria-labelledby="tab-impact" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Impact</h2>
+          <p>
+            Which node in a network matters most? The textbook answer is a centrality measure: the one with the
+            most links, the one on the most shortest paths, the one closest to everyone. Those are facts about the
+            wiring. Whether they translate into influence depends on what is actually happening on the network,
+            and that is usually unknown: we know who talks to whom, not how anyone makes up their mind. So the
+            last chapter of the thesis asks for a probe that needs no knowledge of the true rule, and finds one in
+            the consensus-seeking rules of the previous chapter. Run one of them and the whole network ends
+            unanimous, all on or all off, a clean two-valued readout, and the rule was picked to be as touchy as
+            possible along the way. Colloquially, as the chapter puts it: these networks are completely alive,
+            and our methods try to kill them.
+          </p>
+          <p>
+            The figure below is the setting. Pick a family, and the rule the thesis found best for it is loaded
+            with the share of samples it brought to unanimity. Every start is drawn at half on and chosen so that,
+            left alone, the network ends all on. Now click a node. It is <em>clamped</em> dead: it starts off and is
+            held off for the whole run, whatever its neighbours do. The blue run is the clamped one, the grey run
+            is the untouched one, the red rings show where they differ, and the verdict says whether one stuck
+            node reversed the outcome, did nothing, or left the network stuck between the two.
+          </p>
+        </div>
+        <Consensus />
+        <div class="measure">
+          <p>
+            The thesis turns that into two measurements. The first is observational and uses the centralities.
+            Take a start that ends all on, find the most central node that is on and the least central node that
+            is off, swap their states, and rerun; then swap the next pair, and the next. The share of runs that
+            now end all off, plotted against the number of swaps, tells how far the outcome is decided by where
+            the central nodes start. On preferential-attachment networks of degree 8, ranked by closeness, ten
+            swaps or fewer flip nine runs in ten, whatever the power α; at α = 1.5 two swaps do it. Swapping
+            random pairs instead merely shuffles the start, and the outcome drifts to a coin toss without ever
+            reaching the nine-in-ten mark. On rings and grids the picture is more nuanced: the h index is a blunt
+            instrument because so many nodes share a value, eigenvector centrality is sharp, especially on the
+            eight-neighbour grid, and the average neighbour degree is useless everywhere. The figure runs twenty
+            realisations on a network of 300 nodes, the chosen ranking against the random reference, and reports
+            m₉₀, the number of swaps at which the curve passes 90 percent.
+          </p>
+        </div>
+        <SwapCurve />
+        <div class="measure">
+          <p>
+            The second measurement is interventional and uses no centrality at all. Clamp one node dead for the
+            whole run, over many starts that would otherwise end all on, and record how far from all on the
+            network ends: η = 1 − ⟨ρ<sup>T</sup>⟩, the node's <em>dynamical importance</em>. Then do it for every
+            node. Nothing about the wiring is computed; the network only has to be simulated. The figure does
+            exactly that in the background and colours the nodes as the scores arrive, then scatters η against
+            whichever centrality you choose and prints the rank correlation for all six.
+          </p>
+          <p>
+            What the thesis found, on networks of a thousand nodes and 300 starts each, is that η correlates with
+            centrality but reduces to none of the six. On rings and grids the correlation rises with the rewiring,
+            because on a near-regular network the centralities barely differ between nodes and there is nothing
+            to rank. On preferential-attachment networks degree predicts η well at low α, the correlations dip
+            around α = 2 and recover at 3: at α = 2 several hubs of similar weight shield one another, so
+            clamping one of them changes little, while at α = 3 one super-hub stands alone again. And on those
+            networks the average neighbour degree is <em>negatively</em> correlated with η: a node whose neighbours
+            are hubs cannot move them, since each hub has many other inputs, while a node whose neighbours are
+            poorly connected owns a large share of their attention. Reaching many neighbours makes a node
+            influential; having neighbours with few alternatives makes the influence stick. No single centrality
+            measure says that.
+          </p>
+          <p>
+            The chapter is candid about what this is not. The score is a property of a node under one probe,
+            one rule, one horizon, and the thesis used one rule per setting; it mixes clampings that changed the
+            node's start with ones that did not; its own reliability was not measured; and it has not yet been
+            set against an independent dynamical model such as an epidemic. Those are the next steps, and they
+            are why this chapter is the one still being written up.
+          </p>
+        </div>
+        <Influence />
+        <div class="measure">
+          <p>
+            Things to try. In the sandbox, preferential attachment at α = 1 with 200 nodes: clamp the hub, then
+            release it and clamp a leaf next to the hub, then a leaf far from it. Then the same at α = 3, where
+            the hub is enormous and clamping it does surprisingly little. In the swap figure, rank by average
+            neighbour degree and watch nothing happen. In the scoring figure, score a ring at rewiring 0.2 and at
+            1, and compare the correlations; then preferential attachment at α = 0, 2 and 3.
+          </p>
+          <p class="meta status-line">
+            Ch. 10 is unpublished: {pub('node-importance').title}, with Lucas de Oliveira, Odemir Bruno and Jan Baetens, in preparation. The figures run the thesis's method at a tenth of its size.
           </p>
         </div>
       </section>

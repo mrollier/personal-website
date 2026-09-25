@@ -3,10 +3,13 @@
 // result. Cancelling is done by terminating the worker (see jobs.ts), so nothing here needs to listen.
 import { omegaSweep } from './centrality';
 import { successSweep } from './sync';
+import { swapCurve, etaScan } from './consensus';
 
 const JOBS: Record<string, (params: any) => Generator<{ p: number; partial?: unknown }, unknown>> = {
   'omega-sweep': omegaSweep,
   'success-sweep': successSweep,
+  'swap-curve': swapCurve,
+  'eta': etaScan,
 };
 
 self.onmessage = (e: MessageEvent<{ id: number; kind: string; params: unknown }>) => {

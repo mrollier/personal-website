@@ -1,0 +1,131 @@
+---
+// One tick of an elementary cellular automaton as the arithmetic of a two-layer convolutional network
+// (Ch. 7): the row goes in, eight detector channels light up one-hot, the rule table weighs them and the
+// sum is the next row. The pre-activations are shown too, so the slider for ω can show that any ω ≥ 1
+// gives the same exact answer. Self-contained with src/scripts/cnn.ts, eca.ts, wolfram.ts, palette.ts, figure.ts
+// and EcaTable.astro. The URL query under `cnn.` overrides the props.
+import EcaTable from './EcaTable.astro';
+type Props = { rule?: number; n?: number };
+const { rule = 54, n = 32 } = Astro.props;
+---
+<figure class="fig" id="cnnrow" data-cnnrow data-rule={rule} data-n={n} tabindex="-1">
+  <canvas role="img" aria-label="A row of cells, the eight detector channels, and the next row"></canvas>
+  <div class="controls" role="group" aria-label="Rule and input">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <label>cells <input name="n" type="number" min="8" max="96" value={n} inputmode="numeric" /></label>
+    <label>ω <input name="omega" type="range" min="1" max="4" step="0.5" value="1" /> <output name="ov">1.0</output></label>
+    <button name="pre" type="button" aria-pressed="false">show sums before the ReLU</button>
+    <button name="feed" type="button">feed the output back in</button>
+    <button name="random" type="button">new random row</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status"></output>
+  <div class="lut"><EcaTable rule={rule} interactive /></div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(380px, 56vh, 600px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 8rem; accent-color: var(--accent); margin: 0; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .lut { min-width: 0; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig:is(:fullscreen, .full) .lut { display: none; }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow } from '../scripts/eca';
+  import { tableOf, ruleOf } from '../scripts/wolfram';
+  import { detectors, preActivation, relu, readout } from '../scripts/cnn';
+  import { parse, mix, css } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIn = $<HTMLInputElement>('rule'), nIn = $<HTMLInputElement>('n'), omegaIn = $<HTMLInputElement>('omega'), ov = $<HTMLOutputElement>('ov'), preBtn = $<HTMLButtonElement>('pre'), status = $<HTMLOutputElement>('status');
+    const bits = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-bit]'));
+    const d = el.dataset, url = urlState('cnn', { rule: d.rule!, n: d.n!, omega: '1', pre: '0', seed: '1' });
+    let rule = Math.min(255, Math.max(0, Math.round(+url.get('rule')) || 0)), n = Math.min(96, Math.max(8, Math.round(+url.get('n')) || 32));
+    let omega = Math.min(4, Math.max(1, +url.get('omega') || 1)), showPre = url.get('pre') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1), tick = 0;
+    let row = seedRow(n, 'random', rng(seed));
+    function rng(s: number) { let x = (s * 2654435761) >>> 0 || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, left = Math.min(230, w * 0.32), ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent), danger = parse(t.danger);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const table = tableOf(rule), pre = preActivation(row, omega), ch = pre.map(relu), out = readout(ch, table), det = detectors(omega);
+      const rows = 1 + 8 + 1, gap = 6, rh = Math.min(28, (h - 2 * pad - 2 * 14 - gap * 2) / rows), cw = (w - left - 2 * pad) / n, x0 = left + pad;
+      const cell = (y: number, x: number, colour: string) => { ctx.fillStyle = colour; ctx.fillRect(x0 + x * cw, y, Math.ceil(cw), rh); };
+      let y = pad;
+      for (let x = 0; x < n; x++) cell(y, x, row[x] ? t.ink : t.bg);
+      ctx.strokeStyle = t.line; ctx.strokeRect(x0 + 0.5, y + 0.5, cw * n, rh);
+      label(ctx, `input row, tick ${tick}`, x0 - 8, y + rh / 2, t, { align: 'right', base: 'middle', color: t.ink });
+      y += rh + 14;
+      label(ctx, showPre ? 'layer 1, before the ReLU: weights · neighbourhood + bias' : 'layer 1, after the ReLU: one channel lights up per cell', x0, y - 3, t, { size: 10 });
+      const lo = -2 * omega - 2;
+      for (let i = 0; i < 8; i++) {
+        for (let x = 0; x < n; x++) {
+          const v = showPre ? pre[i][x] : ch[i][x];
+          const colour = showPre ? (v >= 1 ? css(ink) : v > 0 ? css(mix(panel, ink, v)) : css(mix(panel, danger, Math.min(1, -v / -lo)))) : v ? css(table[i] ? ink : acc) : t.bg;
+          cell(y, x, colour);
+        }
+        ctx.strokeStyle = t.line; ctx.strokeRect(x0 + 0.5, y + 0.5, cw * n, rh);
+        const dd = det[i], wtxt = dd.weights.map((v) => (v === 1 ? '+1' : omega === 1 ? '−1' : `−${omega}`)).join(' ');
+        label(ctx, `ch ${i} · ${dd.pattern.join('')} · w (${wtxt}) b ${dd.bias >= 0 ? '+' : ''}${dd.bias} · × ${table[i]}`, x0 - 8, y + rh / 2, t, { align: 'right', base: 'middle', size: 10, color: table[i] ? t.ink : t.muted });
+        y += rh + 2;
+      }
+      y += 12;
+      for (let x = 0; x < n; x++) cell(y, x, out[x] ? t.ink : t.bg);
+      ctx.strokeStyle = t.line; ctx.strokeRect(x0 + 0.5, y + 0.5, cw * n, rh);
+      label(ctx, `layer 2: Σ table[i] · ch i = next row`, x0 - 8, y + rh / 2, t, { align: 'right', base: 'middle', color: t.ink });
+      label(ctx, showPre ? 'red: negative, the ReLU sets it to 0; black: exactly 1' : 'black: channel on and its rule bit is 1; blue: channel on but its rule bit is 0', x0, y + rh + 14, t, { size: 10 });
+      status.value = `rule ${rule} · ${n} cells · 8 × (3 + 1) + 8 = 40 fixed parameters · ω = ${omega.toFixed(1)}: ${omega >= 1 ? 'exact' : 'not exact'} · next row has ${out.reduce((a, b) => a + b, 0)} cells on`;
+      c.setAttribute('aria-label', status.value);
+    }
+    function show() {
+      ruleIn.value = String(rule); nIn.value = String(n); omegaIn.value = String(omega); ov.value = omega.toFixed(1); preBtn.setAttribute('aria-pressed', String(showPre));
+      const tb = tableOf(rule); for (const b of bits) { const k = +b.dataset.bit!; b.dataset.on = String(tb[k]); b.setAttribute('aria-pressed', String(tb[k] === 1)); b.textContent = String(tb[k]); }
+    }
+    function sync() { url.set('rule', String(rule)); url.set('n', String(n)); url.set('omega', String(omega)); url.set('pre', showPre ? '1' : '0'); url.set('seed', String(seed)); }
+    const apply = () => { show(); sync(); paint(); };
+    ruleIn.addEventListener('change', () => { rule = Math.min(255, Math.max(0, Math.round(+ruleIn.value) || 0)); apply(); });
+    nIn.addEventListener('change', () => { n = Math.min(96, Math.max(8, Math.round(+nIn.value) || 32)); row = seedRow(n, 'random', rng(seed)); tick = 0; apply(); });
+    omegaIn.addEventListener('input', () => { omega = +omegaIn.value; ov.value = omega.toFixed(1); sync(); paint(); });
+    preBtn.addEventListener('click', () => { showPre = !showPre; apply(); });
+    $('feed').addEventListener('click', () => { row = readout(preActivation(row, omega).map(relu), tableOf(rule)); tick++; paint(); });
+    $('random').addEventListener('click', () => { seed++; row = seedRow(n, 'random', rng(seed)); tick = 0; apply(); });
+    for (const b of bits) b.addEventListener('click', () => { const tb = tableOf(rule); tb[+b.dataset.bit!] ^= 1; rule = ruleOf(tb); apply(); });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-cnnrow]').forEach(mount);
+</script>

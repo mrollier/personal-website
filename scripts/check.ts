@@ -8,4 +8,5 @@ import './check-genotype.ts';
 import './check-sync.ts';
 import './check-consensus.ts';
 import './check-tep.ts';
+import './check-cnn.ts';
 console.log('all checks passed');

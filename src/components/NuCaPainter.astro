@@ -1,0 +1,132 @@
+---
+// A non-uniform cellular automaton painted by hand (Ch. 7): up to four rules, an allocation strip that
+// says which cell follows which, and the spacetime diagram that results, with the parameter counts of
+// the two ways of building the selection layer. Self-contained with src/scripts/cnn.ts, eca.ts, raster.ts,
+// palette.ts, figure.ts. The URL query under `nuca.` overrides the props.
+type Props = { n?: number };
+const { n = 64 } = Astro.props;
+---
+<figure class="fig" id="nuca" data-nuca data-n={n} tabindex="-1">
+  <canvas role="img" aria-label="An allocation of rules to cells and the spacetime diagram it produces"></canvas>
+  <div class="controls" role="group" aria-label="Rules">
+    <label>rules <input name="r0" type="number" min="0" max="255" value="30" inputmode="numeric" /></label>
+    <input name="r1" type="number" min="0" max="255" value="90" inputmode="numeric" aria-label="second rule" />
+    <input name="r2" type="number" min="0" max="255" value="110" inputmode="numeric" aria-label="third rule" />
+    <input name="r3" type="number" min="0" max="255" value="184" inputmode="numeric" aria-label="fourth rule" />
+    <label>rules in use <select name="nr"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select></label>
+    <label>paint with <select name="brush"><option value="0">rule 1</option><option value="1" selected>rule 2</option><option value="2">rule 3</option><option value="3">rule 4</option></select></label>
+    <button name="halves" type="button">two halves</button>
+    <button name="stripes" type="button">stripes</button>
+    <button name="shuffle" type="button">at random</button>
+    <button name="one" type="button">one odd cell</button>
+  </div>
+  <div class="controls" role="group" aria-label="Run">
+    <label>cells <input name="n" type="number" min="16" max="128" value={n} inputmode="numeric" /></label>
+    <button name="init" type="button" aria-pressed="true">random start</button>
+    <button name="rerun" type="button">new start</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(360px, 54vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: none; cursor: crosshair;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.2em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow } from '../scripts/eca';
+  import { nucaStep, paramCount } from '../scripts/cnn';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, type RGB } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleIns = [0, 1, 2, 3].map((i) => $<HTMLInputElement>(`r${i}`)), nrIn = $<HTMLSelectElement>('nr'), brushIn = $<HTMLSelectElement>('brush'), nIn = $<HTMLInputElement>('n'), initBtn = $<HTMLButtonElement>('init'), status = $<HTMLOutputElement>('status');
+    const url = urlState('nuca', { rules: '30,90,110,184', nr: '2', n: el.dataset.n!, init: 'random', seed: '1' });
+    const T = 64;
+    let rules = url.get('rules').split(',').map((v) => Math.min(255, Math.max(0, Math.round(+v) || 0))); while (rules.length < 4) rules.push(204);
+    let nr = Math.min(4, Math.max(1, Math.round(+url.get('nr')) || 2)), n = Math.min(128, Math.max(16, Math.round(+url.get('n')) || 64));
+    let init: 'seed' | 'random' = url.get('init') === 'seed' ? 'seed' : 'random', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let alloc = new Uint8Array(n), rows: Uint8Array[] = [], raster = new Raster(n, T + 1), stripY = 0, stripH = 0, painting = false;
+    const rnd = (s: number) => { let x = (s * 2654435761) >>> 0 || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; };
+
+    function halves() { alloc = new Uint8Array(n); for (let x = n >> 1; x < n; x++) alloc[x] = 1 % nr; }
+    function run() {
+      const r = rnd(seed * 17 + 3), used = rules.slice(0, nr);
+      rows = [seedRow(n, init, r)];
+      for (let t = 0; t < T; t++) rows.push(nucaStep(rows[t], used, alloc));
+    }
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent), sun = parse(t.sun), danger = parse(t.danger);
+      const tints: RGB[] = [panel, mix(panel, acc, 0.35), mix(panel, sun, 0.5), mix(panel, danger, 0.3)];
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      stripY = pad + 14; stripH = 18;
+      const cw = (w - 2 * pad) / n;
+      for (let x = 0; x < n; x++) { ctx.fillStyle = `rgb(${tints[alloc[x]].map((v) => v | 0).join(',')})`; ctx.fillRect(pad + x * cw, stripY, Math.ceil(cw), stripH); }
+      ctx.strokeStyle = t.line; ctx.strokeRect(pad + 0.5, stripY + 0.5, cw * n, stripH);
+      label(ctx, `allocation: which rule each cell follows · click or drag to paint with ${brushIn.options[brushIn.selectedIndex].text}`, pad, stripY - 4, t, { size: 10, color: t.ink });
+      const legendY = stripY + stripH + 12;
+      rules.slice(0, nr).forEach((r, i) => { ctx.fillStyle = `rgb(${tints[i].map((v) => v | 0).join(',')})`; ctx.fillRect(pad + i * 110, legendY - 8, 12, 10); ctx.strokeStyle = t.line; ctx.strokeRect(pad + i * 110 + 0.5, legendY - 7.5, 12, 10); label(ctx, `rule ${r}`, pad + i * 110 + 16, legendY, t, { size: 10 }); });
+      const box = { x: pad, y: legendY + 10, w: w - 2 * pad, h: h - legendY - 10 - pad - 14 };
+      for (let y = 0; y <= T; y++) for (let x = 0; x < n; x++) raster.set(y * n + x, rows[y][x] ? ink : tints[alloc[x]]);
+      raster.flush(); raster.blit(ctx, box);
+      ctx.strokeStyle = t.line; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+      label(ctx, `${T} ticks down · the tint under each column is its rule`, box.x, box.y + box.h + 12, t, { size: 10 });
+      status.value = `${nr} rule${nr > 1 ? 's' : ''} on ${n} cells · emulator parameters: ${paramCount(n, nr, 'local').toLocaleString('en')} locally connected, ${paramCount(n, nr, 'dense').toLocaleString('en')} dense · ${nr === 1 ? 'one rule everywhere: an ordinary elementary automaton' : `share on the second rule ν = ${(Array.from(alloc).filter((v) => v === 1).length / n).toFixed(2)}`}`;
+      c.setAttribute('aria-label', status.value);
+    }
+    function show() { ruleIns.forEach((inp, i) => { inp.value = String(rules[i]); inp.hidden = i >= nr; }); nrIn.value = String(nr); nIn.value = String(n); initBtn.setAttribute('aria-pressed', String(init === 'random')); for (const o of Array.from(brushIn.options)) o.hidden = +o.value >= nr; if (+brushIn.value >= nr) brushIn.value = String(nr - 1); }
+    function sync() { url.set('rules', rules.join(',')); url.set('nr', String(nr)); url.set('n', String(n)); url.set('init', init); url.set('seed', String(seed)); }
+    const redo = () => { run(); show(); sync(); paint(); };
+    ruleIns.forEach((inp, i) => inp.addEventListener('change', () => { rules[i] = Math.min(255, Math.max(0, Math.round(+inp.value) || 0)); redo(); }));
+    nrIn.addEventListener('change', () => { nr = +nrIn.value; for (let x = 0; x < n; x++) if (alloc[x] >= nr) alloc[x] = 0; redo(); });
+    brushIn.addEventListener('change', paint);
+    nIn.addEventListener('change', () => { n = Math.min(128, Math.max(16, Math.round(+nIn.value) || 64)); raster = new Raster(n, T + 1); halves(); redo(); });
+    initBtn.addEventListener('click', () => { init = init === 'random' ? 'seed' : 'random'; redo(); });
+    $('rerun').addEventListener('click', () => { seed++; redo(); });
+    $('halves').addEventListener('click', () => { halves(); redo(); });
+    $('stripes').addEventListener('click', () => { for (let x = 0; x < n; x++) alloc[x] = Math.floor(x / 4) % nr; redo(); });
+    $('shuffle').addEventListener('click', () => { const r = rnd(seed * 31 + 11); for (let x = 0; x < n; x++) alloc[x] = Math.floor(r() * nr); redo(); });
+    $('one').addEventListener('click', () => { alloc = new Uint8Array(n); alloc[n >> 1] = 1 % nr; redo(); });
+    const paintAt = (e: PointerEvent) => { const b = c.getBoundingClientRect(), y = e.clientY - b.top; if (y < stripY - 6 || y > stripY + stripH + 6) return; const x = Math.floor(((e.clientX - b.left - 12) / (b.width - 24)) * n); if (x >= 0 && x < n) { alloc[x] = +brushIn.value; run(); paint(); } };
+    c.addEventListener('pointerdown', (e) => { painting = true; c.setPointerCapture(e.pointerId); paintAt(e); });
+    c.addEventListener('pointermove', (e) => { if (painting) paintAt(e); });
+    c.addEventListener('pointerup', () => { painting = false; sync(); });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    halves(); run(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-nuca]').forEach(mount);
+</script>

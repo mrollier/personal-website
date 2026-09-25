@@ -1,0 +1,128 @@
+---
+// One tick of a Life-like network automaton as message passing (Ch. 7): pick a node, see the states its
+// neighbours send it, their mean, the interval that mean falls in, and the entry of the born or survive
+// set that decides its next state. Then apply the same to every node at once. Self-contained with
+// src/scripts/llna.ts, diagram.ts, net.ts, figure.ts. The URL query under `mp.` overrides the props.
+type Props = { r?: number; b?: number; s?: number };
+const { r = 9, b = 72, s = 12 } = Astro.props;
+---
+<figure class="fig" id="mp" data-messagepass data-r={r} data-b={b} data-s={s} tabindex="-1">
+  <canvas role="img" aria-label="A small network with one node's message-passing step spelled out beside the rule diagram"></canvas>
+  <div class="controls" role="group" aria-label="Run">
+    <label>β <input name="b" type="number" min="0" max={2 ** r - 1} value={b} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** r - 1} value={s} inputmode="numeric" /></label>
+    <button name="next" type="button">next node</button>
+    <button name="step" type="button">apply to every node</button>
+    <button name="regen" type="button">new network and start</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(360px, 54vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  [name="gen"] { min-width: 6em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { clampRule, interval, phi, step, randomState, ruleName, type Rule } from '../scripts/llna';
+  import { draw } from '../scripts/diagram';
+  import { buildNet, makeRng, type Net } from '../scripts/net';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('mp', { b: d.b!, s: d.s!, seed: '1' }), r = +d.r!, N = 28;
+    let rule: Rule = clampRule(r, +url.get('b'), +url.get('s')), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let net: Net = buildNet({ kind: 'er', n: N, k: 4 }, seed), s = randomState(N, 0.5, makeRng(seed + 7)), pick = 0, tick = 0, netBox: Box | null = null;
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 640;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad, w * 0.5) : Math.min(w - 2 * pad, h * 0.5);
+      netBox = { x: pad, y: pad, w: side, h: side };
+      const col: Box = wide ? { x: pad + side + pad + 8, y: pad, w: w - side - 3 * pad - 8, h: h - 2 * pad } : { x: pad, y: pad + side + pad, w: w - 2 * pad, h: h - side - 3 * pad };
+      const b = netBox, X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      const nb = net.adj[pick], k = nb.length; let q = 0; for (const j of nb) q += s[j];
+      const idx = interval(q, k, rule.r, rule.part), next = phi(s[pick], q, k, rule);
+      ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath(); for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); } ctx.stroke();
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2.5; ctx.beginPath(); for (const j of nb) { ctx.moveTo(X(j), Y(j)); ctx.lineTo(X(pick), Y(pick)); } ctx.stroke();
+      const rad = 9;
+      for (let i = 0; i < N; i++) {
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        if (s[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.lineWidth = 1; ctx.stroke(); }
+        if (nb.includes(i)) { ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(i), Y(i), rad + 3, 0, 2 * Math.PI); ctx.stroke(); label(ctx, String(s[i]), X(i), Y(i) - rad - 6, t, { align: 'center', color: t.accent, size: 11 }); }
+      }
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(pick), Y(pick), rad + 5, 0, 2 * Math.PI); ctx.stroke();
+      label(ctx, `node ${pick} (red) and its ${k} neighbours (blue) · click another node`, b.x + 2, b.y + b.h - 4, t);
+      // the steps, spelled out
+      const lines = [
+        `1  gather: the neighbours send their states ${nb.map((j) => s[j]).join(' ')}`,
+        `2  aggregate: mean ρ = ${q}/${k} = ${k ? (q / k).toFixed(3) : '–'}`,
+        `3  look up: ρ falls in interval R${idx} of ${rule.r}`,
+        `4  combine: node is ${s[pick] ? 'alive, read the survive row' : 'dead, read the born row'}: ${((s[pick] ? rule.S : rule.B) >> idx) & 1 ? 'filled' : 'empty'}`,
+        `5  next state: ${next}${next === s[pick] ? ' (unchanged)' : s[pick] ? ' (dies)' : ' (born)'}`,
+      ];
+      lines.forEach((ln, i) => label(ctx, ln, col.x, col.y + 16 + i * 20, t, { size: 12, color: i === 4 ? t.accent : t.ink }));
+      const diaBox: Box = { x: col.x, y: col.y + 130, w: col.w, h: Math.min(150, col.h - 150) };
+      const g = draw(ctx, diaBox, rule, t, { k, compact: col.w < 420 });
+      const x = g.x0 + (k ? q / k : 0) * g.cw * rule.r;
+      ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, g.bandB.y - 4); ctx.lineTo(x, g.axisY + 4); ctx.stroke();
+      const band = s[pick] ? g.bandS : g.bandB; ctx.strokeRect(g.x0 + idx * g.cw + 1, band.y + 1, g.cw - 2, band.h - 2);
+      label(ctx, `${ruleName(rule)} · the red line is ρ, the red box the entry read`, col.x, diaBox.y + diaBox.h + 14, t, { size: 10 });
+      gen.value = `tick ${tick}`;
+      status.value = `same operation at every node, all at once, and that is one tick; in a graph neural network the mean is the aggregation and the lookup is the update function, with no weights to learn`;
+      c.setAttribute('aria-label', `Message passing for node ${pick}. ${lines.join('. ')}`);
+    }
+    function show() { bIn.value = String(rule.B); sIn.value = String(rule.S); }
+    function sync() { url.set('b', String(rule.B)); url.set('s', String(rule.S)); url.set('seed', String(seed)); }
+    bIn.addEventListener('change', () => { rule = clampRule(r, +bIn.value, rule.S); show(); sync(); paint(); });
+    sIn.addEventListener('change', () => { rule = clampRule(r, rule.B, +sIn.value); show(); sync(); paint(); });
+    $('next').addEventListener('click', () => { pick = (pick + 1) % N; paint(); });
+    $('step').addEventListener('click', () => { s = step(s, net, rule); tick++; paint(); });
+    $('regen').addEventListener('click', () => { seed++; net = buildNet({ kind: 'er', n: N, k: 4 }, seed); s = randomState(N, 0.5, makeRng(seed + 7)); tick = 0; pick = 0; sync(); paint(); });
+    c.addEventListener('click', (e) => {
+      if (!netBox) return;
+      const bb = c.getBoundingClientRect(), x = e.clientX - bb.left, y = e.clientY - bb.top;
+      let best = -1, bd = 16 * 16;
+      for (let i = 0; i < N; i++) { const dx = netBox.x + net.xy[2 * i] * netBox.w - x, dy = netBox.y + net.xy[2 * i + 1] * netBox.h - y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = i; } }
+      if (best >= 0) { pick = best; paint(); }
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); }, n: () => { pick = (pick + 1) % N; paint(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-messagepass]').forEach(mount);
+</script>

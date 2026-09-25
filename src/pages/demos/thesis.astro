@@ -14,7 +14,10 @@ import SwapCurve from '../../components/SwapCurve.astro';
 import Influence from '../../components/Influence.astro';
 import Jaggedness from '../../components/Jaggedness.astro';
 import Rasters from '../../components/Rasters.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
+import CnnRow from '../../components/CnnRow.astro';
+import NuCaPainter from '../../components/NuCaPainter.astro';
+import MessagePass from '../../components/MessagePass.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'cnn', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -508,6 +511,79 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 6 is the second half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}). The synchroniser and majority figures are the ones from the <a href="/demos/cellular-automata/#firing-squad">other demo</a>.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="cnn" aria-labelledby="tab-cnn" tabindex="0" hidden>
+        <div class="measure">
+          <h2>CA as CNN</h2>
+          <p>
+            A convolutional neural network slides a small window over its input, takes a weighted sum in each
+            position, adds a constant, and passes the result through a nonlinearity. A cellular automaton looks at
+            a small window round each cell and applies a rule. The chapter's first claim is that these are the
+            same thing, and not approximately: a two-layer convolutional network with its weights written down
+            by hand reproduces an elementary cellular automaton bit for bit, with nothing learned. The first
+            layer has eight channels, one for each of the eight three-cell neighbourhoods. Channel i gives
+            weight +1 to the cells that are on in its pattern and −ω to the cells that are off, adds 1 minus the
+            number of ones in the pattern, and applies a ReLU, which sets anything negative to zero. The sum is
+            exactly 1 where the pattern is present and at most 0 anywhere else, so across the eight channels
+            every cell lights up exactly one, and that works for any ω of at least 1. The second layer is a
+            one-cell-wide convolution whose eight weights are the rule table; it adds up the channels, and the
+            result is the next row. Forty numbers, all fixed. The figure spells the arithmetic out.
+          </p>
+        </div>
+        <CnnRow />
+        <div class="measure">
+          <p>
+            The interesting step is the next one. In a convolution every position uses the same weights. Let
+            cells follow different rules, the non-uniform automata of the second tab, and that assumption goes.
+            Deep-learning frameworks have a layer type for exactly this case, the locally connected layer, whose
+            weights differ from position to position. So the network becomes: the eight detectors, then one rule
+            table per rule, giving every rule's answer for every cell, then a layer that picks, for each cell, the
+            answer of its own rule. Non-uniformity of the rule is, to the framework, non-sharing of weights; the
+            automaton <em>is</em> the architecture. The selection layer can be written two ways, and the parameter
+            count in the figure shows the difference: locally connected, it holds one weight per rule per cell;
+            dense, it holds a full matrix, one weight per rule per pair of cells, almost all of them zero. For 32
+            cells and eight rules that is 352 against 8,288. The dense one is nonetheless the faster in
+            TensorFlow, because one big matrix product beats a loop of small ones, and it is the one the thesis
+            used. Paint the allocation below and watch the diagram change.
+          </p>
+        </div>
+        <NuCaPainter />
+        <div class="measure">
+          <p>
+            Then drop the grid. On a network there is no left and right and no fixed number of neighbours, which
+            is what the graph-neural-network literature calls message passing: each node gathers the states of
+            its neighbours, aggregates them with a function that does not care about their order, and combines the
+            result with its own state. A Life-like network automaton is precisely that. The aggregation is the
+            mean, ρ; the combination is a fixed lookup, which interval ρ falls in and what the born or survive row
+            says there. One line of PyTorch Geometric for the mean, a lookup for the rest, no parameters to learn,
+            and one forward pass is one tick. That class ran every simulation in the two network chapters. Click
+            a node below and follow one message-passing step.
+          </p>
+        </div>
+        <MessagePass />
+        <div class="measure">
+          <p>
+            The second half of the chapter's question, whether this is any faster, gets an honest answer. Against
+            a plain Python loop the convolutional emulator wins once its fixed overhead of a few seconds is spread
+            over about a hundred cells or a few hundred samples, and the graph version wins by orders of
+            magnitude. Against a vectorised sparse-matrix implementation in SciPy the graph version is two to
+            four times slower on a CPU, because at these sizes the arithmetic is cheap and the time goes into
+            dispatching operations. Nobody tested the GPU. So the correspondence is exact; the speed depends on
+            what you compare it with; and the value of the construction is that a cellular automaton can be
+            stated in the native vocabulary of a deep-learning framework, with its rule table as the weights. The
+            next chapter turns that round and asks what such a network learns when it is not told the rule.
+          </p>
+          <p>
+            Things to try. Show the sums before the ReLU and drag ω: the red gets redder and the ones stay exactly
+            one. Rule 110 with cells fed back a few times. In the painter, rules 30 and 90 as two halves, then
+            one odd cell of rule 204 in a sea of rule 30. In the message passing, a node with two neighbours and
+            one with eight, and the same rule.
+          </p>
+          <p class="meta status-line">
+            Ch. 7 is <a href={link('cnn-nonuniform')}>{pub('cnn-nonuniform').title}</a>, {pub('cnn-nonuniform').venue} ({pub('cnn-nonuniform').year}), with Aisling Daly, Odemir Bruno and Jan Baetens; code at <a href="https://github.com/mrollier/emulating-and-learning-CAs">GitHub</a>.
           </p>
         </div>
       </section>

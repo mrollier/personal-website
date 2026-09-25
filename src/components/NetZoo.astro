@@ -74,7 +74,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
   import { histogram, logSpace } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
   import { parse, mix, css } from '../scripts/palette';
-  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, lazy, type Box } from '../scripts/figure';
 
   type Kind = 'ws' | 'lat' | 'npa';
   const KINDS: Kind[] = ['ws', 'lat', 'npa'];
@@ -127,7 +127,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const values = () => { if (!colour) return null; let v = cache.get(colour); if (!v) { v = centrality(colour, net); cache.set(colour, v); } return v; };
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !net) return;
       const t = tokens(c), { w, h } = sz, pad = 12;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const wide = w >= 680, cap = 16;
@@ -244,7 +244,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
     $('regen').addEventListener('click', () => { seed++; rebuild(); });
     cIn.addEventListener('change', () => { colour = isCent(cIn.value) ? cIn.value : ''; sync(); paint(); });
     c.addEventListener('click', (e) => {
-      const r = c.getBoundingClientRect(), sz = fit(c); if (!sz) return;
+      const r = c.getBoundingClientRect(), sz = fit(c); if (!sz || !net) return;
       const x = e.clientX - r.left, y = e.clientY - r.top, pad = 12, wide = sz.w >= 680;
       const side = wide ? Math.min(sz.h - 2 * pad - 16, sz.w * 0.55) : Math.min(sz.w - 2 * pad, sz.h * 0.5), bx = wide ? pad : (sz.w - side) / 2;
       let best = -1, bd = 12 * 12;
@@ -265,7 +265,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    build(); show(); paint();
+    show(); lazy(c, () => { build(); show(); paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-netzoo]').forEach(mount);

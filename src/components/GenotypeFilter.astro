@@ -62,7 +62,7 @@ const { target = 'sync', targetCons = 'cons' } = Astro.props;
   import { buildNet, makeRng } from '../scripts/net';
   import { logSpace } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
-  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, lazy, type Box } from '../scripts/figure';
 
   const KS = [4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -77,7 +77,7 @@ const { target = 'sync', targetCons = 'cons' } = Astro.props;
     let cond: Condition = url.get('cond') === 'consensus' ? 'consensus' : 'sync';
     let r = [5, 7, 9, 11].includes(+url.get('r')) ? +url.get('r') : 9, kSel = url.get('k');
     let rules: { rule: Rule; bs: number; slope: number }[] = [], picked = -1, hover = -1, box: Box | null = null;
-    let run: ReturnType<typeof entropyRun> | null = null, runText = '', sweep: SweepPoint[] | null = null, sweepFor = '';
+    let run: ReturnType<typeof entropyRun> | null = null, runText = '', sweep: SweepPoint[] | null = null, sweepFor = '', ready = false;
     const wanted: Rule | null = +url.get('b') || +url.get('s') ? { r, B: +url.get('b'), S: +url.get('s') } : null;
 
     function filter() {
@@ -98,7 +98,7 @@ const { target = 'sync', targetCons = 'cons' } = Astro.props;
     }
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !ready) return;
       const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const left: Box = wide ? { x: pad + 34, y: pad + 20, w: w * 0.48 - pad - 40, h: h - 2 * pad - 44 } : { x: pad + 34, y: pad + 20, w: w - 2 * pad - 40, h: (h - 3 * pad - 60) / 2 };
@@ -193,7 +193,7 @@ const { target = 'sync', targetCons = 'cons' } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    filter(); show(); paint();
+    show(); lazy(c, () => { filter(); ready = true; show(); paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-genofilter]').forEach(mount);

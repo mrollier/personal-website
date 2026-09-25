@@ -57,7 +57,7 @@ const { r = 9, b = 170, s = 340 } = Astro.props;
   import { histogram, mean } from '../scripts/stats';
   import { Raster } from '../scripts/raster';
   import { parse } from '../scripts/palette';
-  import { fit, tokens, watch, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   const FAMILIES: { name: string; spec: (n: number) => NetSpec }[] = [
     { name: 'random', spec: (n) => ({ kind: 'er', n, k: 6 }) },
@@ -82,7 +82,7 @@ const { r = 9, b = 170, s = 340 } = Astro.props;
       feats = teps.map((p) => (fp === 'share' ? onShare(p) : fp === 'flips' ? flipRate(p) : nodeEntropy(p)));
     }
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !teps.length) return;
       const t = tokens(c), { w, h } = sz, pad = 10, on = parse(t.ink), off = parse(t.panel);
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const cols = w >= 640 ? 4 : 2, rowsN = 4 / cols, cw = (w - pad * (cols + 1)) / cols, rh = (h - pad * (rowsN + 1)) / rowsN, histH = Math.max(40, rh * 0.22);
@@ -117,7 +117,7 @@ const { r = 9, b = 170, s = 340 } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    run(); show(); paint();
+    show(); lazy(c, () => { run(); paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-rasters]').forEach(mount);

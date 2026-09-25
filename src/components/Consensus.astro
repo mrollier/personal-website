@@ -72,7 +72,7 @@ const rules = allBestRules();
   import { stepClamped, consensusStart } from '../scripts/consensus';
   import { step, density, randomState, ruleName, type Rule } from '../scripts/llna';
   import { buildNet, makeRng, latticeLink, type Net } from '../scripts/net';
-  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
@@ -89,7 +89,7 @@ const rules = allBestRules();
     let param = fixParam(kind, url.get('p') === '' ? NaN : +url.get('p')), k = fixDegree(kind, +url.get('k')), n = fixSize(kind, +url.get('n'), kind === 'npa' ? 250 : 400);
     let seed = Math.max(1, Math.round(+url.get('seed')) || 1), cs = Math.max(1, Math.round(+url.get('cs')) || 1);
     let rule: Rule = parseRule(url.get('rule')) ?? bestRules(kind, k, param)[0]?.rule ?? { r: 9, B: 464, S: 488 };
-    let net: Net = buildNet(specOf(kind, n, k, param), seed), clampSet = new Int8Array(n).fill(-1);
+    let net!: Net, clampSet = new Int8Array(n).fill(-1), ready = false;
     let s0 = new Uint8Array(n), hist: Uint8Array[] = [], twin: Uint8Array[] = [], rhoA: number[] = [], rhoB: number[] = [], conditioned = true;
 
     function parseRule(s: string): Rule | null { const m = s.match(/^(\d+),(\d+)$/); return m ? { r: 9, B: +m[1], S: +m[2] } : null; }
@@ -112,7 +112,7 @@ const rules = allBestRules();
     const clampedNodes = () => { const out: number[] = []; for (let i = 0; i < n; i++) if (clampSet[i] >= 0) out.push(i); return out; };
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !ready) return;
       const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680, cap = 16;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const side = wide ? Math.min(h - 2 * pad - cap, w * 0.58) : Math.min(w - 2 * pad, h * 0.55);
@@ -204,7 +204,7 @@ const rules = allBestRules();
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    start(); show(); paint();
+    show(); lazy(c, () => { net = buildNet(specOf(kind, n, k, param), seed); start(); ready = true; show(); paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-consensus]').forEach(mount);

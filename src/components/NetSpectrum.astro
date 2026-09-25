@@ -71,7 +71,7 @@ const { kind = 'ws' } = Astro.props;
   import { buildNet, stepNet, latticeLink, makeRng, type Net } from '../scripts/net';
   import { histogram } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
-  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
@@ -83,13 +83,13 @@ const { kind = 'ws' } = Astro.props;
     const jobs = new Jobs();
     let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'ws', param = fixParam(kind, url.get('p') === '' ? (kind === 'npa' ? 1 : 0.1) : +url.get('p')), k = fixDegree(kind, +url.get('k'));
     let n = fixSize(kind, +url.get('n'), 300), self = url.get('self') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
-    let net: Net = buildNet(specOf(kind, n, k, param), seed), a = new Uint8Array(n), b = new Uint8Array(n), dT: number[] = [], tick = 0, spec: SpectrumResult | null = null;
+    let net!: Net, a = new Uint8Array(n), b = new Uint8Array(n), dT: number[] = [], tick = 0, spec: SpectrumResult | null = null, ready = false;
 
     function start() { const rnd = makeRng(seed * 19 + 3); a = new Uint8Array(net.n); for (let i = 0; i < net.n; i++) a[i] = rnd() < 0.5 ? 1 : 0; b = a.slice(); b[net.order[0]] ^= 1; dT = [1]; tick = 0; }
     const advance = () => { a = stepNet(a, net, self); b = stepNet(b, net, self); let m = 0; for (let i = 0; i < net.n; i++) m += a[i] ^ b[i]; dT.push(m); tick++; if (dT.length > 400) dT.shift(); };
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !ready) return;
       const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680, cap = 16;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const side = wide ? Math.min(h - 2 * pad - cap, w * 0.5) : Math.min(w - 2 * pad, h * 0.5);
@@ -150,7 +150,7 @@ const { kind = 'ws' } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    start(); show(); paint();
+    show(); lazy(c, () => { net = buildNet(specOf(kind, n, k, param), seed); start(); ready = true; paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-netspectrum]').forEach(mount);

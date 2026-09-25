@@ -62,7 +62,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
 <script>
   import { clampRule, equivalent, step, randomState, ruleName, mirror, type Rule, type Partition } from '../scripts/llna';
   import { buildNet, makeRng, type Net } from '../scripts/net';
-  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
@@ -71,7 +71,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
     const d = el.dataset, url = urlState('ptwin', { b: d.b!, s: d.s!, part: 'pal', seed: '1' }), r = +d.r!, N = 120;
     let part: Partition = url.get('part') === 'uni' ? 'uni' : 'pal', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
     let base = clampRule(r, +url.get('b'), +url.get('s'));
-    let net: Net = buildNet({ kind: 'er', n: N, k: 6 }, seed), a: Uint8Array = new Uint8Array(N), b2: Uint8Array = new Uint8Array(N), mis: number[] = [], tick = 0;
+    let net!: Net, a: Uint8Array = new Uint8Array(N), b2: Uint8Array = new Uint8Array(N), mis: number[] = [], tick = 0, ready = false;
     const ruleA = (): Rule => ({ ...base, part }), ruleB = (): Rule => ({ ...equivalent(base), part });
 
     function start() {
@@ -82,7 +82,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
     function advance() { a = step(a, net, ruleA()); b2 = step(b2, net, ruleB()); mis.push(mismatch()); tick++; if (mis.length > 400) mis.shift(); }
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !ready) return;
       const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 620;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const traceH = 70, avail = h - 2 * pad - traceH - 40;
@@ -134,7 +134,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    start(); show(); paint();
+    show(); lazy(c, () => { net = buildNet({ kind: 'er', n: N, k: 6 }, seed); start(); ready = true; paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-ptwin]').forEach(mount);

@@ -49,7 +49,7 @@
   import { buildNet, makeRng, stepNet, type Net } from '../scripts/net';
   import { Raster } from '../scripts/raster';
   import { parse } from '../scripts/palette';
-  import { fit, tokens, watch, stepper, fullscreen, keys, label, reducedMotion } from '../scripts/figure';
+  import { fit, tokens, watch, stepper, fullscreen, keys, label, reducedMotion, lazy } from '../scripts/figure';
 
   document.querySelectorAll<HTMLElement>('[data-triptych]').forEach(mount);
 
@@ -59,23 +59,23 @@
     const W = 101, ROWS = 101, L = 64, N = 150, RULE = 110;
     const rowRaster = new Raster(W, ROWS), gridRaster = new Raster(L, L);
     let seed = 1, tick = 0, rows: Uint8Array[] = [], grid = new Uint8Array(L * L), scratch = new Uint8Array(L * L);
-    let net: Net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'), s = new Uint8Array(N), started = false;
+    let net: Net | null = null, s = new Uint8Array(N), started = false;
 
     function start() {
       const rnd = makeRng(seed * 31 + 7);
       tick = 0; rows = [seedRow(W, 'random', rnd)];
       grid = randomLife(L, L, 0.35, rnd);
-      s = new Uint8Array(N); s[net.order[0]] = 1; // the best-connected node
+      s = new Uint8Array(N); s[net!.order[0]] = 1; // the best-connected node
     }
     function advance() {
       rows.push(stepRow(rows[rows.length - 1], RULE)); if (rows.length > ROWS) rows.shift();
       stepLife(grid, L, L, scratch); [grid, scratch] = [scratch, grid];
-      s = stepNet(s, net, false);
+      s = stepNet(s, net!, false);
       tick++;
     }
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
+      const sz = fit(c); if (!sz || !net) return;
       const t = tokens(c), { w, h } = sz, pad = 10, on = parse(t.ink), off = parse(t.panel);
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       // three squares across, as large as the box allows, centred
@@ -89,9 +89,9 @@
       for (let i = 0; i < L * L; i++) gridRaster.set(i, grid[i] ? on : off);
       gridRaster.flush(); gridRaster.blit(ctx, boxes[1]);
       // network
-      const b = boxes[2], X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      const b = boxes[2], nt = net, X = (i: number) => b.x + nt.xy[2 * i] * b.w, Y = (i: number) => b.y + nt.xy[2 * i + 1] * b.h;
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
-      for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      for (const [i, j] of nt.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
       ctx.stroke();
       const rad = Math.max(2, Math.min(5, (0.45 * b.w) / Math.sqrt(N)));
       for (let pass = 0; pass < 2; pass++) for (let i = 0; i < N; i++) {
@@ -113,6 +113,6 @@
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    start(); paint();
+    lazy(c, () => { net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'); start(); paint(); });
   }
 </script>

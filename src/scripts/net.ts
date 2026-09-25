@@ -51,13 +51,14 @@ export function build(kind: NetKind, n: number, edges: [number, number][]): Net 
   return { kind, n, adj, edges, deg, xy: new Float32Array(2 * n), order };
 }
 
-/** Each link's far end is moved to a random node with probability p, never doubling a link or looping a node to itself. In place. */
-export function rewire(n: number, edges: [number, number][], p: number, rnd: () => number): void {
+/** Each link's far end (the higher index, or the lower with `keepLow` false) is moved to a random node with probability p, never
+ * doubling a link or looping a node to itself. In place. */
+export function rewire(n: number, edges: [number, number][], p: number, rnd: () => number, keepLow = true): void {
   const key = (i: number, j: number) => (i < j ? i * n + j : j * n + i);
   const has = new Set<number>(edges.map(([i, j]) => key(i, j)));
   for (let k = 0; k < edges.length; k++) {
     if (rnd() >= p) continue;
-    const [i, jOld] = edges[k];
+    const [a, b] = edges[k], i = keepLow ? a : b, jOld = keepLow ? b : a;
     for (let tries = 0; tries < 20; tries++) {
       const j = Math.floor(rnd() * n);
       if (j === i || has.has(key(i, j))) continue;
@@ -66,11 +67,13 @@ export function rewire(n: number, edges: [number, number][], p: number, rnd: () 
   }
 }
 
-/** Watts–Strogatz: a ring where each node links to its k/2 neighbours on either side, then rewired. */
-export function wattsStrogatz(n: number, p: number, rnd: () => number, k = 4): Net {
+/** Watts–Strogatz: a ring where each node links to its k/2 neighbours on either side, then rewired. With `bothEnds` each end of
+ * each link is moved with probability p, as igraph does and the thesis's rings are built, so 2p − p² of the links change. */
+export function wattsStrogatz(n: number, p: number, rnd: () => number, k = 4, bothEnds = false): Net {
   const edges: [number, number][] = [], half = Math.max(1, Math.min(Math.floor(k / 2), Math.floor((n - 1) / 2)));
   for (let i = 0; i < n; i++) for (let d = 1; d <= half; d++) { const j = (i + d) % n; if (j !== i) edges.push([Math.min(i, j), Math.max(i, j)]); }
   rewire(n, edges, p, rnd);
+  if (bothEnds) rewire(n, edges, p, rnd, false);
   return build('ws', n, edges);
 }
 
@@ -190,7 +193,7 @@ export type Layout = 'auto' | 'ring' | 'grid' | 'force' | 'none';
 export function buildNet(spec: NetSpec, seed: number, lay: Layout = 'auto'): Net {
   const rnd = makeRng(seed);
   const net =
-    spec.kind === 'ws' ? wattsStrogatz(spec.n, spec.p, rnd, spec.k)
+    spec.kind === 'ws' ? wattsStrogatz(spec.n, spec.p, rnd, spec.k, true)
     : spec.kind === 'lat' ? lattice(spec.side, spec.degree, spec.p, rnd)
     : spec.kind === 'npa' ? nonlinearPA(spec.n, spec.m, spec.alpha, rnd)
     : spec.kind === 'er' ? erdosRenyi(spec.n, spec.k, rnd)

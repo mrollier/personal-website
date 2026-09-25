@@ -101,7 +101,7 @@ const { n = 64 } = Astro.props;
       raster.flush(); raster.blit(ctx, box);
       ctx.strokeStyle = t.line; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
       label(ctx, `${T} ticks down · the tint under each column is its rule`, box.x, box.y + box.h + 12, t, { size: 10 });
-      status.value = `${nr} rule${nr > 1 ? 's' : ''} on ${n} cells · emulator parameters: ${paramCount(n, nr, 'local').toLocaleString('en')} locally connected, ${paramCount(n, nr, 'dense').toLocaleString('en')} dense · ${nr === 1 ? 'one rule everywhere: an ordinary elementary automaton' : `share on the second rule ν = ${(Array.from(alloc).filter((v) => v === 1).length / n).toFixed(2)}`}`;
+      status.value = `${nr} rule${nr > 1 ? 's' : ''} on ${n} cells · emulator parameters: ${paramCount(n, nr, 'local').toLocaleString('en')} locally connected, ${paramCount(n, nr, 'dense').toLocaleString('en')} dense · ${nr === 1 ? 'one rule everywhere: an ordinary elementary automaton' : `share on the first rule ν = ${(Array.from(alloc).filter((v) => v === 0).length / n).toFixed(2)}`}`;
       c.setAttribute('aria-label', status.value);
     }
     function show() { ruleIns.forEach((inp, i) => { inp.value = String(rules[i]); inp.hidden = i >= nr; }); nrIn.value = String(nr); nIn.value = String(n); initBtn.setAttribute('aria-pressed', String(init === 'random')); for (const o of Array.from(brushIn.options)) o.hidden = +o.value >= nr; if (+brushIn.value >= nr) brushIn.value = String(nr - 1); }

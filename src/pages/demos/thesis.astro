@@ -46,7 +46,7 @@ const papers: [string, string, string][] = [
   ['node-importance', 'in preparation', 'impact'],
 ];
 const questions: [string, string, string][] = [
-  ['defects', 'Defects', 'Flip one cell. For which rules can you say exactly where the flip will go, and how does the wiring set how fast it spreads?'],
+  ['defects', 'Defects', 'Flip one cell. For which rules can you describe exactly how that flip propagates, and how does the wiring then set how fast the paths it can take multiply?'],
   ['two-numbers', 'Two numbers', 'What has to be true for the Game of Life to make sense on a network, and how much do two numbers computed from the rule alone tell you about what it will do?'],
   ['synchronisation', 'Synchronisation', 'Out of a quarter of a million rules, can you pick the handful that make a whole network flash in step without trying them all, and where does the network let them down?'],
   ['cnn', 'CA as CNN', 'Can a neural network reproduce a cellular automaton exactly, with no learning at all, and is it any faster?'],
@@ -200,14 +200,15 @@ const tabs = [
             <strong>Stochastic.</strong> Give each cell two rules, φ and a second rule ψ, and let it flip a
             weighted coin every tick to choose between them: that is <em>P(φ)</em>. With ψ = 204, the rule that
             leaves every cell as it is, this is exactly the asynchronous case. With two proper rules the row is
-            a Markov chain, and as the weight moves the behaviour can change abruptly, a phase transition. Two
-            rules that are each chaotic can even settle into a periodic pattern together.
+            a Markov chain, and as the weight moves the behaviour can change abruptly, a phase transition. And
+            when all cells switch rules together, two rules that are each chaotic can jointly settle into a
+            periodic pattern.
           </p>
           <p>
             <strong>Non-uniform.</strong> Instead of a coin every tick, decide once which cells follow ψ and
             freeze that allocation. The <em>share on ψ</em> slider does it at random; a click on a column hands
-            that column over, and the columns on ψ are tinted blue. The share is the degree of non-uniformity
-            ν. The extreme case is one cell that does something different, and the <em>clamp</em> button makes
+            that column over, and the columns on ψ are tinted blue. The thesis calls the share on φ the degree of
+            non-uniformity ν, and ν = ½ is as mixed as it gets. The extreme case is one cell that does something different, and the <em>clamp</em> button makes
             the middle cell never change at all. That single stuck cell is the seed of the last chapter, where
             clamping one node tells us how much that node matters.
           </p>
@@ -269,10 +270,10 @@ const tabs = [
           <p>
             <strong>A ring, rewired.</strong> Start with a ring where every node is linked to its k/2 nearest
             neighbours on each side, the wiring of a one-dimensional cellular automaton with a wider reach. Then
-            visit each link and, with probability p, move one end to a random node. At p = 0 it is the ring; a
+            visit each link and move each of its two ends, with probability p, to a random node. At p = 0 it is the ring; a
             few shortcuts make it a small world; at p = 1 it is as good as random. The shortcuts are drawn in
-            blue. <strong>A grid, rewired.</strong> The same, starting from a torus with four, eight or twelve
-            neighbours, exactly the three neighbourhoods a two-dimensional automaton uses. A signal has two
+            blue. <strong>A grid, rewired.</strong> Much the same, starting from a torus with four, eight or twelve
+            neighbours and moving only one end of a chosen link, exactly the three neighbourhoods a two-dimensional automaton uses. A signal has two
             dimensions to spread in before any rewiring, which matters later. <strong>Preferential
             attachment.</strong> Grow the network one node at a time; each newcomer links to m existing nodes,
             picking node i with probability proportional to k<sub>i</sub><sup>α</sup> + 1. At α = 0 everyone
@@ -288,9 +289,9 @@ const tabs = [
             clustering with the lattice end: ω near −1 means lattice-like, near +1 random-like, and the band
             between −½ and ½ is the small world. The sweep draws ω against p on a logarithmic axis, because that
             is where the action is. In the thesis the band sits between p ≈ 0.01 and 0.15 for rings and crosses
-            zero near p ≈ 0.05; for grids it crosses near p ≈ 0.09. The point is that a grid of six evenly
-            spaced p values, the kind of grid one naturally picks, misses the small-world regime entirely: at
-            p = 0.2 a ring is already random-leaning, ω ≈ 0.65. So the thesis uses evenly spaced p where the
+            zero near p ≈ 0.05; for grids it crosses near p ≈ 0.09. The point is that six evenly spaced p
+            values, the obvious choice, miss the small world of the rings entirely: at p = 0.2 a ring is already
+            random-leaning, ω ≈ 0.65, while a grid at p = 0.2 just scrapes into the band, ω ≈ 0.35. So the thesis uses evenly spaced p where the
             gradual loss of local structure is the topic, and logarithmically spaced p where the small world
             is. One more trap: p is not the same amount of rewiring in the two families, since the ring routine
             moves both ends of a link and the grid routine one, so 2p − p² of the ring's links change against
@@ -304,7 +305,7 @@ const tabs = [
             nodes that score high. Betweenness counts how many shortest paths between other nodes run through
             you, the bridges. Closeness is how few steps it takes you to reach everyone. In the thesis's
             networks degree, the h index and eigenvector centrality move together, and the others each say
-            something of their own; in the preferential-attachment family every one of them has a heavy tail.
+            something of their own; in the preferential-attachment family several of them have heavy tails.
             The last chapter asks which of the six, if any, predicts how much a node actually matters.
           </p>
           <p>
@@ -316,8 +317,8 @@ const tabs = [
             threshold replaced by an arbitrary pattern. And a <em>network automaton</em> is what you get when
             every node runs the same deterministic rule on its neighbours' states at once. Because nodes have
             no natural order and different degrees, the rule may only count: how many neighbours are on, or
-            what share of them. Rules of that kind are called <em>outer-totalistic</em>, and the whole of this
-            thesis lives there.
+            what share of them. Rules of that kind are called <em>outer-totalistic</em>, and every network
+            automaton in this thesis is one.
           </p>
           <p>
             Things to try. Ring, degree 8, drag p up from 0 with the log scale on and watch ⟨l⟩ collapse long
@@ -327,7 +328,8 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 3 is background; it introduces the networks and the measures the later chapters use. The
-            thesis generated them with igraph; the figure regenerates them in the browser at a smaller size.
+            thesis built the rings and the preferential-attachment networks with igraph and rewired the grids
+            with its own routine; the figure regenerates all three in the browser at a smaller size.
           </p>
         </div>
       </section>
@@ -354,7 +356,7 @@ const tabs = [
             is what the Lyapunov spectrum of a discrete system actually measures. The difference pattern is the
             same matrix applied in a different arithmetic: over the integers two walks arriving at one cell add,
             over the binary field they cancel. In general neither determines the other. For exactly sixteen rules,
-            the <em>affine</em> ones, whose rule is a sum of some of the three inputs modulo 2, the difference
+            the <em>affine</em> ones, whose rule is a sum modulo 2 of some of the three inputs, possibly plus 1, the difference
             pattern is the parity of the walk counts at every tick, which is also why rules 90 and 150 draw the
             Sierpiński triangle: their walk counts are binomial and trinomial coefficients. The figure runs the
             twins, counts the walks on a logarithmic colour scale, and reports the first tick at which parity and
@@ -371,7 +373,7 @@ const tabs = [
             the logarithm of the number of inputs the rule is sensitive to: ln 2 for rule 90, ln 3 for rule 150,
             the largest of any elementary rule. The same holds on a torus in any dimension, so the parity rule
             with four neighbours and yourself reaches ln 5, with eight ln 9, with twelve ln 13, and it holds for
-            the parity rule on any network whatsoever, where the Jacobian is the adjacency matrix itself, plus
+            the parity rule on any undirected network, where the Jacobian is the adjacency matrix itself, plus
             the identity if a node counts itself. There the Lyapunov spectrum is, up to a logarithm and an
             absolute value, the spectrum of the graph, and the chaos of the rule is a property of the wiring. A
             consequence you can watch: under a rule like this any pattern reappears at t = 2, 4, 8, 16 as one
@@ -437,7 +439,8 @@ const tabs = [
             and whether a live node survives there. Two sets of pieces, <em>born</em> B and <em>survive</em> S,
             written as the binary numbers β and σ, and the rule is φ<sup>r</sup><sub>β,σ</sub>. With r = 9 on a grid of
             eight neighbours the nine pieces are the nine possible counts and Life is back as φ<sup>9</sup><sub>8,12</sub>.
-            We called the family <em>Life-like network automata</em>; there are 2<sup>2r</sup> rules at each r.
+            The family goes by the name <em>Life-like network automata</em>, from the earlier work that first
+            used it to classify networks; there are 2<sup>2r</sup> rules at each r.
           </p>
           <p>
             The first job of the chapter was to make that definition consistent, and the trap is at the edges of
@@ -474,8 +477,8 @@ const tabs = [
           </p>
           <p>
             The degree matters more than one would think. Slide k and watch the marks move: a node with four
-            neighbours can only see the densities 0, ¼, ½, ¾ and 1, so it skips half the pieces of a nine-piece
-            rule, and a node with twenty-four sees almost only the middle piece. On a network with a spread of
+            neighbours can only see the densities 0, ¼, ½, ¾ and 1, so it skips four of the nine pieces of a
+            nine-piece rule, and a node with twenty-four sees almost only the middle piece. On a network with a spread of
             degrees the honest numbers are the averages over that spread, which the bars on the right show for
             four kinds of network; for the hub-heavy family it makes a visible difference.
           </p>
@@ -521,8 +524,8 @@ const tabs = [
         <div class="measure">
           <p>
             Things to try. HighLife at k = 4 and at k = 12 in the sensitivity figure: same rule, different
-            numbers. The parity preset from the other page, φ<sup>3</sup><sub>2,5</sub>, at resolution 3: the
-            sensitivity is k + 1 at every degree the pieces can resolve. In the scatter, resolution 7 at degree 6,
+            numbers. Rule 150 written as φ<sup>3</sup><sub>2,5</sub> at resolution 3 and degree 2, where it
+            is rule 150 itself: the sensitivity is 3, every flip counts; then slide the degree away from 2. In the scatter, resolution 7 at degree 6,
             and hunt for the corners of the tent. In the Morley figure, the lattice at 50% on, then 75%, then the
             same on the random network.
           </p>
@@ -560,7 +563,8 @@ const tabs = [
             sensitive rules have a gentle slope. So the thesis ran all 27 on rings of a thousand nodes, degree 8,
             rewiring 0.2, for 2000 ticks, 900 samples each. Twenty-two never synchronised once. Three managed
             more than a tenth of the samples. One, φ<sup>9</sup><sub>23,47</sub>, managed 83 percent, and the
-            runner-up 65. The winner sits at the sensitive end of the trade-off: for this task, chaos beats speed.
+            runner-up 65. The winner sits at the sensitive end of the trade-off, which suggests that for this
+            task, on these networks, chaos matters more than speed.
             Click any dot to run it on a ring below and to load it into the big figure further down.
           </p>
         </div>
@@ -601,7 +605,7 @@ const tabs = [
             the set of 12 that pass the test at every degree; every one of them pairs a high sensitivity with a
             slope that is modest, and for some degrees actually below 1. The chaos compensates for the
             mean-field's indifference. As for the networks: degree 4 hardly ever reaches consensus, an unrewired
-            ring never, degree 12 always, and the best rule differs from family to family, which is why the
+            ring never, degree 12 always once rewired, and the best rule differs from family to family, which is why the
             appendix has a table of them. The figure below runs φ<sup>9</sup><sub>488,464</sub>; note that it also
             judges whether the unanimous answer matched the starting majority, which is a stricter question than
             the thesis asked and one these rules often get wrong.
@@ -652,9 +656,9 @@ const tabs = [
             automaton <em>is</em> the architecture. The selection layer can be written two ways, and the parameter
             count in the figure shows the difference: locally connected, it holds one weight per rule per cell;
             dense, it holds a full matrix, one weight per rule per pair of cells, almost all of them zero. For 32
-            cells and eight rules that is 352 against 8,288. The dense one is nonetheless the faster in
-            TensorFlow, because one big matrix product beats a loop of small ones, and it is the one the thesis
-            used. Paint the allocation below and watch the diagram change.
+            cells and eight rules that is 352 against 8,288. The dense one was nonetheless the faster in the
+            TensorFlow benchmarks, because one big matrix product beats a loop of small ones. Paint the
+            allocation below and watch the diagram change.
           </p>
         </div>
         <NuCaPainter />
@@ -666,7 +670,8 @@ const tabs = [
             result with its own state. A Life-like network automaton is precisely that. The aggregation is the
             mean, ρ; the combination is a fixed lookup, which interval ρ falls in and what the born or survive row
             says there. One line of PyTorch Geometric for the mean, a lookup for the rest, no parameters to learn,
-            and one forward pass is one tick. That class ran every simulation in the two network chapters. Click
+            and one forward pass is one tick. That class ran every simulation of the Jaggedness and Impact
+            chapters. Click
             a node below and follow one message-passing step.
           </p>
         </div>
@@ -701,7 +706,7 @@ const tabs = [
           <p>
             People have sorted the 256 elementary rules by behaviour since Wolfram's four classes. The chapter
             uses the five of Li and Packard, because every rule gets exactly one and you can see the class in the
-            picture: <em>null</em>, everything dies; <em>fixed point</em>, it settles; <em>periodic</em>, it repeats
+            picture: <em>null</em>, everything turns one colour; <em>fixed point</em>, it settles; <em>periodic</em>, it repeats
             with a short period; <em>locally chaotic</em>, chaos fenced in by walls; <em>chaotic</em>, noise
             throughout. There are 24, 97, 89, 10 and 36 rules in them. Below is one example of each, from a
             random start. You can name them at a glance, and so, it seemed, could a convolutional network:
@@ -735,12 +740,12 @@ const tabs = [
             averaged, or noise sprinkled in. Try each in the figure and see what the scan recovers: the
             complement, the mirror image, contradictions, or a table that makes no sense, while the picture is
             plainly still periodic or still chaotic. With the first three augmentations, and not the noise, which
-            did not help, the trimmed network reached 98.17 percent on the class while its ability to name the
-            rule fell to 61 percent over the 88 genuinely different rules. That is the chapter's honest verdict on
-            itself: a shift towards the behaviour, not a clean break from the rule. Its remaining mistakes are the
-            human ones, periodic diagrams called fixed point, and locally chaotic, the smallest class, recognised
-            least often. And no rule was ever held out of training, which the chapter names as its main
-            limitation.
+            did not help, the trimmed network reached 98.17 percent on the class, and the same architecture
+            trained to name the rule managed only 61 percent over the 88 genuinely different rules. That is the
+            chapter's honest verdict on itself: a shift towards the behaviour, not a clean break from the rule.
+            Its most frequent mistake is calling periodic diagrams fixed point, a difference in time that its
+            global pooling barely sees; locally chaotic, the smallest class, is recognised least often, 93 percent
+            of the time. And no rule was ever held out of training, the first limitation the chapter names.
           </p>
           <p>
             Things to try. Rule 30, then press play and watch the table complete within the first row. Rule 59
@@ -758,18 +763,18 @@ const tabs = [
         <div class="measure">
           <h2>Jaggedness</h2>
           <p>
-            Turn the question of the previous two chapters round. There, the network was given and the rule was
-            the object; here the rule is fixed and the network is the unknown. Run a Life-like rule on a network
+            Turn the previous chapter round. There, a network looked at pictures to tell rules apart; here a
+            fixed rule draws the pictures, and the network it ran on is the unknown. Run a Life-like rule on a network
             you know nothing about, look at the pattern it draws, node by node and tick by tick, and guess what
             kind of network it was: random, small world, scale-free, geographic; a metabolism, a social circle, a
             molecule. This works, and has been used since 2016: automaton, fingerprint, classifier. The pattern's
             statistics are the fingerprint, and a plain linear classifier is enough, which tells you the work is
-            being done by the automaton. The catch is that only a few rules produce patterns that tell networks
+            being done by the automaton and the fingerprint. The catch is that only a few rules produce patterns that tell networks
             apart, nobody knew why, and finding them meant trying all of them. Four thousand at resolution 6,
             over a quarter of a million at 9.
           </p>
           <p>
-            The rules that worked had a look about them. Their diagrams were <em>jagged</em>: born and survive
+            Several of the rules that worked, though not all, had a look about them. Their diagrams were <em>jagged</em>: born and survive
             intervals scattered along the density axis rather than sitting in a block. That suggests a story. A
             smooth rule hardly reacts to a change in the neighbourhood and freezes or cycles, too dull to carry a
             signal; the maximally jagged rule, the parity rule, reacts to everything and its chaos wipes the
@@ -788,9 +793,10 @@ const tabs = [
             by J, and the size of each group is 4·C(2(r − 1), J): four rules with no colour change, four with
             all of them, and a bulge in the middle. If jaggedness predicts quality, you need not search the whole
             space. Search two or three groups at a small resolution, take the group that held the best rule, step
-            to the next resolution and search only the groups with about the same J̄, and repeat. Each step
-            multiplies the rules examined by less than the factor four by which the family grows, so the share of
-            the space you ever look at shrinks as you go. In the thesis the search reached resolution 6 having
+            to the next resolution and search only the groups with about the same J̄, and repeat. A single step
+            can multiply the rules examined by more than the factor four by which the family grows, but averaged
+            over a path the factor drops below four, so the share of the space you ever look at shrinks as you
+            go; the thesis checked every path from resolution 3. In the thesis the search reached resolution 6 having
             looked at about a fifth of the rules and found one within five percent of the best; sampling
             four rules in ten inside each group brought that to a tenth of the rules, within four percent.
           </p>
@@ -799,9 +805,9 @@ const tabs = [
             collections of networks, a hundred ticks each, with the fingerprint of Zielinski and colleagues and a
             linear classifier, five folds three times over. On 13 of the 23, all the synthetic and metabolic
             collections and one social one, jaggedness correlates with accuracy, modestly but consistently, with
-            coefficients between 0.28 and 0.46, and the best rules sit at J̄ between 0.5 and 0.9, almost never at
+            coefficients between 0.21 and 0.46, and the best rules sit at J̄ between 0.5 and 0.9, almost never at
             1. On the other social collections and on the molecules nothing correlates with anything, and even
-            an exhaustive search does poorly there: those networks have degrees between one and five, so a node
+            an exhaustive search does poorly there: those networks have average degrees between 0.5 and 5, so a node
             can only ever see a handful of densities and most of the interval boundaries are never probed. The
             suggestion, untested, is to keep the resolution close to the typical degree plus one. The surprise
             of the chapter is that this network-free number predicts accuracy at least as well as the
@@ -861,7 +867,9 @@ const tabs = [
             is off, swap their states, and rerun; then swap the next pair, and the next. The share of runs that
             now end all off, plotted against the number of swaps, tells how far the outcome is decided by where
             the central nodes start. On preferential-attachment networks of degree 8, ranked by closeness, ten
-            swaps or fewer flip nine runs in ten, whatever the power α; at α = 1.5 two swaps do it. Swapping
+            swaps or fewer push the average final share on below one in ten, whatever the power α; up to
+            α = 1.5 that means nine runs in ten flipped, at α = 1.5 two swaps do it, and at α = 2 and 3 some runs
+            stall in between. Swapping
             random pairs instead merely shuffles the start, and the outcome drifts to a coin toss without ever
             reaching the nine-in-ten mark. On rings and grids the picture is more nuanced: the h index is a blunt
             instrument because so many nodes share a value, eigenvector centrality is sharp, especially on the
@@ -885,9 +893,10 @@ const tabs = [
             centrality but reduces to none of the six. On rings and grids the correlation rises with the rewiring,
             because on a near-regular network the centralities barely differ between nodes and there is nothing
             to rank. On preferential-attachment networks degree predicts η well at low α, the correlations dip
-            around α = 2 and recover at 3: at α = 2 several hubs of similar weight shield one another, so
-            clamping one of them changes little, while at α = 3 one super-hub stands alone again. And on those
-            networks the average neighbour degree is <em>negatively</em> correlated with η: a node whose neighbours
+            around α = 2 and recover at 3, plausibly because at α = 2 several hubs of similar weight shield one
+            another, so clamping one of them changes little, while at α = 3 one super-hub stands alone again. And
+            on those networks, at degree 6 and 8, the average neighbour degree is <em>negatively</em> correlated
+            with η: a node whose neighbours
             are hubs cannot move them, since each hub has many other inputs, while a node whose neighbours are
             poorly connected owns a large share of their attention. Reaching many neighbours makes a node
             influential; having neighbours with few alternatives makes the influence stick. No single centrality
@@ -951,7 +960,8 @@ const tabs = [
             the question was turned round: if wiring shapes dynamics, dynamics carries information about
             wiring, for a whole network in Jaggedness and for one node in Impact. The two directions meet in one
             finding: the rules that tell networks apart best are jagged, and the rules that coordinate a network
-            best are sensitive, and both of those mean the same thing.
+            best are sensitive, and both of those measure how strongly a rule's output responds to a change in its
+            input, so both favour sensitive rules.
           </p>
           <h3>Four limitations of the whole</h3>
           <ol>
@@ -986,7 +996,7 @@ const tabs = [
           <p>
             The closing statement of the thesis connects all this to the gap between the local operations
             inside a trained neural network and the intelligence they bring forth, which is the concern of AI
-            interpretability and the direction its author is heading. Its last line: evaluation by behaviour does
+            interpretability and the direction its author is heading. Among its closing lines: evaluation by behaviour does
             not reveal mechanism, structure does not determine function, and knowing the rule is not the same as
             knowing what it does.
           </p>
@@ -1006,8 +1016,8 @@ const tabs = [
             of ponds along the diamond's side; a level-ℓ tile is 6ℓ cells across. The question is how many
             eightfold-symmetric still lifes fit inside a lake of each level, and the answer was found not by
             searching but by asking an integer-programming solver for them one at a time, densest first, excluding
-            each solution as it came: 1, 2, 7, 85, 2632 for levels 1 to 5, and then the numbers run away, over
-            three hundred thousand at level 6.
+            each solution as it came: 1, 2, 7, 85, 2632 for levels 1 to 5. At level 6 the solver has not
+            finished; the appendix's table lists 332,321 tiles there, and the counts keep exploding beyond.
           </p>
           <p>
             With a bank of tiles whose densities cover the range, a greyscale picture becomes a mosaic: sample

@@ -13,6 +13,13 @@ const ws8 = wattsStrogatz(100, 0, makeRng(1), 8);
 assert.equal(ws8.edges.length, 400); assert.ok(ws8.deg.every((d) => d === 8)); simple(ws8);
 assert.equal(wattsStrogatz(100, 0, makeRng(1)).edges.length, 200);
 const ws10 = wattsStrogatz(50, 0.5, makeRng(2), 10); assert.equal(ws10.edges.length, 250); simple(ws10);
+// Moving both ends changes about 2p − p² of the links, moving one end about p; the one-end default is unchanged for the old page.
+const lattice0 = new Set(wattsStrogatz(2000, 0, makeRng(3), 8).edges.map(([i, j]) => `${i},${j}`));
+const changed = (net: { edges: [number, number][] }) => net.edges.filter(([i, j]) => !lattice0.has(`${i},${j}`)).length / net.edges.length;
+const one = changed(wattsStrogatz(2000, 0.3, makeRng(4), 8)), both = changed(wattsStrogatz(2000, 0.3, makeRng(4), 8, true));
+assert.ok(Math.abs(one - 0.3) < 0.03, `one end ${one}`); assert.ok(Math.abs(both - 0.51) < 0.04, `both ends ${both}`);
+simple(wattsStrogatz(300, 0.5, makeRng(5), 6, true));
+assert.deepEqual(wattsStrogatz(60, 0.2, makeRng(6)).edges, wattsStrogatz(60, 0.2, makeRng(6), 4, false).edges);
 
 // The twelve-neighbour diamond: every cell at most two steps away along the grid lines.
 const l12 = lattice(10, 12, 0, makeRng(1));

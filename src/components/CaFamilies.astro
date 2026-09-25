@@ -159,7 +159,7 @@ const { rule = 110, n = 160 } = Astro.props;
       const nuNow = nonUniformity(mask);
       if (alpha < 1) parts.push(`α = ${alpha.toFixed(2)}`);
       if (p < 1) parts.push(`ψ = ${psi} with probability ${(1 - p).toFixed(2)}`);
-      if (nuNow > 0) parts.push(`ν = ${nuNow.toFixed(2)} on ψ = ${psi}`);
+      if (nuNow > 0) parts.push(`${Math.round(nuNow * 100)}% of cells on ψ = ${psi}, so ν = ${(1 - nuNow).toFixed(2)}`);
       if (clamped) parts.push('middle cell clamped');
       status.value = parts.join(' · ');
       c.setAttribute('aria-label', `${parts[0]} on a row of ${n} cells, ${bc} boundary, tick ${rows.length - 1}`);

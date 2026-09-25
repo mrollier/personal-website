@@ -2,7 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import Triptych from '../../components/Triptych.astro';
 import CaFamilies from '../../components/CaFamilies.astro';
-const built = new Set(['roadmap', 'families']); // tabs with content; the rest show a placeholder
+import NetZoo from '../../components/NetZoo.astro';
+const built = new Set(['roadmap', 'families', 'networks']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -210,6 +211,95 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 2 condenses <a href={link('ca-taxonomy')}>{pub('ca-taxonomy').title}</a>, {pub('ca-taxonomy').venue} ({pub('ca-taxonomy').year}), with Kallil Zielinski, Aisling Daly, Odemir Bruno and Jan Baetens.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="networks" aria-labelledby="tab-networks" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Networks</h2>
+          <p>
+            A network is a set of nodes and the links between them, nothing more: people and friendships,
+            metabolites and reactions, atoms and bonds. The links are the whole story. Two nodes are
+            neighbours if a link joins them, and a node's <em>degree</em> is how many links it has. What made
+            networks a science in their own right, in the late 1990s, was the discovery that real ones are
+            neither grids nor random tangles. Watts and Strogatz noticed that real networks are clustered like
+            a grid, your friends know each other, and yet short like a random network, everyone is a few
+            steps from everyone: the <em>small world</em>. Barabási and Albert noticed that many have a few
+            enormous hubs and a long tail of poorly connected nodes, because new links prefer nodes that
+            already have many.
+          </p>
+          <p>
+            The thesis does not model any real network. It uses three families of synthetic ones as dials that
+            run from grid-like to random and from all-nodes-alike to hub-dominated, and asks what a rule does
+            along each dial. All three are in the figure. Colour the nodes by a centrality, click a node for its
+            six values, and press the sweep to see how the small-world index moves with the rewiring.
+          </p>
+        </div>
+        <NetZoo />
+        <div class="measure">
+          <p>
+            <strong>A ring, rewired.</strong> Start with a ring where every node is linked to its k/2 nearest
+            neighbours on each side, the wiring of a one-dimensional cellular automaton with a wider reach. Then
+            visit each link and, with probability p, move one end to a random node. At p = 0 it is the ring; a
+            few shortcuts make it a small world; at p = 1 it is as good as random. The shortcuts are drawn in
+            blue. <strong>A grid, rewired.</strong> The same, starting from a torus with four, eight or twelve
+            neighbours, exactly the three neighbourhoods a two-dimensional automaton uses. A signal has two
+            dimensions to spread in before any rewiring, which matters later. <strong>Preferential
+            attachment.</strong> Grow the network one node at a time; each newcomer links to m existing nodes,
+            picking node i with probability proportional to k<sub>i</sub><sup>α</sup> + 1. At α = 0 everyone
+            is equally attractive and there are no hubs. At α = 1 the rich get richer in proportion to their
+            wealth, the classic Barabási–Albert model, and the degrees follow a power law. Above 1 a single hub
+            grabs a large share of all links, and at α = 3 nearly all of them: not a more heterogeneous network,
+            a different kind of network altogether.
+          </p>
+          <p>
+            <strong>How small is small.</strong> The usual measure of small-worldness compares clustering with a
+            random network, and by that yardstick almost everything is a small world. The thesis uses
+            Telesford's index ω instead, which compares the path length with the random end of the dial and the
+            clustering with the lattice end: ω near −1 means lattice-like, near +1 random-like, and the band
+            between −½ and ½ is the small world. The sweep draws ω against p on a logarithmic axis, because that
+            is where the action is. In the thesis the band sits between p ≈ 0.01 and 0.15 for rings and crosses
+            zero near p ≈ 0.05; for grids it crosses near p ≈ 0.09. The point is that a grid of six evenly
+            spaced p values, the kind of grid one naturally picks, misses the small-world regime entirely: at
+            p = 0.2 a ring is already random-leaning, ω ≈ 0.65. So the thesis uses evenly spaced p where the
+            gradual loss of local structure is the topic, and logarithmically spaced p where the small world
+            is. One more trap: p is not the same amount of rewiring in the two families, since the ring routine
+            moves both ends of a link and the grid routine one, so 2p − p² of the ring's links change against
+            p of the grid's.
+          </p>
+          <p>
+            <strong>Six ways of being central.</strong> Degree is the obvious one. Average neighbour degree asks
+            how well connected your neighbours are, which turns out to be almost unrelated to your own degree.
+            The h index is the largest h such that h of your neighbours have at least h links, a coarse but
+            cheap blend of the two. Eigenvector centrality is recursive: you score high by being linked to
+            nodes that score high. Betweenness counts how many shortest paths between other nodes run through
+            you, the bridges. Closeness is how few steps it takes you to reach everyone. In the thesis's
+            networks degree, the h index and eigenvector centrality move together, and the others each say
+            something of their own; in the preferential-attachment family every one of them has a heavy tail.
+            The last chapter asks which of the six, if any, predicts how much a node actually matters.
+          </p>
+          <p>
+            <strong>What runs on them.</strong> Networks are substrates. Epidemics on hub-heavy networks have no
+            threshold: the hubs keep the disease alive however weak it is. In the voter model a node copies a
+            random neighbour, and a <em>zealot</em> that never changes its mind can tilt the outcome, which is
+            the idea behind the clamped node of the last chapter. In threshold models a node flips once enough
+            of its neighbours have, and the Life-like rules of the next chapters are threshold rules with the
+            threshold replaced by an arbitrary pattern. And a <em>network automaton</em> is what you get when
+            every node runs the same deterministic rule on its neighbours' states at once. Because nodes have
+            no natural order and different degrees, the rule may only count: how many neighbours are on, or
+            what share of them. Rules of that kind are called <em>outer-totalistic</em>, and the whole of this
+            thesis lives there.
+          </p>
+          <p>
+            Things to try. Ring, degree 8, drag p up from 0 with the log scale on and watch ⟨l⟩ collapse long
+            before ⟨C⟩ moves. Grid with four neighbours: no triangles, so ω is undefined. Preferential attachment
+            at α = 0, 1 and 3 with the colour set to degree, then to average neighbour degree, and look at who
+            is dark. Click the hub and then one of its leaves.
+          </p>
+          <p class="meta status-line">
+            Ch. 3 is background; it introduces the networks and the measures the later chapters use. The
+            thesis generated them with igraph; the figure regenerates them in the browser at a smaller size.
           </p>
         </div>
       </section>

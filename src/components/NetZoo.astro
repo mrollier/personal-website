@@ -1,0 +1,272 @@
+---
+// The thesis's three families of network, drawn and measured: Watts–Strogatz from a ring or from a torus
+// grid with a rewiring probability, and nonlinear preferential attachment with a power α. Nodes coloured
+// and sized by one of six centralities, a degree histogram, clustering, path length and the small-world
+// index ω, and a button that sweeps ω over the rewiring probability in a worker. Self-contained with
+// src/scripts/net.ts, centrality.ts, stats.ts, jobs.ts (+ sim.worker.ts), palette.ts and figure.ts.
+// Props are the defaults; the URL query under `zoo.` overrides them.
+import { CENTRALITIES } from '../scripts/centrality';
+type Props = { kind?: 'ws' | 'lat' | 'npa'; n?: number };
+const { kind = 'ws', n = 300 } = Astro.props;
+---
+<figure class="fig" id="zoo" data-netzoo data-kind={kind} data-n={n} tabindex="-1">
+  <canvas role="img" aria-label="A network drawn with its nodes coloured by centrality, next to its degree histogram"></canvas>
+  <div class="controls" role="group" aria-label="Network">
+    <button name="ws" type="button" aria-pressed={kind === 'ws'}>ring, rewired</button>
+    <button name="lat" type="button" aria-pressed={kind === 'lat'}>grid, rewired</button>
+    <button name="npa" type="button" aria-pressed={kind === 'npa'}>preferential attachment</button>
+    <label><span data-plabel>rewiring p</span> <input name="param" type="range" min="0" max="1" step="0.01" value="0.05" /> <output name="pv"></output></label>
+    <label data-logbox><input name="log" type="checkbox" checked /> log scale</label>
+    <label><span data-klabel>degree</span> <select name="k"></select></label>
+    <label><span data-nlabel>nodes</span> <input name="n" type="number" min="20" max="900" value={n} inputmode="numeric" /></label>
+    <button name="regen" type="button">new network</button>
+  </div>
+  <div class="controls" role="group" aria-label="Measure">
+    <label>colour by <select name="c">
+      <option value="">nothing</option>
+      {CENTRALITIES.map((c) => <option value={c.id}>{c.name}</option>)}
+    </select></label>
+    <button name="sweep" type="button">sweep ω over p</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(420px, 66vh, 700px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 6rem; max-width: 12rem; accent-color: var(--accent); margin: 0; }
+  .controls input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  output { min-width: 2em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { buildNet, latticeLink, type Net, type NetSpec } from '../scripts/net';
+  import { CENTRALITIES, centrality, clustering, pathLength, references, smallWorldIndex, type Centrality, type OmegaPoint } from '../scripts/centrality';
+  import { histogram, logSpace } from '../scripts/stats';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import { parse, mix, css } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  type Kind = 'ws' | 'lat' | 'npa';
+  const KINDS: Kind[] = ['ws', 'lat', 'npa'];
+  const NAME: Record<Kind, string> = { ws: 'ring, rewired', lat: 'grid, rewired', npa: 'preferential attachment' };
+  const DEGREES: Record<Kind, number[]> = { ws: [6, 8, 10], lat: [4, 8, 12], npa: [6, 8, 10] };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const kindBtns = Object.fromEntries(KINDS.map((k) => [k, $<HTMLButtonElement>(k)])) as Record<Kind, HTMLButtonElement>;
+    const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
+    const logIn = $<HTMLInputElement>('log'), logBox = el.querySelector<HTMLElement>('[data-logbox]')!, kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!;
+    const nIn = $<HTMLInputElement>('n'), nlabel = el.querySelector<HTMLElement>('[data-nlabel]')!, cIn = $<HTMLSelectElement>('c');
+    const sweepBtn = $<HTMLButtonElement>('sweep'), prog = $<HTMLProgressElement>('prog'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('zoo', { kind: d.kind!, p: '0.05', a: '1', k: '8', n: d.n!, c: '', seed: '1', log: '1' });
+    const isKind = (s: string): s is Kind => KINDS.includes(s as Kind);
+    const isCent = (s: string): s is Centrality => CENTRALITIES.some((x) => x.id === s);
+    const jobs = new Jobs();
+
+    let kind: Kind = isKind(url.get('kind')) ? (url.get('kind') as Kind) : 'ws';
+    let p = clamp01(+url.get('p'), 0.05), alpha = Math.min(3, Math.max(0, +url.get('a') || 0)), useLog = url.get('log') !== '0';
+    let k = +url.get('k') || 8, n = Math.round(+url.get('n')) || 300, seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let colour: Centrality | '' = isCent(url.get('c')) ? (url.get('c') as Centrality) : '';
+    let net!: Net, cache = new Map<Centrality, Float64Array>(), meas: { C: number; l: number; omega: number; hist: ReturnType<typeof histogram> } | null = null;
+    let refs: { key: string; cLatt: number; lRand: number } | null = null, sweep: OmegaPoint[] | null = null, sweepKey = '', picked = -1;
+
+    function clamp01(v: number, def: number) { return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : def; }
+    function fixK() { const ds = DEGREES[kind]; if (!ds.includes(k)) k = 8; }
+    function fixN() { const lo = 20, hi = kind === 'npa' ? 300 : 900; n = Math.min(hi, Math.max(lo, Math.round(n) || 300)); if (kind === 'lat') { const side = Math.max(5, Math.min(30, Math.round(Math.sqrt(n)))); n = side * side; } }
+    function spec(): NetSpec {
+      if (kind === 'ws') return { kind: 'ws', n, k, p };
+      if (kind === 'lat') return { kind: 'lat', side: Math.round(Math.sqrt(n)), degree: k as 4 | 8 | 12, p };
+      return { kind: 'npa', n, m: k / 2, alpha };
+    }
+    const refKey = () => `${kind}/${n}/${k}`;
+
+    function build() {
+      fixK(); fixN();
+      net = buildNet(spec(), seed); cache.clear(); picked = -1;
+      const C = clustering(net).mean, l = pathLength(net), deg = Array.from(net.deg), maxDeg = Math.max(...deg);
+      const hist = histogram(deg, maxDeg + 1, -0.5, maxDeg + 0.5);
+      let omega = NaN;
+      if (kind !== 'npa') {
+        if (!refs || refs.key !== refKey()) { const r = references(spec(), 99, 2); refs = { key: refKey(), ...r }; }
+        omega = smallWorldIndex(C, l, refs.cLatt, refs.lRand);
+      }
+      meas = { C, l, omega, hist };
+      if (sweepKey !== refKey()) sweep = null;
+    }
+    const values = () => { if (!colour) return null; let v = cache.get(colour); if (!v) { v = centrality(colour, net); cache.set(colour, v); } return v; };
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const wide = w >= 680, cap = 16;
+      const side = wide ? Math.min(h - 2 * pad - cap, w * 0.55) : Math.min(w - 2 * pad, h * 0.5);
+      const netBox = { x: wide ? pad : (w - side) / 2, y: pad, w: side, h: side };
+      const col: Box = wide ? { x: pad + side + pad + 8, y: pad, w: w - side - 3 * pad - 8, h: h - 2 * pad } : { x: pad, y: pad + side + cap + pad, w: w - 2 * pad, h: h - side - cap - 3 * pad };
+      drawNet(t, netBox);
+      const histBox = { x: col.x + 28, y: col.y + 16, w: col.w - 32, h: Math.max(60, col.h * 0.3) };
+      drawHist(t, histBox);
+      const plotBox = { x: col.x + 28, y: histBox.y + histBox.h + 44, w: col.w - 32, h: Math.max(60, col.h - histBox.h - 76) };
+      drawSweep(t, plotBox);
+      readout();
+    }
+
+    function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
+      const v = values(); let lo = Infinity, hi = -Infinity;
+      if (v) for (let i = 0; i < net.n; i++) { if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
+      const span = hi - lo || 1, tint = (i: number) => (v ? (v[i] - lo) / span : 0);
+      const line = parse(t.line), acc = parse(t.accent), ink = parse(t.ink);
+      // links: the lattice's own faint, rewired ones in accent (ring and grid); everything faint otherwise
+      const short = (i: number, j: number) => kind === 'lat' ? latticeLink(net, i, j).grid : kind === 'ws' ? Math.min(Math.abs(i - j), net.n - Math.abs(i - j)) <= k / 2 : true;
+      ctx.lineWidth = 1;
+      for (const pass of [true, false]) {
+        ctx.strokeStyle = pass ? t.line : t.accent; ctx.globalAlpha = pass ? 1 : 0.28; ctx.beginPath();
+        for (const [i, j] of net.edges) {
+          if (short(i, j) !== pass) continue;
+          if (kind === 'lat' && pass && latticeLink(net, i, j).wraps) continue;
+          ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j));
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const base = kind === 'lat' ? Math.min(6, (0.34 * b.w) / net.side!) : Math.max(1.6, Math.min(6, (0.5 * b.w) / Math.sqrt(net.n)));
+      const order = v ? Array.from({ length: net.n }, (_, i) => i).sort((a, c2) => v[a] - v[c2]) : null;
+      for (let q = 0; q < net.n; q++) {
+        const i = order ? order[q] : q, s = tint(i), rad = v ? base * (0.6 + 1.1 * Math.sqrt(s)) : base;
+        ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
+        ctx.fillStyle = v ? css(mix(mix(line, acc, Math.min(1, s * 1.6)), ink, Math.max(0, s - 0.6) * 2.5)) : t.panel; ctx.fill();
+        ctx.strokeStyle = v ? t.bg : t.muted; ctx.lineWidth = 0.75; ctx.stroke();
+      }
+      if (picked >= 0) { ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(picked), Y(picked), base * 1.7 + 4, 0, 2 * Math.PI); ctx.stroke(); }
+      const mean = (2 * net.edges.length) / net.n;
+      label(ctx, `${NAME[kind]} · ${net.n} nodes · ${net.edges.length} links · mean degree ${mean.toFixed(1)}`, b.x + 2, b.y + b.h + 13, t);
+      if (v) { const cd = CENTRALITIES.find((x) => x.id === colour)!; label(ctx, `${cd.name}: ${fmt(lo)} … ${fmt(hi)}, dark and large is high`, b.x + b.w - 2, b.y + b.h + 13, t, { align: 'right' }); }
+    }
+
+    function drawHist(t: ReturnType<typeof tokens>, b: Box) {
+      if (!meas) return;
+      const { counts, lo } = meas.hist, m = Math.max(1, ...Array.from(counts)), bins = counts.length, bw = b.w / bins;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.x, b.y + b.h + 0.5); ctx.lineTo(b.x + b.w, b.y + b.h + 0.5); ctx.stroke();
+      ctx.fillStyle = t.ink;
+      for (let i = 0; i < bins; i++) { const hh = (counts[i] / m) * b.h; ctx.fillRect(b.x + i * bw + 0.5, b.y + b.h - hh, Math.max(1, bw - 1), hh); }
+      const step = bins > 24 ? Math.ceil(bins / 12) : bins > 12 ? 2 : 1;
+      for (let i = 0; i < bins; i += step) label(ctx, String(Math.round(lo + 0.5 + i)), b.x + (i + 0.5) * bw, b.y + b.h + 12, t, { align: 'center', size: 10 });
+      label(ctx, 'degree distribution P(k)', b.x, b.y - 5, t, { color: t.ink });
+      label(ctx, `${m} nodes`, b.x + b.w, b.y + 4, t, { align: 'right', size: 10 });
+    }
+
+    function drawSweep(t: ReturnType<typeof tokens>, b: Box) {
+      const X = (pp: number) => b.x + ((Math.log10(Math.max(1e-3, pp)) + 3) / 3) * b.w, Y = (om: number) => b.y + ((1 - om) / 2) * b.h;
+      ctx.fillStyle = t.bg; ctx.fillRect(b.x, Y(0.5), b.w, Y(-0.5) - Y(0.5));
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(b.x, Y(0) + 0.5); ctx.lineTo(b.x + b.w, Y(0) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+      for (const pp of [0.001, 0.01, 0.1, 1]) label(ctx, pp === 1 ? '1' : pp === 0.1 ? '0.1' : pp === 0.01 ? '0.01' : '0.001', X(pp), b.y + b.h + 12, t, { align: 'center', size: 10 });
+      label(ctx, '1', b.x - 4, b.y + 4, t, { align: 'right', size: 10 }); label(ctx, '0', b.x - 4, Y(0) + 4, t, { align: 'right', size: 10 }); label(ctx, '−1', b.x - 4, b.y + b.h, t, { align: 'right', size: 10 });
+      label(ctx, 'small-world index ω against rewiring p', b.x, b.y - 5, t, { color: t.ink });
+      if (kind === 'npa') { label(ctx, 'no rewiring in this family', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' }); return; }
+      if (sweep && sweep.length) {
+        ctx.strokeStyle = t.ink; ctx.lineWidth = 2; ctx.beginPath();
+        sweep.forEach((q, i) => { i ? ctx.lineTo(X(q.p), Y(q.omega)) : ctx.moveTo(X(q.p), Y(q.omega)); });
+        ctx.stroke();
+        ctx.fillStyle = t.ink; for (const q of sweep) { ctx.beginPath(); ctx.arc(X(q.p), Y(q.omega), 2.5, 0, 2 * Math.PI); ctx.fill(); }
+      } else label(ctx, 'press "sweep ω over p"', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' });
+      if (meas && Number.isFinite(meas.omega) && p > 0) { ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(X(p), Y(meas.omega), 4, 0, 2 * Math.PI); ctx.fill(); }
+      label(ctx, 'band: −½ … ½', b.x + b.w - 4, Y(0.5) + 11, t, { align: 'right', size: 10 });
+    }
+
+    const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(3).replace(/\.?0+$/, ''));
+    function readout() {
+      if (!meas) return;
+      const parts = [`⟨C⟩ = ${meas.C.toFixed(3)}`, `⟨l⟩ = ${meas.l.toFixed(2)}`];
+      if (Number.isFinite(meas.omega)) parts.push(`ω = ${meas.omega.toFixed(2)} (${meas.omega < -0.5 ? 'lattice-like' : meas.omega > 0.5 ? 'random-like' : 'small world'})`);
+      else if (kind === 'lat' && k === 4) parts.push('ω undefined: a four-neighbour grid has no triangles');
+      if (picked >= 0) parts.push(`node ${picked}: ` + CENTRALITIES.map((cd) => { let v = cache.get(cd.id); if (!v) { v = centrality(cd.id, net); cache.set(cd.id, v); } return `${cd.symbol} ${fmt(v[picked])}`; }).join(', '));
+      status.value = parts.join(' · ');
+      c.setAttribute('aria-label', `${NAME[kind]} network of ${net.n} nodes${colour ? `, coloured by ${colour}` : ''}. ${parts.join('. ')}`);
+    }
+
+    function show() {
+      for (const x of KINDS) kindBtns[x].setAttribute('aria-pressed', String(x === kind));
+      const rewiring = kind !== 'npa';
+      plabel.textContent = rewiring ? 'rewiring p' : 'power α'; logBox.hidden = !rewiring;
+      if (rewiring) { paramIn.min = '0'; paramIn.max = '1'; paramIn.step = '0.01'; paramIn.value = String(useLog ? toSlider(p) : p); pv.value = p < 0.01 ? p.toExponential(0) : p.toFixed(2); }
+      else { paramIn.min = '0'; paramIn.max = '3'; paramIn.step = '0.5'; paramIn.value = String(alpha); pv.value = alpha.toFixed(1); }
+      logIn.checked = useLog;
+      klabel.textContent = kind === 'npa' ? 'links per newcomer' : kind === 'lat' ? 'neighbours' : 'degree';
+      kIn.innerHTML = DEGREES[kind].map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${kind === 'npa' ? x / 2 : x}</option>`).join('');
+      nlabel.textContent = kind === 'lat' ? 'side' : 'nodes'; nIn.min = kind === 'lat' ? '5' : '20'; nIn.max = kind === 'lat' ? '30' : kind === 'npa' ? '300' : '900'; nIn.value = String(kind === 'lat' ? Math.round(Math.sqrt(n)) : n);
+      cIn.value = colour; sweepBtn.disabled = kind === 'npa' || jobs.busy;
+    }
+    function sync() { url.set('kind', kind); url.set('p', String(p)); url.set('a', String(alpha)); url.set('k', String(k)); url.set('n', String(n)); url.set('c', colour); url.set('seed', String(seed)); url.set('log', useLog ? '1' : '0'); }
+    // the slider runs 0 … 1; on the log scale that is p = 10^(−3 + 3v), with v = 0 meaning p = 0 exactly
+    const toSlider = (pp: number) => (pp <= 0.001 ? (pp <= 0 ? 0 : 0.001) : (Math.log10(pp) + 3) / 3);
+    const fromSlider = (v: number) => (v <= 0 ? 0 : useLog ? +(10 ** (-3 + 3 * v)).toPrecision(2) : v);
+
+    const rebuild = () => { jobs.cancel(); prog.hidden = true; build(); show(); sync(); paint(); };
+    const rebuildSoon = schedule(rebuild);
+    for (const x of KINDS) kindBtns[x].addEventListener('click', () => { if (x === kind) return; kind = x; fixK(); rebuild(); });
+    paramIn.addEventListener('input', () => { if (kind === 'npa') alpha = +paramIn.value; else p = fromSlider(+paramIn.value); pv.value = kind === 'npa' ? alpha.toFixed(1) : p < 0.01 ? p.toExponential(0) : p.toFixed(2); rebuildSoon(); });
+    logIn.addEventListener('change', () => { useLog = logIn.checked; show(); sync(); });
+    kIn.addEventListener('change', () => { k = +kIn.value; rebuild(); });
+    nIn.addEventListener('change', () => { n = kind === 'lat' ? Math.round(+nIn.value) ** 2 : +nIn.value; rebuild(); });
+    $('regen').addEventListener('click', () => { seed++; rebuild(); });
+    cIn.addEventListener('change', () => { colour = isCent(cIn.value) ? cIn.value : ''; sync(); paint(); });
+    c.addEventListener('click', (e) => {
+      const r = c.getBoundingClientRect(), sz = fit(c); if (!sz) return;
+      const x = e.clientX - r.left, y = e.clientY - r.top, pad = 12, wide = sz.w >= 680;
+      const side = wide ? Math.min(sz.h - 2 * pad - 16, sz.w * 0.55) : Math.min(sz.w - 2 * pad, sz.h * 0.5), bx = wide ? pad : (sz.w - side) / 2;
+      let best = -1, bd = 12 * 12;
+      for (let i = 0; i < net.n; i++) { const dx = bx + net.xy[2 * i] * side - x, dy = pad + net.xy[2 * i + 1] * side - y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = i; } }
+      picked = best === picked ? -1 : best; paint();
+    });
+    sweepBtn.addEventListener('click', async () => {
+      if (kind === 'npa') return;
+      const s = spec() as NetSpec & { kind: 'ws' | 'lat' }, key = refKey();
+      prog.hidden = false; prog.value = 0; sweepBtn.disabled = true;
+      try {
+        sweep = await jobs.run<OmegaPoint[]>('omega-sweep', { spec: s, ps: logSpace(0.001, 1, 16), seeds: 2, seed }, (pp, partial) => { prog.value = pp; sweep = partial as OmegaPoint[]; sweepKey = key; paint(); });
+        sweepKey = key;
+      } catch (err) { if (!(err instanceof Cancelled)) status.value = `the sweep failed: ${(err as Error).message}`; }
+      prog.hidden = true; sweepBtn.disabled = false; paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    build(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-netzoo]').forEach(mount);
+</script>

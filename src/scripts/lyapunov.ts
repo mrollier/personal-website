@@ -81,8 +81,8 @@ export const HOOD_SIZE: Record<Hood2d, number> = { vn: 4, moore: 8, vn2: 12 };
 export function structureFactor(hood: Hood2d, k: number, l: number, L: number): number {
   const a = (2 * Math.PI * k) / L, b = (2 * Math.PI * l) / L;
   let K = 2 * Math.cos(a) + 2 * Math.cos(b);
-  if (hood === 'moore') K += 4 * Math.cos(a) * Math.cos(b);
-  if (hood === 'vn2') K += 2 * Math.cos(2 * a) + 2 * Math.cos(2 * b);
+  if (hood !== 'vn') K += 4 * Math.cos(a) * Math.cos(b); // the four diagonals, in the Moore and the range-two diamond alike
+  if (hood === 'vn2') K += 2 * Math.cos(2 * a) + 2 * Math.cos(2 * b); // the four cells two steps out along the axes
   return K;
 }
 

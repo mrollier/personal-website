@@ -1,6 +1,6 @@
 // Self-check for src/scripts/llna.ts and the lattice family in src/scripts/net.ts. Run: npm test
 import assert from 'node:assert/strict';
-import { interval, phi, step, equivalent, selfEquivalent, meanField, hammingWeight, flipsTowardsHomogeneous, randomState, density, trial, binomial } from '../src/scripts/llna.ts';
+import { interval, phi, step, equivalent, selfEquivalent, complement, meanField, hammingWeight, flipsTowardsHomogeneous, randomState, density, trial, binomial } from '../src/scripts/llna.ts';
 import { makeNet, makeRng, lattice, latticeLink } from '../src/scripts/net.ts';
 
 // Intervals, Eq. (2.2): r = 9, lower half [i/9, (i+1)/9[, middle [4/9, 5/9] closed, upper half ]i/9, (i+1)/9].
@@ -49,6 +49,24 @@ assert.ok(Math.abs(Array.from({ length: 9 }, (_, q) => binomial(8, q)).reduce((a
 // The firing squad rule meets the Sec. 5.2 criterion at degree 8; Life does not.
 assert.ok(flipsTowardsHomogeneous({ r: 9, B: 23, S: 47 }, 8));
 assert.ok(!flipsTowardsHomogeneous(life, 8));
+
+// The palindromic cut is the default, bit for bit; the uniform cut of Ch. 9 is left-closed everywhere and does not mirror.
+for (let k = 0; k <= 30; k++) for (let q = 0; q <= k; q++) assert.equal(interval(q, k, 9), interval(q, k, 9, 'pal'));
+assert.equal(interval(1, 3, 9, 'uni'), 3); // 3/9 exactly: [3/9, 4/9[
+assert.equal(interval(2, 3, 9, 'uni'), 6); // 6/9 exactly: [6/9, 7/9[, where the palindromic cut says 5
+assert.equal(interval(9, 9, 9, 'uni'), 8); // ρ = 1 is in the last interval
+assert.equal(interval(4, 8, 9, 'uni'), 4);
+const uniLife = { ...life, part: 'uni' as const };
+assert.equal(phi(0, 3, 8, uniLife), 1); assert.equal(phi(1, 4, 8, uniLife), 0);
+assert.ok(Math.abs(meanField(uniLife, 8, 0.3) - meanField(life, 8, 0.3)) < 1e-12); // eight neighbours never land on a boundary
+assert.ok(Math.abs(meanField({ r: 9, B: 32, S: 0, part: 'uni' }, 3, 0.5) - meanField({ r: 9, B: 32, S: 0 }, 3, 0.5)) > 1e-6); // three do: ρ = 2/3 is R5 mirrored, R6 uniform
+// Complementing toggles every outcome and undoes itself; the equivalent of the equivalent is the rule, for all of r = 5.
+assert.deepEqual(complement({ r: 9, B: 23, S: 47 }), { r: 9, B: 488, S: 464 });
+assert.deepEqual(complement({ r: 9, B: 23, S: 47, part: 'uni' }), { r: 9, B: 488, S: 464, part: 'uni' });
+for (let B = 0; B < 32; B++) for (let S = 0; S < 32; S++) {
+  const x = { r: 5, B, S };
+  assert.deepEqual(equivalent(equivalent(x)), x); assert.deepEqual(complement(complement(x)), x);
+}
 
 // Initial configurations hit the density exactly.
 assert.equal(density(randomState(400, 0.25, makeRng(3))) * 400, 100);

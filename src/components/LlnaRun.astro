@@ -4,17 +4,19 @@
 // watches for the whole network settling on the state that was in the majority at the start; `defect`
 // runs a twin with one node flipped and shows how far the difference spreads. Self-contained with
 // src/scripts/llna.ts, net.ts, diagram.ts and figure.ts. Props are the defaults; the URL query under the
-// mode's prefix (?fssp.kind=&fssp.p=&fssp.n=&fssp.deg=&fssp.rho=&fssp.r=&fssp.b=&fssp.s=&fssp.seed=&fssp.cs=) overrides them.
+// figure's prefix (?fssp.kind=&fssp.p=&fssp.n=&fssp.deg=&fssp.rho=&fssp.r=&fssp.b=&fssp.s=&fssp.seed=&fssp.cs=) overrides them.
+// The prefix and element id are the mode unless `id` says otherwise, so a page can hold two figures of one mode.
+// Another figure can set the rule by dispatching a `llna:rule` CustomEvent with a Rule as detail on the figure element.
 import { PRESETS, RESOLUTIONS, presetOf, type Mode } from '../scripts/llna';
-import { PARAM, LATTICE, type NetKind } from '../scripts/net';
-type Props = { mode: Mode; kind?: NetKind; p?: number; n?: number; degree?: 4 | 8; rho?: number; preset?: string; seed?: number };
-const { mode, kind = 'lat', p = 0.3, n = 400, degree = 8, rho = 0.5, preset = 'fssp', seed = 1 } = Astro.props;
+import { PARAM, LATTICE, type BasicKind as NetKind } from '../scripts/net';
+type Props = { mode: Mode; id?: string; kind?: NetKind; p?: number; n?: number; degree?: 4 | 8; rho?: number; preset?: string; seed?: number };
+const { mode, id = mode, kind = 'lat', p = 0.3, n = 400, degree = 8, rho = 0.5, preset = 'fssp', seed = 1 } = Astro.props;
 const rule = PRESETS.find((x) => x.id === preset)!.rule;
 const names: Record<NetKind, string> = { lat: LATTICE.name, ws: PARAM.ws.name, er: PARAM.er.name, ba: PARAM.ba.name };
 const kinds = Object.keys(names) as NetKind[];
 const lat = kind === 'lat';
 ---
-<figure class="fig" id={mode} data-llna-run data-mode={mode} data-kind={kind} data-p={p} data-n={n} data-deg={degree} data-rho={rho} data-r={rule.r} data-b={rule.B} data-s={rule.S} data-seed={seed} tabindex="-1">
+<figure class="fig" id={id} data-llna-run data-mode={mode} data-id={id} data-kind={kind} data-p={p} data-n={n} data-deg={degree} data-rho={rho} data-r={rule.r} data-b={rule.B} data-s={rule.S} data-seed={seed} tabindex="-1">
   <canvas role="img" aria-label={`${names[kind]} network of ${n} nodes, tick 0`}></canvas>
   <div class="controls" role="group" aria-label="Network">
     {kinds.map((k) => <button name={k} type="button" aria-pressed={k === kind}>{names[k]}</button>)}
@@ -86,7 +88,7 @@ const lat = kind === 'lat';
 
 <script>
   import { PRESETS, clampRule, presetOf, step, randomState, density, defects, verdict, trial, ruleName, type Rule, type Mode } from '../scripts/llna';
-  import { PARAM, LATTICE, knob, makeNet, makeRng, clampParam, clampN, latticeLink, type Net, type NetKind } from '../scripts/net';
+  import { PARAM, LATTICE, knob, makeNet, makeRng, clampParam, clampN, latticeLink, type Net, type BasicKind as NetKind } from '../scripts/net';
   import { draw, hit, type Geom } from '../scripts/diagram';
   import { fit, tokens, watch, loop, fullscreen, urlState, keys, schedule, label } from '../scripts/figure';
 
@@ -106,13 +108,13 @@ const lat = kind === 'lat';
     const rhoIn = $<HTMLInputElement>('rho'), rv = $<HTMLOutputElement>('rv');
     const speedIn = $<HTMLInputElement>('speed'), playBtn = $<HTMLButtonElement>('play'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
     const trialsBtn = el.querySelector<HTMLButtonElement>('[name="trials"]'), tv = el.querySelector<HTMLOutputElement>('[name="tv"]');
-    const d = el.dataset, url = urlState(mode, { kind: d.kind!, p: d.p!, n: d.n!, deg: d.deg!, rho: d.rho!, r: d.r!, b: d.b!, s: d.s!, seed: d.seed!, cs: '1' });
+    const d = el.dataset, key = d.id || mode, url = urlState(key, { kind: d.kind!, p: d.p!, n: d.n!, deg: d.deg!, rho: d.rho!, r: d.r!, b: d.b!, s: d.s!, seed: d.seed!, cs: '1' });
     const isKind = (s: string): s is NetKind => KINDS.includes(s as NetKind);
     const CAP = 4096, TRIALS = 20;
 
     // State. The URL wins over the props so a set-up can be linked; only non-default values are written back.
     let kind: NetKind = isKind(url.get('kind')) ? (url.get('kind') as NetKind) : 'lat';
-    let p = clampParam(kind, new URLSearchParams(location.search).has(`${mode}.p`) || kind === d.kind ? +url.get('p') : knob(kind).def);
+    let p = clampParam(kind, new URLSearchParams(location.search).has(`${key}.p`) || kind === d.kind ? +url.get('p') : knob(kind).def);
     let n = clampN(+url.get('n'), 400, 900);
     let deg: 4 | 8 = url.get('deg') === '4' ? 4 : 8;
     let rho0 = Math.min(1, Math.max(0, +url.get('rho') || 0));
@@ -257,6 +259,7 @@ const lat = kind === 'lat';
     nodesIn.addEventListener('change', () => { const v = +nodesIn.value; n = kind === 'lat' ? Math.min(30, Math.max(3, Math.round(v) || 20)) ** 2 : clampN(v, 400, 900); regen(); show(); sync(); });
     $('regen').addEventListener('click', () => { seed++; regen(); show(); sync(); });
     const setRule = (r: Rule) => { rule = r; show(); sync(); paint(); }; // no reset: the rule may change mid-run
+    el.addEventListener('llna:rule', (e) => { const r = (e as CustomEvent<Rule>).detail; setRule(clampRule(r.r, r.B, r.S)); });
     presetIn.addEventListener('change', () => { const x = PRESETS.find((y) => y.id === presetIn.value); if (x) setRule({ ...x.rule }); });
     rIn.addEventListener('change', () => setRule(clampRule(+rIn.value, rule.B, rule.S)));
     bIn.addEventListener('change', () => setRule(clampRule(rule.r, +bIn.value, rule.S)));

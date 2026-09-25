@@ -41,13 +41,14 @@ export function draw(ctx: CanvasRenderingContext2D, box: Box, rule: Rule, t: Tok
     }
     label(ctx, name, x0 - 6, band.y + band.h / 2, t, { align: 'right', base: 'middle', size, color: t.ink });
   }
-  // the density axis: boundary at i/r; a dot marks which side the boundary belongs to (half-open intervals, the middle closed)
-  const m = (r - 1) / 2;
+  // the density axis: boundary at i/r; a dot marks which side the boundary belongs to (half-open intervals, the middle closed;
+  // under the uniform cut every boundary belongs to the interval on its right)
+  const m = (r - 1) / 2, uni = rule.part === 'uni';
   for (let i = 0; i <= r; i++) {
     const x = x0 + i * cw, edge = i === 0 || i === r;
     ctx.strokeStyle = t.muted; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 0.5, g.axisY); ctx.lineTo(x + 0.5, g.axisY + 4); ctx.stroke();
     if (!compact && !edge) {
-      const right = i <= m; // below the middle a boundary belongs to the interval on its right; above, on its left; both middle edges point inward
+      const right = uni || i <= m; // below the middle a boundary belongs to the interval on its right; above, on its left; both middle edges point inward
       ctx.fillStyle = t.muted; ctx.beginPath(); ctx.arc(x + (right ? 3 : -3), g.axisY + 2.5, 1.5, 0, 2 * Math.PI); ctx.fill();
     }
     if (!compact || edge || 2 * i === r) label(ctx, frac(i, r), x, g.axisY + (compact ? 13 : 16), t, { align: 'center', size });
@@ -59,7 +60,7 @@ export function draw(ctx: CanvasRenderingContext2D, box: Box, rule: Rule, t: Tok
     let wmax = 0; for (let q = 0; q <= k; q++) wmax = Math.max(wmax, binomial(k, q));
     ctx.setLineDash([2, 3]);
     for (let q = 0; q <= k; q++) {
-      const x = x0 + (q / k) * cw * r, w = binomial(k, q), i = interval(q, k, r);
+      const x = x0 + (q / k) * cw * r, w = binomial(k, q), i = interval(q, k, r, rule.part);
       ctx.strokeStyle = t.muted; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, g.bandB.y); ctx.lineTo(x, g.axisY); ctx.stroke();
       ctx.setLineDash([]);
       const rad = rmax * Math.sqrt(w / wmax);

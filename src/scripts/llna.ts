@@ -6,8 +6,12 @@
 // squad and majority detectors, and one trial for the batch statistics. Pure, no DOM.
 import type { Net } from './net';
 
+/** How the unit interval is cut: `pal`, the paper's palindromic cut that mirrors round ½ (the default),
+ * or `uni`, the older uniform cut where every interval includes its left end, which Ch. 9 of the thesis uses. */
+export type Partition = 'pal' | 'uni';
+
 /** Resolution r (odd) and the born and survive sets as bitmasks over the r intervals: β and σ of the paper. */
-export type Rule = { r: number; B: number; S: number };
+export type Rule = { r: number; B: number; S: number; part?: Partition };
 
 export const RESOLUTIONS = [3, 5, 7, 9, 11, 13];
 
@@ -30,16 +34,18 @@ export const clampRule = (r: number, B: number, S: number): Rule => {
 };
 
 /** Which of the r intervals holds the density q/k, Eq. (2.2): [i/r, (i+1)/r[ below the middle, the middle closed at both ends, ]i/r, (i+1)/r] above, so the set mirrors round ½. Integers in, so a density on a boundary lands where it should. A node without neighbours counts as density 0. */
-export function interval(q: number, k: number, r: number): number {
+export function interval(q: number, k: number, r: number, part: Partition = 'pal'): number {
   if (k === 0) return 0;
-  const m = (r - 1) / 2, x = (q * r) / k;
+  const x = (q * r) / k;
+  if (part === 'uni') return Math.min(r - 1, Math.floor(x));
+  const m = (r - 1) / 2;
   if (x < m) return Math.floor(x);
   if (x <= m + 1) return m;
   return Math.min(r - 1, Math.ceil(x) - 1);
 }
 
 /** The local rule, Eq. (2.1): born if dead and the interval is in B, survive if alive and it is in S. */
-export const phi = (s: number, q: number, k: number, rule: Rule): number => ((s ? rule.S : rule.B) >> interval(q, k, rule.r)) & 1;
+export const phi = (s: number, q: number, k: number, rule: Rule): number => ((s ? rule.S : rule.B) >> interval(q, k, rule.r, rule.part)) & 1;
 
 /** One tick, every node at once. */
 export function step(s: Uint8Array, net: Net, rule: Rule, out = new Uint8Array(net.n)): Uint8Array {
@@ -54,11 +60,20 @@ export function step(s: Uint8Array, net: Net, rule: Rule, out = new Uint8Array(n
 const mirror = (x: number, r: number) => { let y = 0; for (let i = 0; i < r; i++) if ((x >> i) & 1) y |= 1 << (r - 1 - i); return y; };
 
 /** The rule that does the same with all states swapped, Eq. (2.4): complement of the mirrored survive set becomes the born set, and vice versa. */
-export function equivalent({ r, B, S }: Rule): Rule {
+const withPart = (rule: Rule, part?: Partition): Rule => (part ? { ...rule, part } : rule);
+
+export function equivalent({ r, B, S, part }: Rule): Rule {
   const all = (1 << r) - 1;
-  return { r, B: all & ~mirror(S, r), S: all & ~mirror(B, r) };
+  return withPart({ r, B: all & ~mirror(S, r), S: all & ~mirror(B, r) }, part);
 }
 export const selfEquivalent = (rule: Rule) => sameRule(rule, equivalent(rule));
+
+/** Every outcome toggled, (B, S) → (Bᶜ, Sᶜ): the mean-field curve flipped top to bottom, so a rule that
+ * sends the density away from ½ while flashing becomes one that sends it away while freezing (Ch. 6). */
+export function complement({ r, B, S, part }: Rule): Rule {
+  const all = (1 << r) - 1;
+  return withPart({ r, B: all & ~B, S: all & ~S }, part);
+}
 
 /** C(k, q) / 2^k: the share of neighbourhoods of size k with q live nodes when every state is a coin flip. */
 export function binomial(k: number, q: number): number {
@@ -71,7 +86,7 @@ export function meanField(rule: Rule, k: number, rho: number): number {
   let dead = 0, alive = 0, c = 1;
   for (let q = 0; q <= k; q++) {
     if (q) c = (c * (k - q + 1)) / q; // C(k, q) by recurrence
-    const w = c * rho ** q * (1 - rho) ** (k - q), i = interval(q, k, rule.r);
+    const w = c * rho ** q * (1 - rho) ** (k - q), i = interval(q, k, rule.r, rule.part);
     if ((rule.B >> i) & 1) dead += w;
     if ((rule.S >> i) & 1) alive += w;
   }

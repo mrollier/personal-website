@@ -8,7 +8,8 @@ import LlnaRun from '../../components/LlnaRun.astro';
 import Sensitivity from '../../components/Sensitivity.astro';
 import RuleScatter from '../../components/RuleScatter.astro';
 import PartitionTwin from '../../components/PartitionTwin.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers']); // tabs with content; the rest show a placeholder
+import GenotypeFilter from '../../components/GenotypeFilter.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -412,6 +413,96 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 5 is the first half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}), with Lucas de Oliveira, Odemir Bruno and Jan Baetens; code at <a href="https://github.com/mrollier/essential-metrics-life-on-graphs">GitHub</a>.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="synchronisation" aria-labelledby="tab-synchronisation" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Synchronisation</h2>
+          <p>
+            Here is a task that is easy to state and hard to do. Start a network in a random mess and have
+            every node end up flashing on and off in step, all on, all off, all on, for ever. Each node sees only
+            its neighbours; nobody sees the whole; and the rule is the same for everyone. This is the <em>global
+            synchronisation task</em> of Das and colleagues, a cousin of the firing squad problem, and the usual
+            way to find a rule that does it is a genetic algorithm: breed thousands of rules, simulate all of
+            them, keep the winners, and accept an answer you cannot explain. Das and colleagues spent something
+            like ten to a hundred million simulations that way.
+          </p>
+          <p>
+            The two numbers from the previous chapter make a bottom-up route possible. A good synchroniser
+            should be its own equivalent, since the goal looks the same with the colours swapped; that is a
+            bitwise condition, and it leaves 512 of the 262,144 rules at resolution 9. Its mean-field curve should
+            lie above the anti-diagonal 1 − ρ left of ½ and below it right of ½, so that ½ is an unstable balance
+            and every tick pushes the density further out while flipping it; at degree 8 that leaves 27. No
+            simulation so far: one bit test and one curve per rule, a fraction of a second for all 512. The
+            figure does it in front of you. Change the resolution and the degree, or ask for the condition at
+            every degree from 4 to 12 at once, and watch the count.
+          </p>
+          <p>
+            Which of the 27 is best is not something the genotype can say. There is a trade-off, visible in the
+            scatter: rules with a steep mean-field slope, which leave ½ quickly, have low sensitivity, and the
+            sensitive rules have a gentle slope. So the thesis ran all 27 on rings of a thousand nodes, degree 8,
+            rewiring 0.2, for 2000 ticks, 900 samples each. Twenty-two never synchronised once. Three managed
+            more than a tenth of the samples. One, φ<sup>9</sup><sub>23,47</sub>, managed 83 percent, and the
+            runner-up 65. The winner sits at the sensitive end of the trade-off: for this task, chaos beats speed.
+            Click any dot to run it on a ring below and to load it into the big figure further down.
+          </p>
+        </div>
+        <GenotypeFilter />
+        <div class="measure">
+          <p>
+            The success rate depends on the network in ways the rule knows nothing about. On rings of degree
+            6 the winning rule never synchronises from a balanced start, at any rewiring; on rings of degree
+            10 it nearly always does once p is above 0.15. At degree 8 the dependence on rewiring is a hump:
+            nothing below p = 0.04, a steep rise, a peak of 94 percent near p = 0.3, and a slide back to 39
+            percent on a fully random network. Short paths are necessary but not sufficient; some of the ring's
+            local structure has to survive for the synchronised state to spread. On rewired grids, which have
+            two dimensions to spread in, the rule scores 96 percent at p = 0.2 and 82 percent with no rewiring at
+            all, then falls to about 40 percent as p goes to 1; with four neighbours it never works, with twelve
+            it always does. The sweep button above reproduces the hump on a ring of 300 nodes with a dozen
+            trials per point, which is enough to see the shape and not enough to trust the decimals. The figure
+            below is the same synchroniser with everything at hand, and it starts on the grid.
+          </p>
+        </div>
+        <LlnaRun mode="fssp" id="sync" />
+        <div class="measure">
+          <p>
+            Now the second half of the chapter, and the one the last chapter of the thesis will need. Toggle
+            every outcome of a rule, on to off and off to on, and its mean-field curve flips top to bottom. A
+            curve that flung the density away from ½ while flipping now flings it away while freezing: 0 and 1
+            become stable, ½ stays unstable, and the rule seeks <em>consensus</em>, every node the same and
+            staying that way. The Derrida curve is unchanged by the toggle, so the sensitivity that made a good
+            synchroniser carries over. The consensus button in the filter applies this second condition; at
+            resolution 9 it gives 27 rules at degree 8, 106 that satisfy it at some degree between 4 and 12,
+            and 12 that satisfy it at every one of them. The thesis ran all 106 on all 54 combinations of network
+            family, degree and rewiring or attachment, 900 samples each, for 100 ticks, and measured consensus
+            by the entropy of the density, which is 1 for a fair split and 0 for unanimity.
+          </p>
+          <p>
+            Two things came out. Most candidates fail: on a rewired grid of degree 8 only two rules,
+            φ<sup>9</sup><sub>488,464</sub> and φ<sup>9</sup><sub>432,484</sub>, reach unanimity in more than half
+            the samples, the best in 96 percent, and the fifth-best in under four. And none of the winners is in
+            the set of 12 that pass the test at every degree; every one of them pairs a high sensitivity with a
+            slope that is modest, and for some degrees actually below 1. The chaos compensates for the
+            mean-field's indifference. As for the networks: degree 4 hardly ever reaches consensus, an unrewired
+            ring never, degree 12 always, and the best rule differs from family to family, which is why the
+            appendix has a table of them. The figure below runs φ<sup>9</sup><sub>488,464</sub>; note that it also
+            judges whether the unanimous answer matched the starting majority, which is a stricter question than
+            the thesis asked and one these rules often get wrong.
+          </p>
+        </div>
+        <LlnaRun mode="majority" id="cons" preset="majority" rho={0.4} />
+        <div class="measure">
+          <p>
+            Things to try. In the filter, resolution 5 at degree 8: five candidates, and the ring run tells you
+            which of them are any good. Resolution 11 at every degree: 26 survive, all of them tame. Pick the
+            consensus condition, click the most sensitive dot, then run the sweep and compare it with the
+            synchroniser's hump. In the big figures, twenty trials on the lattice with the rewiring at 0, then at
+            0.3, then at 1.
+          </p>
+          <p class="meta status-line">
+            Ch. 6 is the second half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}). The synchroniser and majority figures are the ones from the <a href="/demos/cellular-automata/#firing-squad">other demo</a>.
           </p>
         </div>
       </section>

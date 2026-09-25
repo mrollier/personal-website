@@ -1,0 +1,200 @@
+---
+// The genotype as a substitute for search (Ch. 6): every rule of a resolution that is its own equivalent,
+// filtered by the mean-field condition for a synchroniser or a consensus-seeker at one degree, at any degree
+// from 4 to 12, or at every one of them. The survivors are scattered by Boolean sensitivity against the
+// slope of the mean-field curve at ½; a click runs the rule on a small ring and sends it to the running
+// figure named by `target` / `targetCons`. A button sweeps the success rate over the rewiring in a worker.
+// Self-contained with src/scripts/llna.ts, genotype.ts, sync.ts, net.ts, stats.ts, jobs.ts and figure.ts.
+type Props = { target?: string; targetCons?: string };
+const { target = 'sync', targetCons = 'cons' } = Astro.props;
+---
+<figure class="fig" id="geno" data-genofilter data-target={target} data-target-cons={targetCons} tabindex="-1">
+  <canvas role="img" aria-label="Candidate rules scattered by Boolean sensitivity against mean-field slope, with the run of the chosen rule"></canvas>
+  <div class="controls" role="group" aria-label="Filter">
+    <button name="sync" type="button" aria-pressed="true">synchronise</button>
+    <button name="consensus" type="button" aria-pressed="false">reach consensus</button>
+    <label>resolution <select name="r"><option value="5">5</option><option value="7">7</option><option value="9" selected>9</option><option value="11">11</option></select></label>
+    <label>at degree <select name="k">
+      {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((x) => <option value={x} selected={x === 8}>{x}</option>)}
+      <option value="any">any of 4 … 12</option>
+      <option value="all">every one of 4 … 12</option>
+    </select></label>
+    <button name="sweep" type="button">success rate over rewiring</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(400px, 62vh, 640px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: crosshair;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { ruleName, type Rule } from '../scripts/llna';
+  import { candidates, sensitivity, slopeAtHalf, type Condition } from '../scripts/genotype';
+  import { entropyRun, taskTrial, type SweepPoint } from '../scripts/sync';
+  import { buildNet, makeRng } from '../scripts/net';
+  import { logSpace } from '../scripts/stats';
+  import { Jobs, Cancelled } from '../scripts/jobs';
+  import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
+
+  const KS = [4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const syncBtn = $<HTMLButtonElement>('sync'), consBtn = $<HTMLButtonElement>('consensus'), rIn = $<HTMLSelectElement>('r'), kIn = $<HTMLSelectElement>('k');
+    const sweepBtn = $<HTMLButtonElement>('sweep'), prog = $<HTMLProgressElement>('prog'), status = $<HTMLOutputElement>('status');
+    const url = urlState('geno', { cond: 'sync', r: '9', k: '8', b: '23', s: '47' }), targets = { sync: el.dataset.target!, consensus: el.dataset.targetCons! };
+    const jobs = new Jobs();
+
+    let cond: Condition = url.get('cond') === 'consensus' ? 'consensus' : 'sync';
+    let r = [5, 7, 9, 11].includes(+url.get('r')) ? +url.get('r') : 9, kSel = url.get('k');
+    let rules: { rule: Rule; bs: number; slope: number }[] = [], picked = -1, hover = -1, box: Box | null = null;
+    let run: ReturnType<typeof entropyRun> | null = null, runText = '', sweep: SweepPoint[] | null = null, sweepFor = '';
+    const wanted: Rule | null = +url.get('b') || +url.get('s') ? { r, B: +url.get('b'), S: +url.get('s') } : null;
+
+    function filter() {
+      const ks = kSel === 'any' || kSel === 'all' ? KS : [Math.min(12, Math.max(4, +kSel || 8))];
+      const list = candidates(r, ks, cond, kSel === 'any' ? 'any' : 'all'), k8 = 8;
+      rules = list.map((rule) => ({ rule, bs: sensitivity(rule, k8).BS, slope: slopeAtHalf(rule, k8) })).sort((a, b) => b.bs - a.bs);
+      picked = rules.findIndex((x) => wanted && x.rule.B === wanted.B && x.rule.S === wanted.S && x.rule.r === r);
+      if (picked < 0 && rules.length) picked = 0;
+      runPicked();
+    }
+    function runPicked() {
+      run = null; runText = '';
+      if (picked < 0) return;
+      const rule = rules[picked].rule, net = buildNet({ kind: 'ws', n: 200, k: 8, p: 0.2 }, 3, 'none');
+      run = entropyRun(net, rule, 0.5, 11, 120);
+      const v = taskTrial(cond, buildNet({ kind: 'ws', n: 200, k: 8, p: 0.2 }, 3, 'none'), rule, 0.5, makeRng(11), 400);
+      runText = v.ok ? `${cond === 'sync' ? 'synchronised' : 'consensus'} at tick ${v.tick}` : `no ${cond === 'sync' ? 'synchronisation' : 'consensus'} within 400 ticks`;
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, wide = w >= 680;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const left: Box = wide ? { x: pad + 34, y: pad + 20, w: w * 0.48 - pad - 40, h: h - 2 * pad - 44 } : { x: pad + 34, y: pad + 20, w: w - 2 * pad - 40, h: (h - 3 * pad - 60) / 2 };
+      const rightX = wide ? w * 0.52 + 30 : pad + 34, rightW = wide ? w - w * 0.52 - pad - 34 : w - 2 * pad - 40;
+      const top: Box = wide ? { x: rightX, y: pad + 20, w: rightW, h: (h - 2 * pad - 64) / 2 } : { x: rightX, y: left.y + left.h + 40, w: rightW, h: (h - 3 * pad - 60) / 4 - 10 };
+      const bottom: Box = wide ? { x: rightX, y: top.y + top.h + 44, w: rightW, h: h - pad - 24 - (top.y + top.h + 44) } : { x: rightX, y: top.y + top.h + 40, w: rightW, h: (h - 3 * pad - 60) / 4 - 10 };
+      box = left; scatterPlot(t, left); tracePlot(t, top); sweepPlot(t, bottom);
+      readout();
+    }
+    const bsMax = () => Math.max(1, ...rules.map((x) => x.bs)) * 1.05;
+    const slopeRange = () => { let lo = 0, hi = 0; for (const x of rules) { lo = Math.min(lo, x.slope); hi = Math.max(hi, x.slope); } return [Math.min(lo, -1) - 0.5, Math.max(hi, 1) + 0.5]; };
+    const X = (v: number) => box!.x + (v / bsMax()) * box!.w;
+    const Y = (v: number) => { const [lo, hi] = slopeRange(); return box!.y + (1 - (v - lo) / (hi - lo)) * box!.h; };
+
+    function scatterPlot(t: ReturnType<typeof tokens>, b: Box) {
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted;
+      for (const v of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(b.x, Y(v) + 0.5); ctx.lineTo(b.x + b.w, Y(v) + 0.5); ctx.stroke(); label(ctx, String(v), b.x - 4, Y(v) + 4, t, { align: 'right', size: 10 }); }
+      ctx.setLineDash([]);
+      for (let i = rules.length - 1; i >= 0; i--) {
+        const x = rules[i]; ctx.beginPath(); ctx.arc(X(x.bs), Y(x.slope), i === picked ? 6 : 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = i === picked ? t.accent : t.ink; ctx.fill();
+        if (i === hover) { ctx.strokeStyle = t.muted; ctx.lineWidth = 2; ctx.stroke(); }
+      }
+      label(ctx, `${rules.length} candidate${rules.length === 1 ? '' : 's'} at resolution ${r} · click one`, b.x, b.y - 6, t, { color: t.ink });
+      label(ctx, 'Boolean sensitivity BS₈ →', b.x + b.w, b.y + b.h + 14, t, { align: 'right' });
+      ctx.save(); ctx.translate(b.x - 24, b.y + b.h / 2); ctx.rotate(-Math.PI / 2); label(ctx, 'slope of the mean-field curve at ½', 0, 0, t, { align: 'center' }); ctx.restore();
+    }
+    function tracePlot(t: ReturnType<typeof tokens>, b: Box) {
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      if (!run) { label(ctx, 'no candidate', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' }); return; }
+      const n = run.H.length - 1, px = (i: number) => b.x + (i / n) * b.w, py = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.ink; ctx.lineWidth = 1.5; ctx.beginPath(); run.rho.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v)))); ctx.stroke();
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath(); run.H.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v)))); ctx.stroke();
+      label(ctx, `${ruleName(rules[picked].rule)} on a ring of 200, degree 8, rewiring 0.2 · ${runText}`, b.x, b.y - 6, t, { color: t.ink });
+      label(ctx, 'share on ρ (black) · entropy H (blue)', b.x + 4, b.y + b.h - 6, t, { size: 10 });
+      label(ctx, `tick 0 … ${n}`, b.x + b.w - 4, b.y + b.h + 12, t, { align: 'right', size: 10 });
+      label(ctx, '1', b.x - 4, b.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', b.x - 4, b.y + b.h, t, { align: 'right', size: 10 });
+    }
+    function sweepPlot(t: ReturnType<typeof tokens>, b: Box) {
+      const px = (p: number) => b.x + ((Math.log10(Math.max(0.01, p)) + 2) / 2) * b.w, py = (v: number) => b.y + (1 - v) * b.h;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      for (const p of [0.01, 0.1, 1]) label(ctx, String(p), px(p), b.y + b.h + 12, t, { align: 'center', size: 10 });
+      label(ctx, '1', b.x - 4, b.y + 8, t, { align: 'right', size: 10 }); label(ctx, '0', b.x - 4, b.y + b.h, t, { align: 'right', size: 10 });
+      label(ctx, `success rate of ${sweepFor || (picked >= 0 ? ruleName(rules[picked].rule) : '…')} against rewiring p, ring of 300, degree 8`, b.x, b.y - 6, t, { color: t.ink });
+      if (!sweep || !sweep.length) { label(ctx, 'press "success rate over rewiring"', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' }); return; }
+      ctx.strokeStyle = t.ink; ctx.lineWidth = 2; ctx.beginPath(); sweep.forEach((q, i) => (i ? ctx.lineTo(px(q.p), py(q.rate)) : ctx.moveTo(px(q.p), py(q.rate)))); ctx.stroke();
+      ctx.fillStyle = t.ink; for (const q of sweep) { ctx.beginPath(); ctx.arc(px(q.p), py(q.rate), 2.5, 0, 2 * Math.PI); ctx.fill(); }
+    }
+
+    function readout() {
+      const total = 2 ** (2 * r), self = 2 ** r, who = kSel === 'any' ? 'at some degree from 4 to 12' : kSel === 'all' ? 'at every degree from 4 to 12' : `at degree ${kSel}`;
+      const parts = [`${total.toLocaleString('en')} rules at r = ${r} → ${self} are their own equivalent → ${rules.length} also ${cond === 'sync' ? 'flip the density away from ½' : 'freeze the density away from ½'} ${who}`];
+      const i = hover >= 0 ? hover : picked;
+      if (i >= 0) parts.push(`${ruleName(rules[i].rule)}: BS₈ = ${rules[i].bs.toFixed(2)}, slope ${rules[i].slope.toFixed(2)}`);
+      status.value = parts.join(' · ');
+      c.setAttribute('aria-label', parts.join('. '));
+    }
+    function show() { syncBtn.setAttribute('aria-pressed', String(cond === 'sync')); consBtn.setAttribute('aria-pressed', String(cond === 'consensus')); rIn.value = String(r); kIn.value = kSel; }
+    function sync() { url.set('cond', cond); url.set('r', String(r)); url.set('k', kSel); if (picked >= 0) { url.set('b', String(rules[picked].rule.B)); url.set('s', String(rules[picked].rule.S)); } }
+    function nearest(e: MouseEvent): number {
+      if (!box) return -1;
+      const b = c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      let best = -1, bd = 12 * 12;
+      for (let i = 0; i < rules.length; i++) { const dx = X(rules[i].bs) - x, dy = Y(rules[i].slope) - y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = i; } }
+      return best;
+    }
+    const repaint = schedule(paint);
+    const refilter = () => { jobs.cancel(); prog.hidden = true; sweep = null; filter(); show(); sync(); paint(); };
+    syncBtn.addEventListener('click', () => { cond = 'sync'; refilter(); });
+    consBtn.addEventListener('click', () => { cond = 'consensus'; refilter(); });
+    rIn.addEventListener('change', () => { r = +rIn.value; refilter(); });
+    kIn.addEventListener('change', () => { kSel = kIn.value; refilter(); });
+    c.addEventListener('mousemove', (e) => { const i = nearest(e); if (i !== hover) { hover = i; readout(); repaint(); } });
+    c.addEventListener('mouseleave', () => { hover = -1; readout(); repaint(); });
+    c.addEventListener('click', (e) => {
+      const i = nearest(e); if (i < 0) return;
+      picked = i; runPicked(); sync(); paint();
+      const target = document.getElementById(targets[cond]);
+      target?.dispatchEvent(new CustomEvent('llna:rule', { detail: { ...rules[i].rule } }));
+    });
+    sweepBtn.addEventListener('click', async () => {
+      if (picked < 0) return;
+      const rule = { ...rules[picked].rule }, task = cond;
+      prog.hidden = false; prog.value = 0; sweepBtn.disabled = true; sweepFor = ruleName(rule);
+      try {
+        sweep = await jobs.run<SweepPoint[]>('success-sweep', { spec: { kind: 'ws', n: 300, k: 8, p: 0 }, rule, task, ps: logSpace(0.01, 1, 13), trials: 12, rho0: 0.5, seed: 5, limit: task === 'sync' ? 400 : 100 }, (p, partial) => { prog.value = p; sweep = partial as SweepPoint[]; repaint(); });
+      } catch (err) { if (!(err instanceof Cancelled)) status.value = `the sweep failed: ${(err as Error).message}`; }
+      prog.hidden = true; sweepBtn.disabled = false; paint();
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    filter(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-genofilter]').forEach(mount);
+</script>

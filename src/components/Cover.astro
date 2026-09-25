@@ -77,9 +77,9 @@ const { level = 4 } = Astro.props;
     const levelIn = $<HTMLSelectElement>('level'), gIn = $<HTMLInputElement>('g'), thetaIn = $<HTMLInputElement>('theta'), tv = $<HTMLOutputElement>('tv'), invBtn = $<HTMLButtonElement>('invert'), fileIn = $<HTMLInputElement>('file'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
     const url = urlState('mosaic', { level: el.dataset.level!, g: '', theta: '1', inv: '0', seed: '1' });
     let level = [3, 4, 5].includes(+url.get('level')) ? +url.get('level') : 4, g = Math.round(+url.get('g')) || 0, theta = Math.min(1, Math.max(0.3, +url.get('theta') || 1)), invert = url.get('inv') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
-    let bank: TileBank = loadBank(tilesJson as Record<string, string[]>, level), img: Grey = testImage(160, 160), mosaic: Mosaic | null = null;
+    let bank!: TileBank, img: Grey = testImage(160, 160), mosaic: Mosaic | null = null;
     let grid = new Uint8Array(0), scratch = new Uint8Array(0), tick = 0, changed = -1, raster: Raster | null = null, box = { x: 0, y: 0, w: 1, h: 1 }, gliders = 0;
-    const defaultG = () => Math.max(4, Math.round(360 / bank.size));
+    const defaultG = () => Math.max(4, Math.round(360 / (6 * level)));
 
     function build() {
       bank = loadBank(tilesJson as Record<string, string[]>, level);
@@ -124,7 +124,6 @@ const { level = 4 } = Astro.props;
     let ready = false;
     const portrait = new Image(); portrait.decoding = 'async';
     portrait.onload = () => { fromImage(portrait, portrait.naturalWidth, portrait.naturalHeight); if (ready) redo(); };
-    portrait.src = el.dataset.src!;
     fileIn.addEventListener('change', async () => {
       const f = fileIn.files?.[0]; if (!f) return;
       try { const bmp = await createImageBitmap(f); fromImage(bmp, bmp.width, bmp.height); redo(); } catch { status.value = 'that file could not be read as an image'; }
@@ -149,7 +148,7 @@ const { level = 4 } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    lazy(c, () => { ready = true; build(); show(); paint(); });
+    lazy(c, () => { ready = true; build(); show(); paint(); portrait.src = el.dataset.src!; }); // the bank and the portrait only when the tab opens
   }
 
   document.querySelectorAll<HTMLElement>('[data-cover]').forEach(mount);

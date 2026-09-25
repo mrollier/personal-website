@@ -107,12 +107,12 @@
       if (!started) { started = true; if (!reducedMotion()) st.loop.play(true); }
     }
 
-    const st = stepper(el, { advance, paint, reset: () => { seed++; net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'); start(); }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const st = stepper(el, { advance, paint, reset: () => { seed++; net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'ring'); start(); }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
     $('step').addEventListener('click', st.step);
     $('reset').addEventListener('click', st.reset);
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    lazy(c, () => { net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'force'); start(); paint(); });
+    lazy(c, () => { net = buildNet({ kind: 'ws', n: N, k: 6, p: 0.08 }, seed, 'ring'); start(); paint(); });
   }
 </script>

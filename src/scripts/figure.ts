@@ -31,6 +31,14 @@ export function watch(c: HTMLCanvasElement, repaint: () => void): void {
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** Run `init` once, the first time the canvas has a size. A figure in a hidden tab then costs nothing at page load; it builds
+ * its state when its tab is opened, just before `watch` repaints it. */
+export function lazy(c: HTMLCanvasElement, init: () => void): void {
+  if (c.getBoundingClientRect().width >= 1) { init(); return; }
+  const ro = new ResizeObserver(() => { if (c.getBoundingClientRect().width >= 1) { ro.disconnect(); init(); } });
+  ro.observe(c);
+}
+
 export type Loop = { play(on?: boolean): void; readonly playing: boolean; onchange?: (on: boolean) => void };
 
 /** rAF loop with a model clock that only runs while playing; `tick` gets model time and the step. Frames are skipped while the element is off screen. */

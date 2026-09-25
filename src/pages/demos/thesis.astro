@@ -22,7 +22,16 @@ import LpExamples from '../../components/LpExamples.astro';
 import TwinEca from '../../components/TwinEca.astro';
 import Spectra from '../../components/Spectra.astro';
 import NetSpectrum from '../../components/NetSpectrum.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'defects', 'two-numbers', 'synchronisation', 'cnn', 'cheating', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
+import Cover from '../../components/Cover.astro';
+const answers: { id: string; name: string; answer: string; limit: string; next: string }[] = [
+  { id: 'defects', name: 'Defects', answer: 'Only affine rules admit an exact linear description of how a defect spreads. For them the Lyapunov spectrum follows without simulation: from the Fourier transform of the rule’s stencil on a lattice, and from the spectrum of the adjacency matrix for the parity rule on a network.', limit: 'The spectrum measures the growth of walk counts, not of Boolean damage; beyond the affine case the two are only loosely related.', next: 'A result that connects walk counts to Boolean damage; directed and weighted networks.' },
+  { id: 'two-numbers', name: 'Two numbers', answer: 'Complementation symmetry requires the mirrored, odd-resolution cut of the density axis. The Hamming weight predicts the final density and the Boolean sensitivity the final defect density at the mean-field level (R ≈ 0.7 and 0.55), up to deviations the network causes and the rule alone cannot see.', limit: 'One-step annealed approximations, tested at one resolution, on one network family, at one starting density.', next: 'Other resolutions and hub-heavy networks; transient lengths as a dynamical rather than an asymptotic test.' },
+  { id: 'synchronisation', name: 'Synchronisation', answer: 'Two analytical conditions reduce the resolution-9 rule space by four orders of magnitude, to 27 candidates; one of them synchronises most rewired rings and grids but fails at low degree and on the unrewired ring. A symmetry turns the same conditions into consensus conditions and yields a consensus-seeking rule for every network class except the sparsest.', limit: 'The filter was never compared with an unfiltered sample; every success rate is a point estimate; the conditions were tuned to degree 8.', next: 'Exhaustive checks at lower resolutions; sweeps over network size and horizon; empirical networks.' },
+  { id: 'cnn', name: 'CA as CNN', answer: 'Exact simulation is possible without a single learned parameter, for non-uniform automata in a CNN and for Life-like network automata in a GNN. The embedding beats only a pure-Python baseline; against vectorised sparse matrices the GNN is two to four times slower on a CPU.', limit: 'The speed verdict depends on the baseline, and the CNN emulator was not compared with a vectorised one at all.', next: 'A design for the GPU, which is also where faster impact analysis would come from.' },
+  { id: 'cheating', name: 'Cheating CNN', answer: 'Without precautions the network identifies the rule, because a spacetime diagram contains the rule table. Trimming and augmentation cut rule recovery from over 99 to 61 percent while class accuracy stays at 98: a shift, not a decoupling.', limit: 'No rule was held out, so generalisation across rules was never tested; the two accuracies come from separately trained networks.', next: 'Hold out whole equivalence classes of rules; label-free representations for automata beyond the elementary ones.' },
+  { id: 'jaggedness', name: 'Jaggedness', answer: 'Jaggedness, a network-free simplification of the neighbourhood sensitivity, correlates with classification accuracy on 13 of 23 datasets and supports a search that gets close to the exhaustive optimum at a fraction of its cost. Where it fails, no other rule property succeeds either.', limit: 'Small evaluation sets and optimistic best-rule accuracies; resolutions up to 6 only; no comparison with other classifiers.', next: 'The symmetric formulation; a sampled search at resolution 9; a head-to-head with graph kernels and GNNs.' },
+  { id: 'impact', name: 'Impact', answer: 'A few targeted swaps redirect the consensus where random swaps only randomise it, and clamping yields a dynamical importance score that needs no structural computation. The score correlates with centrality but reduces to no single measure.', limit: 'The score is a property of the node under one probe, mixes two kinds of clamping, and its reliability across starts was not checked.', next: 'An independent dynamical probe on the same networks; faster simulation, to try rules, horizons and networks exhaustively.' },
+];
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -907,14 +916,122 @@ const tabs = [
         </div>
       </section>
 
-      {tabs.filter((t) => !built.has(t.id)).map((t) => (
-        <section role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden>
-          <div class="measure">
-            <h2>{t.name}</h2>
-            <p class="meta">This chapter's demo is on its way.</p>
-          </div>
-        </section>
-      ))}
+      <section role="tabpanel" id="answers" aria-labelledby="tab-answers" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Answers</h2>
+          <p>
+            The thesis set itself one question per chapter, and the last chapter collects the answers in a
+            table together with the limitation that most qualifies each one and the step that would remove it.
+            Here is that table as cards. Each links back to its tab.
+          </p>
+        </div>
+        <div class="answers">
+          {answers.map((a) => (
+            <article class="card">
+              <h3><a href={`#${a.id}`}>{a.name}</a></h3>
+              <p>{a.answer}</p>
+              <p class="meta"><strong>But:</strong> {a.limit}</p>
+              <p class="meta"><strong>Next:</strong> {a.next}</p>
+            </article>
+          ))}
+        </div>
+        <div class="measure">
+          <h3>What the chapters build together</h3>
+          <p>
+            The frame is the genotype and the phenotype. The Defects chapter introduced the Boolean Jacobian,
+            the object that records which inputs a rule is sensitive to, and showed that only for affine rules
+            it stays constant along a run. Two numbers replaced the run by a random configuration and reduced the
+            Jacobian to its expected row sum, the sensitivity, next to the Hamming weight as the expected output.
+            Everything downstream that picks rules without running them uses those two numbers: the
+            synchronisers and consensus-seekers, and the jaggedness, which is the neighbourhood sensitivity with
+            the network taken out. The separation of wiring from rule is exact in one place, the parity rule,
+            whose Lyapunov spectrum is the graph's spectrum; everywhere else it is a factorisation, the Jacobian
+            being the adjacency matrix times a state-dependent factor, and what the genotype does not see is what
+            the wiring does beyond its degree distribution. That remainder was measured by simulation, and then
+            the question was turned round: if wiring shapes dynamics, dynamics carries information about
+            wiring, for a whole network in Jaggedness and for one node in Impact. The two directions meet in one
+            finding: the rules that tell networks apart best are jagged, and the rules that coordinate a network
+            best are sensitive, and both of those mean the same thing.
+          </p>
+          <h3>Four limitations of the whole</h3>
+          <ol>
+            <li>The exact theory covers a small corner, 16 of the 256 elementary rules, and even there it counts
+              walks rather than damage; the approximate theory is one tick deep. Everything beyond that one tick
+              was obtained by simulation, so the later chapters are simulations, heuristics and their
+              interpretation, supported by theory but not derived from it.</li>
+            <li>Each computational chapter tested one corner of its parameter space and stated its conclusions
+              more broadly: one resolution, one network family, one starting density, synthetic networks only.</li>
+            <li>The evaluation was less careful than the generation: point estimates without error bars, a
+              classifier that never saw a rule it had not trained on, an importance score whose reliability
+              went unmeasured.</li>
+            <li>The step from what a simulation shows to why it shows it is the least secure part. That sensitive
+              rules synchronise well and jagged rules discriminate well are readings of a pattern; the pattern is
+              what was found, the mechanism is what is proposed.</li>
+          </ol>
+          <h3>Where it goes next</h3>
+          <p>
+            Three strands, and the thesis names the third as the one to pursue first. <strong>Inference:</strong>
+            reading the network back from its dynamics, here done for the class of a network and for the rank of a
+            node, is done elsewhere edge by edge; and the networks on which a dynamics-first instrument would
+            earn its keep, empirical ones with partial structural knowledge, are exactly the ones not yet
+            tried. <strong>Learning:</strong> neural cellular automata learn their rules, graph neural networks
+            contain network automata as a special case, and learned models are more accurate on the
+            classification benchmarks; what the hand-written automaton keeps is that its rule can be read and
+            its genotype computed, and the fixed-weight emulator is the special case of a neural automaton in
+            which nothing is learned. <strong>Control:</strong> clamping is pinning control with a rule-agnostic, two-valued
+            readout; a faster emulator would let the two kinds of clamping be separated, the score's reliability
+            measured, and the step taken from ranking single nodes to choosing a set of them, which is influence
+            maximisation, with applications from epidemics to marketing.
+          </p>
+          <p>
+            The closing statement of the thesis connects all this to the gap between the local operations
+            inside a trained neural network and the intelligence they bring forth, which is the concern of AI
+            interpretability and the direction its author is heading. Its last line: evaluation by behaviour does
+            not reveal mechanism, structure does not determine function, and knowing the rule is not the same as
+            knowing what it does.
+          </p>
+          <p class="meta status-line">Ch. 11, signed in Ghent on 24 September 2026.</p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="cover" aria-labelledby="tab-cover" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Cover</h2>
+          <p>
+            The front of the thesis is a picture made entirely of pieces of the Game of Life that never
+            move. A <em>still life</em> is a pattern the rule maps to itself: every live cell has two or three live
+            neighbours, every dead cell anything but three. The smallest with a hollow inside is the <em>pond</em>,
+            a ring of eight cells. Ponds tile into diamonds, the border of such a diamond, the <em>lake</em>, is
+            itself a still life, and inside a lake there is room for other still patterns. Level ℓ is the number
+            of ponds along the diamond's side; a level-ℓ tile is 6ℓ cells across. The question is how many
+            eightfold-symmetric still lifes fit inside a lake of each level, and the answer was found not by
+            searching but by asking an integer-programming solver for them one at a time, densest first, excluding
+            each solution as it came: 1, 2, 7, 85, 2632 for levels 1 to 5, and then the numbers run away, over
+            three hundred thousand at level 6.
+          </p>
+          <p>
+            With a bank of tiles whose densities cover the range, a greyscale picture becomes a mosaic: sample
+            the picture once per diamond, on two interlocking diagonal grids, and lay down the tile whose density
+            is nearest to how dark that spot is. Because every tile has the same lake for an edge, the assembled
+            picture is a still life by construction. That is the figure below, built from the same tile bank that
+            draws the backgrounds of this site, with the level-5 bank thinned to a few tiles per density. Press
+            play and nothing happens, which is the point. Then click anywhere: a glider lands, hits the nearest
+            lake, and the picture unravels into gliders, oscillators and rubble, because the stability of the
+            whole depends on the integrity of every neighbourhood. Your own photograph works too.
+          </p>
+        </div>
+        <Cover />
+        <div class="measure">
+          <p>
+            Things to try. Level 3 has seven tiles and a coarse portrait; level 5 a fine one. Lower the cutoff
+            so the light background stays empty. Invert for a light picture on a dark ground. Drop one glider
+            near the edge and watch how far the damage travels before the rubble settles, then drop three.
+          </p>
+          <p class="meta status-line">
+            Appendix D. The generator is open source at <a href="https://github.com/mrollier/game-of-life-mosaics">GitHub</a>, with the tile banks for levels 1 to 5; enumerating the tiles needs the Gurobi solver. A paper counting the tiles properly, <em>{pub('still-life-sat').title}</em>, is in preparation.
+          </p>
+        </div>
+      </section>
 
     </div>
   </div>
@@ -935,6 +1052,9 @@ const tabs = [
   [role="tabpanel"]:focus { outline: none; }
   [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
   .formula { font-family: var(--mono); font-size: 0.9rem; padding: 0.5rem 0.8rem; border-left: 2px solid var(--line); }
+  .answers { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0 1.5rem; }
+  .answers .card h3 { margin: 0 0 0.3rem; }
+  .answers .card p { margin: 0 0 0.4rem; font-size: 0.95rem; }
   .questions, .papers { padding-left: 1.2rem; }
   .questions li, .papers li { margin-bottom: 0.5rem; }
   .questions a { font-weight: 600; }

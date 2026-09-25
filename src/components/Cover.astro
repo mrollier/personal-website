@@ -1,0 +1,156 @@
+---
+// The cover trick (App. D): a picture rebuilt from still-life tiles of the Game of Life, so that Life runs
+// on it and nothing moves, until a glider is dropped in and the picture unravels. The tile bank is the
+// one the site's backgrounds use (src/data/tiles.json); the default picture is the site's own portrait,
+// and a file input takes any other. Self-contained with src/scripts/mosaic.ts, life.ts, raster.ts, palette.ts,
+// figure.ts. The URL query under `mosaic.` overrides the props.
+import profile from '../assets/profile.png';
+type Props = { level?: 3 | 4 | 5 };
+const { level = 4 } = Astro.props;
+---
+<figure class="fig" id="mosaic" data-cover data-level={level} data-src={profile.src} tabindex="-1">
+  <canvas role="img" aria-label="A portrait made of Game of Life still lifes, running Life"></canvas>
+  <div class="controls" role="group" aria-label="Mosaic">
+    <label>tile level <select name="level"><option value="3">3 (7 tiles)</option><option value="4" selected>4 (85 tiles)</option><option value="5">5 (97 tiles)</option></select></label>
+    <label>diamonds across <input name="g" type="number" min="4" max="24" value="15" inputmode="numeric" /></label>
+    <label>cutoff θ <input name="theta" type="range" min="0.3" max="1" step="0.05" value="1" /> <output name="tv">1.00</output></label>
+    <button name="invert" type="button" aria-pressed="false">invert</button>
+    <label class="file">your own picture <input name="file" type="file" accept="image/*" /></label>
+    <button name="rebuild" type="button">rebuild</button>
+  </div>
+  <div class="controls" role="group" aria-label="Life">
+    <button name="step" type="button">step</button>
+    <button name="play" type="button" aria-pressed="false">play</button>
+    <label>speed <input name="speed" type="range" min="0" max="80" value="40" /></label>
+    <button name="reset" type="button">restore the still life</button>
+    <output name="gen">tick 0</output>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(360px, 64vh, 720px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: crosshair;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  .controls input[type="file"] { font: inherit; max-width: 14rem; }
+  [name="gen"] { min-width: 6em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import tilesJson from '../data/tiles.json';
+  import { loadBank, assemble, testImage, type Grey, type Mosaic, type TileBank } from '../scripts/mosaic';
+  import { stepLife, glider, population } from '../scripts/life';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse } from '../scripts/palette';
+  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const levelIn = $<HTMLSelectElement>('level'), gIn = $<HTMLInputElement>('g'), thetaIn = $<HTMLInputElement>('theta'), tv = $<HTMLOutputElement>('tv'), invBtn = $<HTMLButtonElement>('invert'), fileIn = $<HTMLInputElement>('file'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
+    const url = urlState('mosaic', { level: el.dataset.level!, g: '', theta: '1', inv: '0', seed: '1' });
+    let level = [3, 4, 5].includes(+url.get('level')) ? +url.get('level') : 4, g = Math.round(+url.get('g')) || 0, theta = Math.min(1, Math.max(0.3, +url.get('theta') || 1)), invert = url.get('inv') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let bank: TileBank = loadBank(tilesJson as Record<string, string[]>, level), img: Grey = testImage(160, 160), mosaic: Mosaic | null = null;
+    let grid = new Uint8Array(0), scratch = new Uint8Array(0), tick = 0, changed = -1, raster: Raster | null = null, box = { x: 0, y: 0, w: 1, h: 1 }, gliders = 0;
+    const defaultG = () => Math.max(4, Math.round(360 / bank.size));
+
+    function build() {
+      bank = loadBank(tilesJson as Record<string, string[]>, level);
+      if (!g) g = defaultG(); g = Math.min(24, Math.max(4, g));
+      mosaic = assemble(img, g, bank, theta, invert, makeRng(seed));
+      grid = mosaic.grid.slice(); scratch = new Uint8Array(grid.length); raster = new Raster(mosaic.W, mosaic.H); tick = 0; changed = -1; gliders = 0;
+    }
+    const advance = () => { if (!mosaic) return true; changed = stepLife(grid, mosaic.W, mosaic.H, scratch); [grid, scratch] = [scratch, grid]; tick++; return false; };
+
+    function paint() {
+      const sz = fit(c); if (!sz || !mosaic || !raster) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, ink = parse(t.ink), bg = parse(t.bg);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = Math.min(w - 2 * pad, h - 2 * pad - 16);
+      box = { x: (w - side) / 2, y: pad, w: side, h: side };
+      for (let i = 0; i < grid.length; i++) raster.set(i, grid[i] ? ink : bg);
+      raster.flush(); raster.blit(ctx, box);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+      label(ctx, `${mosaic.W} × ${mosaic.H} cells · level ${level} tiles · click anywhere to drop a glider`, box.x, box.y + box.h + 13, t);
+      const pop = population(grid);
+      gen.value = `tick ${tick}`;
+      status.value = tick === 0 ? `${mosaic.placed} tiles placed, ${mosaic.empty} left empty · ${pop.toLocaleString('en')} live cells · press play: a still life does not move` : changed === 0 ? `tick ${tick}: nothing changed${gliders ? ', the glider is gone and the wreck has settled' : ', still a still life'} · ${pop.toLocaleString('en')} live cells` : `tick ${tick}: ${changed} cells changed · ${pop.toLocaleString('en')} live cells${gliders ? ` · ${gliders} glider${gliders > 1 ? 's' : ''} dropped` : ''}`;
+      c.setAttribute('aria-label', status.value);
+    }
+    function show() { levelIn.value = String(level); gIn.value = String(g); thetaIn.value = String(theta); tv.value = theta.toFixed(2); invBtn.setAttribute('aria-pressed', String(invert)); }
+    function sync() { url.set('level', String(level)); url.set('g', String(g)); url.set('theta', String(theta)); url.set('inv', invert ? '1' : '0'); url.set('seed', String(seed)); }
+    const st = stepper(el, { advance, paint, reset: () => { if (mosaic) { grid = mosaic.grid.slice(); tick = 0; changed = -1; gliders = 0; } }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const redo = () => { st.loop.play(false); build(); show(); sync(); paint(); };
+
+    function fromImage(source: CanvasImageSource, sw: number, sh: number) {
+      const side = 200, off = document.createElement('canvas'); off.width = side; off.height = side;
+      const o = off.getContext('2d')!; o.fillStyle = '#fff'; o.fillRect(0, 0, side, side);
+      const s = Math.max(side / sw, side / sh), dw = sw * s, dh = sh * s; // cover the square, centred
+      o.drawImage(source, (side - dw) / 2, (side - dh) / 2, dw, dh);
+      const px = o.getImageData(0, 0, side, side).data, data = new Float32Array(side * side);
+      for (let i = 0; i < side * side; i++) data[i] = (0.2126 * px[4 * i] + 0.7152 * px[4 * i + 1] + 0.0722 * px[4 * i + 2]) / 255;
+      // stretch the greys between the 5th and 95th percentile, so a flat photograph still spans the tile densities
+      const sorted = Float32Array.from(data).sort(), lo = sorted[Math.floor(0.05 * sorted.length)], hi = sorted[Math.floor(0.95 * sorted.length)], span = hi - lo || 1;
+      for (let i = 0; i < data.length; i++) data[i] = Math.min(1, Math.max(0, (data[i] - lo) / span));
+      img = { data, w: side, h: side };
+    }
+    let ready = false;
+    const portrait = new Image(); portrait.decoding = 'async';
+    portrait.onload = () => { fromImage(portrait, portrait.naturalWidth, portrait.naturalHeight); if (ready) redo(); };
+    portrait.src = el.dataset.src!;
+    fileIn.addEventListener('change', async () => {
+      const f = fileIn.files?.[0]; if (!f) return;
+      try { const bmp = await createImageBitmap(f); fromImage(bmp, bmp.width, bmp.height); redo(); } catch { status.value = 'that file could not be read as an image'; }
+    });
+    levelIn.addEventListener('change', () => { level = +levelIn.value; g = 0; redo(); });
+    gIn.addEventListener('change', () => { g = Math.round(+gIn.value) || defaultG(); redo(); });
+    thetaIn.addEventListener('input', () => { theta = +thetaIn.value; tv.value = theta.toFixed(2); });
+    thetaIn.addEventListener('change', redo);
+    invBtn.addEventListener('click', () => { invert = !invert; redo(); });
+    $('rebuild').addEventListener('click', () => { seed++; redo(); });
+    $('step').addEventListener('click', st.step); $('reset').addEventListener('click', st.reset);
+    c.addEventListener('click', (e) => {
+      if (!mosaic) return;
+      const b = c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) return;
+      const gx = Math.floor(((x - box.x) / box.w) * mosaic.W), gy = Math.floor(((y - box.y) / box.h) * mosaic.H);
+      for (let dy = -1; dy < 4; dy++) for (let dx = -1; dx < 4; dx++) grid[((gy + dy + mosaic.H) % mosaic.H) * mosaic.W + ((gx + dx + mosaic.W) % mosaic.W)] = 0;
+      glider(grid, mosaic.W, mosaic.H, gx, gy); gliders++; changed = -1; paint();
+      if (!st.loop.playing) st.loop.play(true);
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    lazy(c, () => { ready = true; build(); show(); paint(); });
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-cover]').forEach(mount);
+</script>

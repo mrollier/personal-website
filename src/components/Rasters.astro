@@ -1,0 +1,124 @@
+---
+// One rule on four kinds of network, side by side, as node × time rasters (Ch. 9): nodes sorted by degree
+// down the side, time running right, and under each raster the fingerprint the classification pipeline
+// would start from, the distribution over nodes of each node's time entropy. Takes its rule from the
+// jaggedness figure by `llna:rule`. Self-contained with src/scripts/tep.ts, llna.ts, net.ts, stats.ts,
+// raster.ts, palette.ts, figure.ts.
+type Props = { r?: number; b?: number; s?: number };
+const { r = 9, b = 170, s = 340 } = Astro.props;
+---
+<figure class="fig" id="ras" data-rasters data-r={r} data-b={b} data-s={s} tabindex="-1">
+  <canvas role="img" aria-label="The same rule run on four kinds of network, drawn as node by time patterns with their fingerprints"></canvas>
+  <div class="controls" role="group" aria-label="Run">
+    <output name="rule"></output>
+    <label>nodes <input name="n" type="number" min="50" max="400" value="200" inputmode="numeric" /></label>
+    <label>ticks <input name="t" type="number" min="20" max="300" value="120" inputmode="numeric" /></label>
+    <label>fingerprint <select name="f"><option value="entropy">time entropy per node</option><option value="share">share of ticks on</option><option value="flips">flips per tick</option></select></label>
+    <button name="regen" type="button">new networks and start</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(360px, 56vh, 600px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  [name="rule"] { color: var(--ink); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { ruleName, type Rule } from '../scripts/llna';
+  import { tep, onShare, nodeEntropy, flipRate, type Tep } from '../scripts/tep';
+  import { buildNet, type NetSpec } from '../scripts/net';
+  import { histogram, mean } from '../scripts/stats';
+  import { Raster } from '../scripts/raster';
+  import { parse } from '../scripts/palette';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  const FAMILIES: { name: string; spec: (n: number) => NetSpec }[] = [
+    { name: 'random', spec: (n) => ({ kind: 'er', n, k: 6 }) },
+    { name: 'small world', spec: (n) => ({ kind: 'ws', n, k: 6, p: 0.1 }) },
+    { name: 'scale-free', spec: (n) => ({ kind: 'ba', n, m: 3 }) },
+    { name: 'geographic', spec: (n) => ({ kind: 'rgg', n, k: 6 }) },
+  ];
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const ruleOut = $<HTMLOutputElement>('rule'), nIn = $<HTMLInputElement>('n'), tIn = $<HTMLInputElement>('t'), fIn = $<HTMLSelectElement>('f'), status = $<HTMLOutputElement>('status');
+    const d = el.dataset, url = urlState('ras', { n: '200', t: '120', f: 'entropy', seed: '1' });
+    let rule: Rule = { r: +d.r!, B: +d.b!, S: +d.s!, part: 'uni' };
+    let n = Math.min(400, Math.max(50, Math.round(+url.get('n')) || 200)), T = Math.min(300, Math.max(20, Math.round(+url.get('t')) || 120));
+    let fp = ['entropy', 'share', 'flips'].includes(url.get('f')) ? url.get('f') : 'entropy', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let teps: Tep[] = [], rasters: Raster[] = [], feats: Float64Array[] = [];
+
+    function run() {
+      teps = FAMILIES.map((f, i) => tep(buildNet(f.spec(n), seed * 10 + i, 'none'), rule, 0.5, seed * 100 + i, T));
+      rasters = teps.map((p) => new Raster(p.T + 1, p.N));
+      feats = teps.map((p) => (fp === 'share' ? onShare(p) : fp === 'flips' ? flipRate(p) : nodeEntropy(p)));
+    }
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 10, on = parse(t.ink), off = parse(t.panel);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const cols = w >= 640 ? 4 : 2, rowsN = 4 / cols, cw = (w - pad * (cols + 1)) / cols, rh = (h - pad * (rowsN + 1)) / rowsN, histH = Math.max(40, rh * 0.22);
+      teps.forEach((p, k) => {
+        const cx = pad + (k % cols) * (cw + pad), cy = pad + Math.floor(k / cols) * (rh + pad);
+        const rb: Box = { x: cx, y: cy + 14, w: cw, h: rh - histH - 34 }, hb: Box = { x: cx, y: rb.y + rb.h + 18, w: cw, h: histH - 4 };
+        const ras = rasters[k];
+        for (let row = 0; row < p.N; row++) { const i = p.order[row]; for (let tt = 0; tt <= p.T; tt++) ras.set(row * (p.T + 1) + tt, p.s[tt * p.N + i] ? on : off); }
+        ras.flush(); ras.blit(ctx, rb);
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(rb.x + 0.5, rb.y + 0.5, rb.w - 1, rb.h - 1);
+        label(ctx, FAMILIES[k].name, cx, cy + 10, t, { color: t.ink, size: 11 });
+        const hg = histogram(feats[k], 20, 0, fp === 'flips' ? 1 : 1), m = Math.max(1, ...Array.from(hg.counts)), bw = hb.w / 20;
+        ctx.fillStyle = t.accent;
+        for (let i = 0; i < 20; i++) { const hh = (hg.counts[i] / m) * hb.h; ctx.fillRect(hb.x + i * bw + 0.5, hb.y + hb.h - hh, Math.max(1, bw - 1), hh); }
+        ctx.strokeStyle = t.line; ctx.beginPath(); ctx.moveTo(hb.x, hb.y + hb.h + 0.5); ctx.lineTo(hb.x + hb.w, hb.y + hb.h + 0.5); ctx.stroke();
+        label(ctx, `mean ${mean(feats[k]).toFixed(2)}`, hb.x, hb.y - 4, t, { size: 10 });
+        label(ctx, '0', hb.x, hb.y + hb.h + 10, t, { size: 9 }); label(ctx, '1', hb.x + hb.w, hb.y + hb.h + 10, t, { size: 9, align: 'right' });
+      });
+      ruleOut.value = `${ruleName(rule)} from half on`;
+      status.value = `${n} nodes down, sorted by degree · ${T} ticks across · under each: the distribution of ${fIn.options[fIn.selectedIndex].text} · means ${teps.map((_, k) => `${FAMILIES[k].name} ${mean(feats[k]).toFixed(2)}`).join(', ')}`;
+      c.setAttribute('aria-label', `${ruleName(rule)} on four networks. ${status.value}`);
+    }
+    function show() { nIn.value = String(n); tIn.value = String(T); fIn.value = fp; }
+    function sync() { url.set('n', String(n)); url.set('t', String(T)); url.set('f', fp); url.set('seed', String(seed)); }
+    const redo = () => { run(); show(); sync(); paint(); };
+    el.addEventListener('llna:rule', (e) => { const x = (e as CustomEvent<Rule>).detail; rule = { r: x.r, B: x.B, S: x.S, part: 'uni' }; redo(); });
+    nIn.addEventListener('change', () => { n = Math.min(400, Math.max(50, Math.round(+nIn.value) || 200)); redo(); });
+    tIn.addEventListener('change', () => { T = Math.min(300, Math.max(20, Math.round(+tIn.value) || 120)); redo(); });
+    fIn.addEventListener('change', () => { fp = fIn.value; redo(); });
+    $('regen').addEventListener('click', () => { seed++; redo(); });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    run(); show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-rasters]').forEach(mount);
+</script>

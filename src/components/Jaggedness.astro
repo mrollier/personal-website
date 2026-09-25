@@ -1,0 +1,149 @@
+---
+// Jaggedness (Ch. 9): the rule diagram with every colour change between neighbouring intervals marked,
+// the count J and its normalised value, the size of the partition of the rule space that shares this J,
+// and the navigation step to the next resolution with its growth factor. Uses the uniform cut of the
+// density axis, as that chapter does. Sends the rule to the rasters figure by `llna:rule`.
+// Self-contained with src/scripts/llna.ts, genotype.ts, diagram.ts, stats.ts, figure.ts.
+type Props = { r?: number; b?: number; s?: number; target?: string };
+const { r = 9, b = 170, s = 340, target = 'ras' } = Astro.props;
+const presets = [
+  { name: 'φ⁹₁₇₀,₃₄₀, alternating', r: 9, B: 170, S: 340 },
+  { name: 'φ⁹₅₀₃,₁₂₀, smooth', r: 9, B: 503, S: 120 },
+  { name: 'φ⁵₂₁,₄, J = 6', r: 5, B: 21, S: 4 },
+  { name: 'φ⁵₁₉,₄, J = 4', r: 5, B: 19, S: 4 },
+  { name: 'Life, φ⁹₈,₁₂', r: 9, B: 8, S: 12 },
+];
+---
+<figure class="fig" id="jag" data-jaggedness data-r={r} data-b={b} data-s={s} data-target={target} tabindex="-1">
+  <canvas role="img" aria-label="Rule diagram with its colour changes marked, and the partition of the rule space by jaggedness"></canvas>
+  <div class="controls" role="group" aria-label="Rule">
+    <label>rule <select name="preset"><option value="">custom</option>{presets.map((p) => <option value={`${p.r},${p.B},${p.S}`}>{p.name}</option>)}</select></label>
+    <label>resolution <select name="r">{[3, 4, 5, 6, 7, 8, 9].map((x) => <option value={x} selected={x === r}>{x}</option>)}</select></label>
+    <label>β <input name="b" type="number" min="0" max={2 ** r - 1} value={b} inputmode="numeric" /></label>
+    <label>σ <input name="s" type="number" min="0" max={2 ** r - 1} value={s} inputmode="numeric" /></label>
+    <label>random rule with J <input name="j" type="range" min="0" max={2 * (r - 1)} step="1" value="8" /> <output name="jv">8</output></label>
+    <button name="draw" type="button">draw one</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="info" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas {
+    display: block; width: 100%; height: clamp(380px, 56vh, 560px);
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
+  }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="number"] {
+    font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
+  }
+  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
+  output { min-width: 2em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { ruleName, type Rule } from '../scripts/llna';
+  import { jaggedness, partitionSize, randomRuleWithJaggedness } from '../scripts/genotype';
+  import { draw, hit, type Geom } from '../scripts/diagram';
+  import { fit, tokens, watch, fullscreen, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const presetIn = $<HTMLSelectElement>('preset'), rIn = $<HTMLSelectElement>('r'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s'), jIn = $<HTMLInputElement>('j'), jv = $<HTMLOutputElement>('jv'), info = $<HTMLOutputElement>('info');
+    const d = el.dataset, url = urlState('jag', { r: d.r!, b: d.b!, s: d.s! }), target = d.target!;
+    const clampR = (r: number) => Math.min(9, Math.max(3, Math.round(r) || 9));
+    let rule: Rule = { r: clampR(+url.get('r')), B: 0, S: 0, part: 'uni' };
+    rule.B = Math.min(2 ** rule.r - 1, Math.max(0, Math.round(+url.get('b')) || 0)); rule.S = Math.min(2 ** rule.r - 1, Math.max(0, Math.round(+url.get('s')) || 0));
+    let wantJ = jaggedness(rule).J, geom: Geom | null = null, seed = 1;
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), { w, h } = sz, pad = 12, top = Math.max(120, Math.round(h * 0.36));
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      geom = draw(ctx, { x: pad, y: pad, w: w - 2 * pad, h: top - pad }, rule, t, {});
+      // every change of colour between neighbouring intervals, in either row, is one unit of jaggedness
+      const { r, B, S } = rule; let J = 0;
+      ctx.fillStyle = t.accent;
+      for (let i = 0; i < r - 1; i++) for (const [mask, band] of [[B, geom.bandB], [S, geom.bandS]] as const) {
+        if (!(((mask >> i) ^ (mask >> (i + 1))) & 1)) continue;
+        J++;
+        const x = geom.x0 + (i + 1) * geom.cw, y = band.y + band.h / 2;
+        ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x - 6, y + 6); ctx.closePath(); ctx.fill();
+      }
+      label(ctx, `J = ${J} colour changes out of ${2 * (r - 1)} possible · J̄ = ${(J / (2 * (r - 1))).toFixed(2)} · uniform cut, every interval closed on the left`, geom.x0, geom.bandB.y - 6, t, { color: t.ink });
+      partitions(t, { x: pad + 40, y: top + 40, w: w - 2 * pad - 48, h: h - top - 40 - pad - 24 }, J);
+      readout(J);
+    }
+    /** The rule space at r and r + 1 laid out by J: bar heights are |Φ^r_J| = 4·C(2(r−1), J) on a log scale; the current J and the step's targets are marked. */
+    function partitions(t: ReturnType<typeof tokens>, b: Box, J: number) {
+      const r = rule.r, rows = [r, r + 1], gapY = 46, rowH = (b.h - gapY - 24) / 2, maxLog = Math.log10(partitionSize(r + 1, r));
+      const targets = J < r - 1 ? [J, J + 1] : J === r - 1 ? [r - 1, r, r + 1] : [J + 1, J + 2];
+      rows.forEach((rr, k) => {
+        const y0 = b.y + k * (rowH + gapY), bins = 2 * (rr - 1) + 1, bw = b.w / (2 * r + 1);
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.x, y0 + rowH + 0.5); ctx.lineTo(b.x + b.w, y0 + rowH + 0.5); ctx.stroke();
+        for (let n = 0; n < bins; n++) {
+          const size = partitionSize(rr, n), hh = (Math.log10(size) / maxLog) * (rowH - 14), x = b.x + n * bw;
+          const on = k === 0 ? n === J : targets.includes(n);
+          ctx.fillStyle = on ? t.accent : t.ink; ctx.globalAlpha = on ? 1 : 0.35; ctx.fillRect(x + 1, y0 + rowH - hh, bw - 2, hh); ctx.globalAlpha = 1;
+          if (on || bins <= 11 || n % 2 === 0) label(ctx, String(n), x + bw / 2, y0 + rowH + 11, t, { align: 'center', size: 9 });
+          if (on) label(ctx, size.toLocaleString('en'), x + bw / 2, y0 + rowH - hh - 3, t, { align: 'center', size: 9, color: t.accent });
+        }
+        label(ctx, `resolution ${rr}: ${(2 ** (2 * rr)).toLocaleString('en')} rules by jaggedness J`, b.x, y0 - 4, t, { color: t.ink });
+      });
+      const from = J === 0 ? [0] : J === 2 * (r - 1) ? [J] : [J], now = from.reduce((a, n) => a + partitionSize(r, n), 0), next = targets.reduce((a, n) => a + partitionSize(r + 1, n), 0);
+      label(ctx, `step to ${r + 1}: search partitions ${targets.join(', ')}, ${next.toLocaleString('en')} rules instead of ${(2 ** (2 * (r + 1))).toLocaleString('en')} · this step grows the search ${(next / now).toFixed(1)}×; the family grows 4×`, b.x, b.y + b.h + 20, t, { size: 10 });
+    }
+    function readout(J: number) {
+      const size = partitionSize(rule.r, J), total = 2 ** (2 * rule.r);
+      info.value = `${ruleName(rule)} · J = ${J}, J̄ = ${(J / (2 * (rule.r - 1))).toFixed(2)} · ${size.toLocaleString('en')} of the ${total.toLocaleString('en')} rules at resolution ${rule.r} share this J · the best classifiers in the thesis sit at J̄ between 0.5 and 0.9`;
+      c.setAttribute('aria-label', info.value);
+    }
+    function show() {
+      const key = `${rule.r},${rule.B},${rule.S}`; presetIn.value = Array.from(presetIn.options).some((o) => o.value === key) ? key : '';
+      rIn.value = String(rule.r); bIn.max = sIn.max = String(2 ** rule.r - 1); bIn.value = String(rule.B); sIn.value = String(rule.S);
+      jIn.max = String(2 * (rule.r - 1)); wantJ = Math.min(wantJ, 2 * (rule.r - 1)); jIn.value = String(wantJ); jv.value = String(wantJ);
+    }
+    function sync() { url.set('r', String(rule.r)); url.set('b', String(rule.B)); url.set('s', String(rule.S)); }
+    function set(x: Rule) { rule = { ...x, part: 'uni' }; show(); sync(); paint(); document.getElementById(target)?.dispatchEvent(new CustomEvent('llna:rule', { detail: { ...rule } })); }
+
+    presetIn.addEventListener('change', () => { const m = presetIn.value.split(',').map(Number); if (m.length === 3) set({ r: m[0], B: m[1], S: m[2] }); });
+    rIn.addEventListener('change', () => { const r = clampR(+rIn.value), all = 2 ** r - 1; set({ r, B: rule.B & all, S: rule.S & all }); });
+    bIn.addEventListener('change', () => set({ ...rule, B: Math.min(2 ** rule.r - 1, Math.max(0, Math.round(+bIn.value) || 0)) }));
+    sIn.addEventListener('change', () => set({ ...rule, S: Math.min(2 ** rule.r - 1, Math.max(0, Math.round(+sIn.value) || 0)) }));
+    jIn.addEventListener('input', () => { wantJ = +jIn.value; jv.value = String(wantJ); });
+    $('draw').addEventListener('click', () => { seed++; let s = seed * 2654435761 >>> 0; const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; set(randomRuleWithJaggedness(rule.r, wantJ, rnd)); });
+    c.addEventListener('click', (e) => {
+      if (!geom) return;
+      const b = c.getBoundingClientRect(), hx = hit(geom, e.clientX - b.left, e.clientY - b.top);
+      if (!hx) return;
+      const bit = 1 << hx.i;
+      set(hx.band === 'B' ? { ...rule, B: rule.B ^ bit } : { ...rule, S: rule.S ^ bit });
+    });
+
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
+    watch(c, paint);
+    show(); paint();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-jaggedness]').forEach(mount);
+</script>

@@ -101,6 +101,26 @@ export function jaggedness({ r, B, S }: Rule): { J: number; Jbar: number } {
 /** |Φ^r_J| = 4·C(2(r − 1), J): the number of rules with jaggedness J. */
 export const partitionSize = (r: number, J: number) => 4 * choose(2 * (r - 1), J);
 
+/** A rule drawn uniformly from Φ^r_J: split the J colour changes over the two rows in proportion to how many rules each split
+ * holds, place them at random positions, and start each row from a coin flip. */
+export function randomRuleWithJaggedness(r: number, J: number, rnd: () => number, part?: Rule['part']): Rule {
+  const m = r - 1, weights: number[] = [];
+  for (let j = 0; j <= J; j++) weights.push(choose(m, j) * choose(m, J - j));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let x = rnd() * total, j = 0; while (j < J && x >= weights[j]) { x -= weights[j]; j++; }
+  const row = (changes: number) => {
+    const pos = Array.from({ length: m }, (_, i) => i);
+    for (let i = m - 1; i > 0; i--) { const q = Math.floor(rnd() * (i + 1)); [pos[i], pos[q]] = [pos[q], pos[i]]; }
+    const flip = new Set(pos.slice(0, changes));
+    let bit = rnd() < 0.5 ? 1 : 0, mask = bit;
+    for (let i = 1; i < r; i++) { if (flip.has(i - 1)) bit ^= 1; mask |= bit << i; }
+    return mask;
+  };
+  const rule: Rule = { r, B: row(j), S: row(J - j) };
+  if (part) rule.part = part;
+  return rule;
+}
+
 /** HW_k against BS_k for every non-equivalent rule at resolution r. */
 export function scatter(r: number, k: number): { rule: Rule; hw: number; bs: number }[] {
   return nonEquivalentRules(r).map((rule) => ({ rule, hw: meanField(rule, k, 0.5), bs: sensitivity(rule, k).BS }));

@@ -12,7 +12,9 @@ import GenotypeFilter from '../../components/GenotypeFilter.astro';
 import Consensus from '../../components/Consensus.astro';
 import SwapCurve from '../../components/SwapCurve.astro';
 import Influence from '../../components/Influence.astro';
-const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'impact']); // tabs with content; the rest show a placeholder
+import Jaggedness from '../../components/Jaggedness.astro';
+import Rasters from '../../components/Rasters.astro';
+const built = new Set(['roadmap', 'families', 'networks', 'two-numbers', 'synchronisation', 'jaggedness', 'impact']); // tabs with content; the rest show a placeholder
 import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const pub = (id: string) => pubs.find((p) => p.id === id)!.data;
@@ -506,6 +508,82 @@ const tabs = [
           </p>
           <p class="meta status-line">
             Ch. 6 is the second half of <a href={link('life-on-graphs')}>{pub('life-on-graphs').title}</a>, {pub('life-on-graphs').venue} ({pub('life-on-graphs').year}). The synchroniser and majority figures are the ones from the <a href="/demos/cellular-automata/#firing-squad">other demo</a>.
+          </p>
+        </div>
+      </section>
+
+      <section role="tabpanel" id="jaggedness" aria-labelledby="tab-jaggedness" tabindex="0" hidden>
+        <div class="measure">
+          <h2>Jaggedness</h2>
+          <p>
+            Turn the question of the previous two chapters round. There, the network was given and the rule was
+            the object; here the rule is fixed and the network is the unknown. Run a Life-like rule on a network
+            you know nothing about, look at the pattern it draws, node by node and tick by tick, and guess what
+            kind of network it was: random, small world, scale-free, geographic; a metabolism, a social circle, a
+            molecule. This works, and has been used since 2016: automaton, fingerprint, classifier. The pattern's
+            statistics are the fingerprint, and a plain linear classifier is enough, which tells you the work is
+            being done by the automaton. The catch is that only a few rules produce patterns that tell networks
+            apart, nobody knew why, and finding them meant trying all of them. Four thousand at resolution 6,
+            over a quarter of a million at 9.
+          </p>
+          <p>
+            The rules that worked had a look about them. Their diagrams were <em>jagged</em>: born and survive
+            intervals scattered along the density axis rather than sitting in a block. That suggests a story. A
+            smooth rule hardly reacts to a change in the neighbourhood and freezes or cycles, too dull to carry a
+            signal; the maximally jagged rule, the parity rule, reacts to everything and its chaos wipes the
+            structure out; somewhere in between the pattern is rich enough to encode the wiring and calm enough
+            to keep it. So count the colour changes. Walk along each row of the diagram and add one every time
+            the colour flips between neighbouring intervals: that count is the jaggedness J, out of 2(r − 1)
+            possible, and J̄ is its share. It is the neighbourhood sensitivity of chapter five with the network
+            taken out, exact when the degree is r − 1, and by construction it knows nothing about the identity
+            sensitivity or the Hamming weight. The figure counts it for you; the arrowheads are the changes.
+          </p>
+        </div>
+        <Jaggedness />
+        <div class="measure">
+          <p>
+            The lower half of that figure is the second idea. The rule space at resolution r splits into groups
+            by J, and the size of each group is 4·C(2(r − 1), J): four rules with no colour change, four with
+            all of them, and a bulge in the middle. If jaggedness predicts quality, you need not search the whole
+            space. Search two or three groups at a small resolution, take the group that held the best rule, step
+            to the next resolution and search only the groups with about the same J̄, and repeat. Each step
+            multiplies the rules examined by less than the factor four by which the family grows, so the share of
+            the space you ever look at shrinks as you go. In the thesis the search reached resolution 6 having
+            looked at about a fifth of the rules and found one within five percent of the best; sampling
+            four rules in ten inside each group brought that to a tenth of the rules, within four percent.
+          </p>
+          <p>
+            Does jaggedness predict quality? The chapter tested every rule from resolution 3 to 6 on 23
+            collections of networks, a hundred ticks each, with the fingerprint of Zielinski and colleagues and a
+            linear classifier, five folds three times over. On 13 of the 23, all the synthetic and metabolic
+            collections and one social one, jaggedness correlates with accuracy, modestly but consistently, with
+            coefficients between 0.28 and 0.46, and the best rules sit at J̄ between 0.5 and 0.9, almost never at
+            1. On the other social collections and on the molecules nothing correlates with anything, and even
+            an exhaustive search does poorly there: those networks have degrees between one and five, so a node
+            can only ever see a handful of densities and most of the interval boundaries are never probed. The
+            suggestion, untested, is to keep the resolution close to the typical degree plus one. The surprise
+            of the chapter is that this network-free number predicts accuracy at least as well as the
+            network-aware sensitivity. Why is an open question.
+          </p>
+          <p>
+            The figure below is the first module of the pipeline, without the classifier. The rule you set above
+            runs on four kinds of network from the same start, drawn as node × time rasters with the nodes
+            sorted by degree, and under each is a fingerprint: the distribution over nodes of how unpredictable
+            each node's time series was. Slide J up from 0 with the random-rule button and watch the rasters go
+            from frozen stripes to structured to noise, and watch when the four fingerprints stop looking alike.
+          </p>
+        </div>
+        <Rasters />
+        <div class="measure">
+          <p>
+            Things to try. The alternating rule φ<sup>9</sup><sub>170,340</sub> from the 2016 paper against the
+            smooth φ<sup>9</sup><sub>503,120</sub>. A random rule with J = 2, then 8, then 16 at resolution 9.
+            Switch the fingerprint to flips per tick and compare the scale-free network with the geographic one.
+            Then set the resolution to 4 and notice how few rules there are to choose from, and how coarse the
+            cut is.
+          </p>
+          <p class="meta status-line">
+            Ch. 9 is {pub('shape-irregularity').title}, with Lucas de Oliveira as first author, Jan Baetens and Odemir Bruno, under review. This chapter uses the older, uniform cut of the density axis, which the figures follow.
           </p>
         </div>
       </section>

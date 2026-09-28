@@ -63,7 +63,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
   import { clampRule, equivalent, step, randomState, ruleName, mirror, type Rule, type Partition } from '../scripts/llna';
   import { makeRng, type Net } from '../scripts/net';
   import { Jobs } from '../scripts/jobs';
-  import { buildLive } from '../scripts/settle';
+  import { buildLive, settling, arranging } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
@@ -105,6 +105,7 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
       readout();
     }
     function drawNet(t: ReturnType<typeof tokens>, b: Box, s: Uint8Array, ref: Uint8Array | null, title: string) {
+      if (settling(net)) { arranging(ctx, b, t); return; }
       const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath();
       for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }

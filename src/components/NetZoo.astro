@@ -70,10 +70,10 @@ const { kind = 'ws', n = 300 } = Astro.props;
 
 <script>
   import { buildNet, latticeLink, type Net, type NetSpec } from '../scripts/net';
-  import { CENTRALITIES, centrality, clustering, pathLength, references, smallWorldIndex, type Centrality, type OmegaPoint } from '../scripts/centrality';
+  import { CENTRALITIES, REF_SEED, REF_SEEDS, centrality, clustering, pathLength, references, smallWorldIndex, type Centrality, type OmegaPoint } from '../scripts/centrality';
   import { histogram, logSpace } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
-  import { buildLive } from '../scripts/settle';
+  import { buildLive, settling, arranging } from '../scripts/settle';
   import { parse, mix, css } from '../scripts/palette';
   import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, lazy, type Box } from '../scripts/figure';
 
@@ -93,13 +93,13 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const d = el.dataset, url = urlState('zoo', { kind: d.kind!, p: '0.05', a: '1', k: '8', n: d.n!, c: '', seed: '1', log: '1' });
     const isKind = (s: string): s is Kind => KINDS.includes(s as Kind);
     const isCent = (s: string): s is Centrality => CENTRALITIES.some((x) => x.id === s);
-    const jobs = new Jobs(), lay = new Jobs();
+    const jobs = new Jobs(), lay = new Jobs(), mjob = new Jobs(), cjob = new Jobs(); // sweep, layout, measurements and one centrality of a big network
 
     let kind: Kind = isKind(url.get('kind')) ? (url.get('kind') as Kind) : 'ws';
     let p = clamp01(+url.get('p'), 0.05), alpha = Math.min(3, Math.max(0, +url.get('a') || 0)), useLog = url.get('log') !== '0';
     let k = +url.get('k') || 8, n = Math.round(+url.get('n')) || 300, seed = Math.max(1, Math.round(+url.get('seed')) || 1);
     let colour: Centrality | '' = isCent(url.get('c')) ? (url.get('c') as Centrality) : '';
-    let net!: Net, cache = new Map<Centrality, Float64Array>(), meas: { C: number; l: number; omega: number; hist: ReturnType<typeof histogram> } | null = null;
+    let net!: Net, cache = new Map<Centrality, Float64Array>(), meas: { C: number; l: number; omega: number } | null = null;
     let refs: { key: string; cLatt: number; lRand: number } | null = null, sweep: OmegaPoint[] | null = null, sweepKey = '', picked = -1;
 
     function clamp01(v: number, def: number) { return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : def; }
@@ -115,17 +115,36 @@ const { kind = 'ws', n = 300 } = Astro.props;
     function build() {
       fixK(); fixN();
       net = buildLive(spec(), seed, lay, paint); cache.clear(); picked = -1;
-      const C = clustering(net).mean, l = pathLength(net), deg = Array.from(net.deg), maxDeg = Math.max(...deg);
-      const hist = histogram(deg, maxDeg + 1, -0.5, maxDeg + 0.5);
-      let omega = NaN;
-      if (kind !== 'npa') {
-        if (!refs || refs.key !== refKey()) { const r = references(spec(), 99, 2); refs = { key: refKey(), ...r }; }
-        omega = smallWorldIndex(C, l, refs.cLatt, refs.lRand);
-      }
-      meas = { C, l, omega, hist };
       if (sweepKey !== refKey()) sweep = null;
+      mjob.cancel(); cjob.cancel(); colouring = '';
+      const needRefs = kind !== 'npa' && (!refs || refs.key !== refKey());
+      const finish = (C: number, l: number) => { meas = { C, l, omega: kind !== 'npa' && refs ? smallWorldIndex(C, l, refs.cLatt, refs.lRand) : NaN }; };
+      if (!big()) {
+        if (needRefs) refs = { key: refKey(), ...references(spec(), REF_SEED, REF_SEEDS) };
+        finish(clustering(net).mean, pathLength(net));
+        return;
+      }
+      meas = null; // "measuring…" until the worker answers
+      const key = refKey();
+      mjob.run<{ C: number; l: number; cLatt: number; lRand: number }>('measure', { spec: spec(), seed, refs: needRefs })
+        .then((r) => { if (needRefs) refs = { key, cLatt: r.cLatt, lRand: r.lRand }; finish(r.C, r.l); paint(); }, (e) => { if (!(e instanceof Cancelled)) status.value = `measuring failed: ${(e as Error).message}`; });
     }
-    const values = () => { if (!colour) return null; let v = cache.get(colour); if (!v) { v = centrality(colour, net); cache.set(colour, v); } return v; };
+    /** The node colour for a value scaled to 0 … 1: faint, through the accent, to ink. The histogram bars use it too, as the legend. */
+    const shade = (t: ReturnType<typeof tokens>, s: number) => { const line = parse(t.line), acc = parse(t.accent), ink = parse(t.ink); return css(mix(mix(line, acc, Math.min(1, s * 1.6)), ink, Math.max(0, s - 0.6) * 2.5)); };
+    const LIVE = 300; // above this many nodes a drag rebuilds on release, and the measuring happens in the worker
+    const big = () => net.n > LIVE;
+    let colouring: Centrality | '' = ''; // the centrality the worker is computing
+    /** The chosen centrality, or null: at once for a small network, from the worker for a big one (uncoloured meanwhile). */
+    const values = () => {
+      if (!colour) return null;
+      const v = cache.get(colour); if (v) return v;
+      if (!big()) { const x = centrality(colour, net); cache.set(colour, x); return x; }
+      if (colouring !== colour) {
+        const which = colour; colouring = which;
+        cjob.run<Float64Array>('centrality', { spec: spec(), seed, which }).then((x) => { cache.set(which, x); colouring = ''; paint(); }, (e) => { if (!(e instanceof Cancelled)) console.error(e); });
+      }
+      return null;
+    };
 
     function paint() {
       const sz = fit(c); if (!sz || !net) return;
@@ -144,11 +163,11 @@ const { kind = 'ws', n = 300 } = Astro.props;
     }
 
     function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      if (settling(net)) { arranging(ctx, b, t); return; }
       const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
       const v = values(); let lo = Infinity, hi = -Infinity;
       if (v) for (let i = 0; i < net.n; i++) { if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
       const span = hi - lo || 1, tint = (i: number) => (v ? (v[i] - lo) / span : 0);
-      const line = parse(t.line), acc = parse(t.accent), ink = parse(t.ink);
       // links: the lattice's own faint, rewired ones in accent (ring and grid); everything faint otherwise
       const short = (i: number, j: number) => kind === 'lat' ? latticeLink(net, i, j).grid : kind === 'ws' ? Math.min(Math.abs(i - j), net.n - Math.abs(i - j)) <= k / 2 : true;
       ctx.lineWidth = 1;
@@ -167,25 +186,36 @@ const { kind = 'ws', n = 300 } = Astro.props;
       for (let q = 0; q < net.n; q++) {
         const i = order ? order[q] : q, s = tint(i), rad = v ? base * (0.6 + 1.1 * Math.sqrt(s)) : base;
         ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI);
-        ctx.fillStyle = v ? css(mix(mix(line, acc, Math.min(1, s * 1.6)), ink, Math.max(0, s - 0.6) * 2.5)) : t.panel; ctx.fill();
+        ctx.fillStyle = v ? shade(t, s) : t.panel; ctx.fill();
         ctx.strokeStyle = v ? t.bg : t.muted; ctx.lineWidth = 0.75; ctx.stroke();
       }
       if (picked >= 0) { ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(picked), Y(picked), base * 1.7 + 4, 0, 2 * Math.PI); ctx.stroke(); }
       const mean = (2 * net.edges.length) / net.n;
       label(ctx, `${NAME[kind]} · ${net.n} nodes · ${net.edges.length} links · mean degree ${mean.toFixed(1)}`, b.x + 2, b.y + b.h + 13, t);
-      if (v) { const cd = CENTRALITIES.find((x) => x.id === colour)!; label(ctx, `${cd.name}: ${fmt(lo)} … ${fmt(hi)}, dark and large is high`, b.x + b.w - 2, b.y + b.h + 13, t, { align: 'right' }); }
     }
 
+    /** The distribution of whatever colours the nodes: P(k) by default, the chosen centrality otherwise, its bars in the node colours
+     * so it doubles as the legend, and the clicked node marked on it. */
     function drawHist(t: ReturnType<typeof tokens>, b: Box) {
-      if (!meas) return;
-      const { counts, lo } = meas.hist, m = Math.max(1, ...Array.from(counts)), bins = counts.length, bw = b.w / bins;
+      const v = values(), cd = CENTRALITIES.find((x) => x.id === colour), vals = v ?? net.deg;
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < net.n; i++) { if (vals[i] < lo) lo = vals[i]; if (vals[i] > hi) hi = vals[i]; }
+      const integer = !v || colour === 'deg' || colour === 'h';
+      const hist = integer ? histogram(vals, Math.round(hi - lo) + 1, lo - 0.5, hi + 0.5) : histogram(vals, 24, lo, hi === lo ? lo + 1 : hi);
+      const { counts } = hist, m = Math.max(1, ...Array.from(counts)), bins = counts.length, bw = b.w / bins, span = hi - lo || 1;
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.x, b.y + b.h + 0.5); ctx.lineTo(b.x + b.w, b.y + b.h + 0.5); ctx.stroke();
-      ctx.fillStyle = t.ink;
-      for (let i = 0; i < bins; i++) { const hh = (counts[i] / m) * b.h; ctx.fillRect(b.x + i * bw + 0.5, b.y + b.h - hh, Math.max(1, bw - 1), hh); }
-      const step = bins > 24 ? Math.ceil(bins / 12) : bins > 12 ? 2 : 1;
-      for (let i = 0; i < bins; i += step) label(ctx, String(Math.round(lo + 0.5 + i)), b.x + (i + 0.5) * bw, b.y + b.h + 12, t, { align: 'center', size: 10 });
-      label(ctx, 'degree distribution P(k)', b.x, b.y - 5, t, { color: t.ink });
+      for (let i = 0; i < bins; i++) {
+        const hh = (counts[i] / m) * b.h, mid = hist.lo + (i + 0.5) * hist.width;
+        ctx.fillStyle = v ? shade(t, Math.min(1, Math.max(0, (mid - lo) / span))) : t.ink;
+        ctx.fillRect(b.x + i * bw + 0.5, b.y + b.h - hh, Math.max(1, bw - 1), hh);
+      }
+      const at = (x: number) => b.x + ((x - hist.lo) / (hist.hi - hist.lo)) * b.w;
+      if (integer) { const step = bins > 24 ? Math.ceil(bins / 12) : bins > 12 ? 2 : 1; for (let i = 0; i < bins; i += step) label(ctx, String(Math.round(hist.lo + 0.5 + i)), b.x + (i + 0.5) * bw, b.y + b.h + 12, t, { align: 'center', size: 10 }); }
+      else { label(ctx, fmt(lo), b.x, b.y + b.h + 12, t, { size: 10 }); label(ctx, fmt(hi), b.x + b.w, b.y + b.h + 12, t, { align: 'right', size: 10 }); }
+      if (picked >= 0) { const x = at(vals[picked]); ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, b.y - 2); ctx.lineTo(x, b.y + b.h); ctx.stroke(); }
+      label(ctx, cd && colour !== 'deg' ? `${cd.name} of each node` : 'degree distribution P(k)', b.x, b.y - 5, t, { color: t.ink });
       label(ctx, `${m} nodes`, b.x + b.w, b.y + 4, t, { align: 'right', size: 10 });
+      if (v) label(ctx, 'bar colours are the node colours · red: the clicked node', b.x, b.y + b.h + 25, t, { size: 10 });
     }
 
     function drawSweep(t: ReturnType<typeof tokens>, b: Box) {
@@ -203,17 +233,28 @@ const { kind = 'ws', n = 300 } = Astro.props;
         ctx.stroke();
         ctx.fillStyle = t.ink; for (const q of sweep) { ctx.beginPath(); ctx.arc(X(q.p), Y(q.omega), 2.5, 0, 2 * Math.PI); ctx.fill(); }
       } else label(ctx, 'press "sweep ω over p"', b.x + b.w / 2, b.y + b.h / 2, t, { align: 'center' });
-      if (meas && Number.isFinite(meas.omega) && p > 0) { ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(X(p), Y(meas.omega), 4, 0, 2 * Math.PI); ctx.fill(); }
+      // with a curve, the dot rides on it at the current p (this network's own ω, one sample, is in the readout); without one, it is that sample
+      const om = sweep && sweep.length > 1 ? onCurve(sweep, p) : meas?.omega ?? NaN;
+      if (Number.isFinite(om) && p > 0) { ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(X(p), Y(om), 4.5, 0, 2 * Math.PI); ctx.fill(); }
       label(ctx, 'band: −½ … ½', b.x + b.w - 4, Y(0.5) + 11, t, { align: 'right', size: 10 });
     }
 
+    /** ω on the swept curve at p, linear in log p between the two nearest points. */
+    function onCurve(pts: OmegaPoint[], pp: number): number {
+      const x = Math.log10(Math.max(1e-3, pp));
+      if (pp >= pts[pts.length - 1].p) return pts[pts.length - 1].omega;
+      for (let i = 1; i < pts.length; i++) if (pp <= pts[i].p) { const x0 = Math.log10(pts[i - 1].p), x1 = Math.log10(pts[i].p), f = Math.min(1, Math.max(0, (x - x0) / (x1 - x0))); return pts[i - 1].omega + f * (pts[i].omega - pts[i - 1].omega); }
+      return pts[0].omega;
+    }
     const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(3).replace(/\.?0+$/, ''));
     function readout() {
-      if (!meas) return;
-      const parts = [`⟨C⟩ = ${meas.C.toFixed(3)}`, `⟨l⟩ = ${meas.l.toFixed(2)}`];
-      if (Number.isFinite(meas.omega)) parts.push(`ω = ${meas.omega.toFixed(2)} (${meas.omega < -0.5 ? 'lattice-like' : meas.omega > 0.5 ? 'random-like' : 'small world'})`);
+      const parts = meas ? [`⟨C⟩ = ${meas.C.toFixed(3)}`, `⟨l⟩ = ${meas.l.toFixed(2)}`] : ['measuring clustering and path length…'];
+      if (colouring) parts.push(`computing ${CENTRALITIES.find((x) => x.id === colouring)!.name}…`);
+      if (meas && Number.isFinite(meas.omega)) parts.push(`ω = ${meas.omega.toFixed(2)} for this network (${meas.omega < -0.5 ? 'lattice-like' : meas.omega > 0.5 ? 'random-like' : 'small world'})${sweep && sweep.length > 1 && p > 0 ? `, ${onCurve(sweep, p).toFixed(2)} on the curve, which averages three networks per p` : ''}`);
       else if (kind === 'lat' && k === 4) parts.push('ω undefined: a four-neighbour grid has no triangles');
-      if (picked >= 0) parts.push(`node ${picked}: ` + CENTRALITIES.map((cd) => { let v = cache.get(cd.id); if (!v) { v = centrality(cd.id, net); cache.set(cd.id, v); } return `${cd.symbol} ${fmt(v[picked])}`; }).join(', '));
+      // a big network only shows the centralities already computed, rather than all six at once
+      if (picked >= 0) parts.push(`node ${picked}: ` + CENTRALITIES.flatMap((cd) => { let v = cache.get(cd.id); if (!v && !big()) { v = centrality(cd.id, net); cache.set(cd.id, v); } return v ? [`${cd.symbol} ${fmt(v[picked])}`] : []; }).concat(`k ${net.deg[picked]}`).filter((x, i, a) => a.indexOf(x) === i).join(', '));
+      if (net.n > LIVE && kind !== 'npa') parts.push(`over ${LIVE} nodes, the network is rebuilt when you let go of the slider`);
       status.value = parts.join(' · ');
       c.setAttribute('aria-label', `${NAME[kind]} network of ${net.n} nodes${colour ? `, coloured by ${colour}` : ''}. ${parts.join('. ')}`);
     }
@@ -238,9 +279,9 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const rebuild = () => { jobs.cancel(); prog.hidden = true; build(); show(); sync(); paint(); };
     const rebuildSoon = schedule(rebuild);
     for (const x of KINDS) kindBtns[x].addEventListener('click', () => { if (x === kind) return; kind = x; fixK(); rebuild(); });
-    // p rebuilds while dragging (a ring or a grid redraws at once); α on release, as a grown network is laid out afresh each time
-    paramIn.addEventListener('input', () => { if (kind === 'npa') alpha = +paramIn.value; else p = fromSlider(+paramIn.value); pv.value = kind === 'npa' ? alpha.toFixed(1) : p < 0.01 ? p.toExponential(0) : p.toFixed(2); if (kind !== 'npa') rebuildSoon(); });
-    paramIn.addEventListener('change', () => { if (kind === 'npa') rebuild(); });
+    // p rebuilds while dragging (a ring or a grid redraws at once) up to LIVE nodes; α always on release, as a grown network is laid out afresh each time
+    paramIn.addEventListener('input', () => { if (kind === 'npa') alpha = +paramIn.value; else p = fromSlider(+paramIn.value); pv.value = kind === 'npa' ? alpha.toFixed(1) : p < 0.01 ? p.toExponential(0) : p.toFixed(2); if (kind !== 'npa' && n <= LIVE) rebuildSoon(); });
+    paramIn.addEventListener('change', () => { if (kind === 'npa' || n > LIVE) rebuild(); });
     logIn.addEventListener('change', () => { useLog = logIn.checked; show(); sync(); });
     kIn.addEventListener('change', () => { k = +kIn.value; rebuild(); });
     nIn.addEventListener('change', () => { n = kind === 'lat' ? Math.round(+nIn.value) ** 2 : +nIn.value; rebuild(); });
@@ -259,7 +300,8 @@ const { kind = 'ws', n = 300 } = Astro.props;
       const s = spec() as NetSpec & { kind: 'ws' | 'lat' }, key = refKey();
       prog.hidden = false; prog.value = 0; sweepBtn.disabled = true;
       try {
-        sweep = await jobs.run<OmegaPoint[]>('omega-sweep', { spec: s, ps: logSpace(0.001, 1, 16), seeds: 2, seed }, (pp, partial) => { prog.value = pp; sweep = partial as OmegaPoint[]; sweepKey = key; paint(); });
+        // without the references yet (a big network still measuring), the job builds the same ones
+        sweep = await jobs.run<OmegaPoint[]>('omega-sweep', { spec: s, ps: logSpace(0.001, 1, 16), seeds: 3, seed, ref: refs && refs.key === key ? { cLatt: refs.cLatt, lRand: refs.lRand } : undefined }, (pp, partial) => { prog.value = pp; sweep = partial as OmegaPoint[]; sweepKey = key; paint(); });
         sweepKey = key;
       } catch (err) { if (!(err instanceof Cancelled)) status.value = `the sweep failed: ${(err as Error).message}`; }
       prog.hidden = true; sweepBtn.disabled = false; paint();

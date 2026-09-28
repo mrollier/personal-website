@@ -73,7 +73,7 @@ const rules = allBestRules();
   import { step, density, randomState, ruleName, type Rule } from '../scripts/llna';
   import { makeRng, latticeLink, type Net } from '../scripts/net';
   import { Jobs } from '../scripts/jobs';
-  import { buildLive } from '../scripts/settle';
+  import { buildLive, settling, arranging } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
@@ -123,6 +123,7 @@ const rules = allBestRules();
       drawNet(t, nb); drawTraces(t, tb); state();
     }
     function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      if (settling(net)) { arranging(ctx, b, t); return; }
       const X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
       const s = twin[twin.length - 1], ref = hist[hist.length - 1];
       ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath();

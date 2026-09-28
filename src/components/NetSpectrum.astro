@@ -71,7 +71,7 @@ const { kind = 'ws' } = Astro.props;
   import { stepNet, latticeLink, makeRng, type Net } from '../scripts/net';
   import { histogram } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
-  import { buildLive } from '../scripts/settle';
+  import { buildLive, settling, arranging } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
@@ -97,10 +97,13 @@ const { kind = 'ws' } = Astro.props;
       const nb: Box = { x: wide ? pad : (w - side) / 2, y: pad, w: side, h: side };
       const col: Box = wide ? { x: nb.x + side + pad + 34, y: pad + 20, w: w - side - 3 * pad - 40, h: h - 2 * pad - 40 } : { x: pad + 34, y: nb.y + side + cap + pad + 16, w: w - 2 * pad - 40, h: h - side - cap - 3 * pad - 40 };
       const X = (i: number) => nb.x + net.xy[2 * i] * nb.w, Y = (i: number) => nb.y + net.xy[2 * i + 1] * nb.h;
-      ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath(); for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); } ctx.stroke();
-      const rad = kind === 'lat' ? Math.min(7, (0.36 * nb.w) / net.side!) : Math.max(2, Math.min(6, (0.45 * nb.w) / Math.sqrt(net.n)));
-      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < net.n; i++) { if (a[i] !== pass) continue; ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI); if (a[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); } }
-      ctx.strokeStyle = t.danger; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < net.n; i++) if (a[i] !== b[i]) { ctx.moveTo(X(i) + rad + 2, Y(i)); ctx.arc(X(i), Y(i), rad + 2, 0, 2 * Math.PI); } ctx.stroke();
+      if (settling(net)) arranging(ctx, nb, t);
+      else {
+        ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath(); for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); } ctx.stroke();
+        const rad = kind === 'lat' ? Math.min(7, (0.36 * nb.w) / net.side!) : Math.max(2, Math.min(6, (0.45 * nb.w) / Math.sqrt(net.n)));
+        for (let pass = 0; pass < 2; pass++) for (let i = 0; i < net.n; i++) { if (a[i] !== pass) continue; ctx.beginPath(); ctx.arc(X(i), Y(i), rad, 0, 2 * Math.PI); if (a[i]) { ctx.fillStyle = t.ink; ctx.fill(); } else { ctx.fillStyle = t.panel; ctx.fill(); ctx.strokeStyle = t.muted; ctx.stroke(); } }
+        ctx.strokeStyle = t.danger; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < net.n; i++) if (a[i] !== b[i]) { ctx.moveTo(X(i) + rad + 2, Y(i)); ctx.arc(X(i), Y(i), rad + 2, 0, 2 * Math.PI); } ctx.stroke();
+      }
       label(ctx, `${FAM_NAME[kind]} · ${net.n} nodes · parity rule${self ? ', counting yourself' : ''} · red: where the twin run differs`, nb.x + 2, nb.y + nb.h + 13, t);
       // right column: difference count trace on top, spectrum histogram below
       const tb: Box = { x: col.x, y: col.y, w: col.w, h: Math.max(60, col.h * 0.3) }, hb: Box = { x: col.x, y: tb.y + tb.h + 44, w: col.w, h: col.h - tb.h - 66 };

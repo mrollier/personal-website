@@ -2,8 +2,9 @@
 // The five families of Ch. 2 around the elementary automaton, drawn as in the thesis figure: the arrows from the
 // centre say what each family changes, the arrows round the rim the identities between them. A click on a circle
 // opens that family's text (a named slot per family: eca, aca, sca, msca, enca, nuca) and a run from one live
-// cell with square cells and only the knob that family adds. Self-contained with src/scripts/variants.ts,
-// wolfram.ts, raster.ts, palette.ts, figure.ts and EcaTable.astro. The URL query under `fam.` keeps the choice.
+// cell or random cells, square cells, and only the knob that family adds; the extended-neighbourhood family is shown
+// as a Life-like grid with its born and survive sets, which you can also draw on. Self-contained with src/scripts/variants.ts,
+// wolfram.ts, life.ts, raster.ts, palette.ts, figure.ts and EcaTable.astro. The URL query under `fam.` keeps the choice.
 import EcaTable from './EcaTable.astro';
 type Props = { rule?: number };
 const { rule = 90 } = Astro.props;
@@ -40,9 +41,16 @@ const spokes = FAMS.map((f) => edge([CX, CY], at(f.id), f.spoke[0], f.spoke[1]))
 const rims = RIM.map(([a, b, o, i]) => edge(at(a), at(b), o, i, true));
 const band = `M${FAMS.map((f) => at(f.id).map(f1).join(',')).join(' L')} Z ` + FAMS.map((f) => `M${CX},${CY} L${at(f.id).map(f1).join(',')}`).join(' ');
 const nodes = [{ id: 'eca', short: 'ECA', name: ['elementary'], x: CX, y: CY }, ...FAMS.map((f) => { const [x, y] = at(f.id); return { id: f.id, short: f.short, name: f.name, x, y }; })];
+// Life-like rules for the extended-neighbourhood panel: born with / survives with a number of the eight neighbours
+const lifeCode = (B: number[], S: number[]) => `B${B.join('')}/S${S.join('')}`;
+const mask = (xs: number[]) => xs.reduce((m, x) => m | (1 << x), 0);
+const PRESETS = ([
+  ['Life', [3], [2, 3]], ['HighLife', [3, 6], [2, 3]], ['Seeds', [2], []], ['Day & Night', [3, 6, 7, 8], [3, 4, 6, 7, 8]],
+  ['Maze', [3], [1, 2, 3, 4, 5]], ['Replicator', [1, 3, 5, 7], [1, 3, 5, 7]], ['Gnarl', [1], [1]], ['Diamoeba', [3, 5, 6, 7, 8], [5, 6, 7, 8]],
+] as [string, number[], number[]][]).map(([name, B, S]) => ({ name, code: lifeCode(B, S), b: mask(B), s: mask(S) }));
 const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', sca: 'Stochastic', msca: 'Multi-state', enca: 'Extended neighbourhood', nuca: 'Non-uniform' };
 ---
-<figure class="fig" id="fam" data-families data-rule={rule} tabindex="-1">
+<figure class="fig" id="fam" data-families data-rule={rule} data-presets={JSON.stringify(PRESETS)} tabindex="-1">
   <svg class="wheel" viewBox="0 0 640 590" role="group" aria-label="The elementary cellular automaton in the middle, five families around it; choose one">
     <defs>
       <marker id="fam-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" /></marker>
@@ -61,7 +69,7 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       </g>
     ))}
   </svg>
-  <p class="hint" data-hint>Click a circle to see what that family does to a single live cell.</p>
+  <p class="hint" data-hint>Click a circle to see that family at work.</p>
 
   <div class="panel" data-panel hidden>
     <h3 data-title></h3>
@@ -77,6 +85,12 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       <button name="step" type="button">step</button>
       <button name="again" type="button">start again</button>
       <output name="gen">tick 0</output>
+      <span class="seg" role="group" aria-label="Start from">start from
+        <button type="button" data-init="seed" aria-pressed="true">one cell</button>
+        <button type="button" data-init="random" aria-pressed="false">random cells</button>
+        <button type="button" data-init="draw" data-for="enca" aria-pressed="false">your drawing</button>
+      </span>
+      <button name="clear" type="button" data-for="enca">clear, to draw</button>
     </div>
     <div class="controls" role="group" aria-label="The knob this family adds">
       <label data-for="eca aca sca nuca"><span data-rulelabel>rule</span> <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
@@ -84,15 +98,20 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       <label data-for="sca nuca">second rule ψ <input name="psi" type="number" min="0" max="255" value="150" inputmode="numeric" /></label>
       <label data-for="sca">chance of φ <input name="p" type="range" min="0" max="1" step="0.05" value="0.5" /> <output name="pv">0.50</output></label>
       <label data-for="nuca">ψ on <select name="alloc"><option value="half">the right half</option><option value="one">one cell</option><option value="random">a random half</option><option value="alt">every other cell</option></select></label>
-      <div class="counts" data-for="enca" role="group" aria-label="Alive next when this many of the five cells are alive">
-        <span>alive next when this many of the five are alive:</span>
-        {[0, 1, 2, 3, 4, 5].map((k) => <button type="button" data-count={k} aria-pressed="false">{k}</button>)}
+      <label data-for="enca">rule <select name="preset">{PRESETS.map((q) => <option value={q.name}>{q.name} {q.code}</option>)}<option value="">your own</option></select></label>
+      <div class="counts" data-for="enca" role="group" aria-label="A dead cell is born with this many living neighbours">
+        <span>born with</span>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-b={k} aria-pressed="false">{k}</button>)}
+      </div>
+      <div class="counts" data-for="enca" role="group" aria-label="A living cell survives with this many living neighbours">
+        <span>survives with</span>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-s={k} aria-pressed="false">{k}</button>)}
       </div>
       <div class="counts" data-for="msca" role="group" aria-label="Next state for each total of the three cells">
         <span>next state for a total of</span>
         {[0, 1, 2, 3, 4, 5, 6].map((s) => <button type="button" data-total={s} data-v="0" title={`total ${s}: click to cycle 0, 1, 2`}><small>{s}</small><b>0</b></button>)}
       </div>
-      <button name="random" type="button" data-for="enca msca">random rule</button>
+      <button name="random" type="button" data-for="msca">random rule</button>
     </div>
     <div class="lut" data-for="eca"><EcaTable rule={rule} interactive /></div>
     <output name="status" class="status" aria-live="polite"></output>
@@ -138,7 +157,9 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
   .counts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
   .counts span { margin-right: 0.2rem; }
   .counts button { min-width: 2em; padding: 0.1em 0.4em; }
-  .counts button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .counts button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+  canvas.draw { cursor: crosshair; touch-action: none; }
   .counts [data-total] { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 2.2em; }
   .counts [data-total] small { font-size: 0.7em; color: var(--muted); }
   .counts [data-total][data-v="1"] { background: color-mix(in srgb, var(--accent) 45%, var(--bg)); }
@@ -153,107 +174,144 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
 <script>
   import { stepVariant, defaults, allocate, IDENTITY, type Config } from '../scripts/variants';
   import { tableOf, ruleOf, equivalents, lambda, totalisticTable, totalisticCode } from '../scripts/wolfram';
+  import { stepLifeLike } from '../scripts/life';
   import { makeRng } from '../scripts/net';
   import { Raster } from '../scripts/raster';
   import { parse, mix, type RGB } from '../scripts/palette';
   import { fit, tokens, watch, stepper, urlState, reducedMotion } from '../scripts/figure';
 
   type F = 'eca' | 'aca' | 'sca' | 'msca' | 'enca' | 'nuca';
+  type Init = 'seed' | 'random' | 'draw';
   const FS: F[] = ['eca', 'aca', 'sca', 'msca', 'enca', 'nuca'];
   const TITLE: Record<F, string> = { eca: 'Elementary', aca: 'Asynchronous', sca: 'Stochastic', msca: 'Multi-state', enca: 'Extended neighbourhood', nuca: 'Non-uniform' };
+  const LIFE_TICKS = 400; // a Life-like run that started by itself pauses here, or earlier once nothing moves
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const all = <T extends HTMLElement = HTMLElement>(sel: string) => Array.from(el.querySelectorAll<T>(sel));
     const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, panel = el.querySelector<HTMLElement>('[data-panel]')!, hint = el.querySelector<HTMLElement>('[data-hint]')!;
-    const nodes = Array.from(el.querySelectorAll<SVGGElement>('.node')), texts = Array.from(el.querySelectorAll<HTMLElement>('[data-text]')), knobs = Array.from(el.querySelectorAll<HTMLElement>('[data-for]'));
+    const nodes = all<SVGGElement & HTMLElement>('.node'), texts = all('[data-text]'), knobs = all('[data-for]');
     const ruleIn = $<HTMLInputElement>('rule'), psiIn = $<HTMLInputElement>('psi'), alphaIn = $<HTMLInputElement>('alpha'), av = $<HTMLOutputElement>('av'), pIn = $<HTMLInputElement>('p'), pv = $<HTMLOutputElement>('pv');
-    const allocIn = $<HTMLSelectElement>('alloc'), status = $<HTMLOutputElement>('status'), title = el.querySelector<HTMLElement>('[data-title]')!, ruleLabel = el.querySelector<HTMLElement>('[data-rulelabel]')!;
-    const countBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-count]')), totalBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-total]')), bits = Array.from(el.querySelectorAll<HTMLButtonElement>('.lut [data-bit]'));
-    const url = urlState('fam', { f: '', rule: el.dataset.rule!, psi: '150', alpha: '0.8', p: '0.5', alloc: 'half', count: String(0b011010), code: '1599', seed: '1' });
+    const allocIn = $<HTMLSelectElement>('alloc'), presetIn = $<HTMLSelectElement>('preset'), status = $<HTMLOutputElement>('status'), gen = $<HTMLOutputElement>('gen');
+    const title = el.querySelector<HTMLElement>('[data-title]')!, ruleLabel = el.querySelector<HTMLElement>('[data-rulelabel]')!;
+    const bBtns = all<HTMLButtonElement>('[data-b]'), sBtns = all<HTMLButtonElement>('[data-s]'), totalBtns = all<HTMLButtonElement>('[data-total]'), bits = all<HTMLButtonElement>('.lut [data-bit]'), initBtns = all<HTMLButtonElement>('[data-init]');
+    const PRESETS = JSON.parse(el.dataset.presets!) as { name: string; code: string; b: number; s: number }[];
+    const url = urlState('fam', { f: '', rule: el.dataset.rule!, psi: '150', alpha: '0.8', p: '0.5', alloc: 'half', code: '1599', b: '8', s: '12', init: 'seed', init2: 'random', seed: '1' });
 
     const byte = (v: string, def: number) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x <= 255 ? x : def; };
     const unit = (v: string, def: number) => { const x = +v; return Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : def; };
+    const nine = (v: string, def: number) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x < 512 ? x : def; };
     let fam: F | '' = (FS as string[]).includes(url.get('f')) ? (url.get('f') as F) : '';
     let rule = byte(url.get('rule'), 90), psi = byte(url.get('psi'), 150), alpha = Math.max(0.05, unit(url.get('alpha'), 0.8)), p = unit(url.get('p'), 0.5);
     let alloc = ['half', 'one', 'random', 'alt'].includes(url.get('alloc')) ? url.get('alloc') : 'half';
-    let count = Math.round(+url.get('count')) & 63, code = Math.min(2186, Math.max(0, Math.round(+url.get('code')) || 0)), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
-    let N = 0, T = 0, s = 6, rows: Uint8Array[] = [], mask = new Uint8Array(0), tick = 0, raster: Raster | null = null;
-    let cfg: Config | null = null, rnd = makeRng(1), autostop = false, startNext = false;
-    const gen = $<HTMLOutputElement>('gen'), speed = Object.assign(document.createElement('input'), { type: 'range', min: '0', max: '80', value: '54' }); // about 20 ticks a second, no slider to fiddle with
+    let code = Math.min(2186, Math.max(0, Math.round(+url.get('code')) || 0)), B = nine(url.get('b'), 8), S = nine(url.get('s'), 12), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    // how a run starts: one cell or random for the rows; for the Life-like grid also a drawing (random by default: in Life one cell dies at once)
+    let init1: Init = url.get('init') === 'random' ? 'random' : 'seed', init2: Init = (['seed', 'random', 'draw'] as string[]).includes(url.get('init2')) ? (url.get('init2') as Init) : 'random';
+    const grid2d = () => fam === 'enca', initNow = () => (grid2d() ? init2 : init1);
 
-    /** Radius two, counting: the 32-entry table of "alive next when the number alive among the five is in the set". */
-    function countTable(): Uint8Array {
-      const t = new Uint8Array(32);
-      for (let n = 0; n < 32; n++) { let k = 0; for (let b = 0; b < 5; b++) k += (n >> b) & 1; t[n] = (count >> k) & 1; }
-      return t;
-    }
+    // rows (N cells, T ticks visible) for five families; a W × H torus for the Life-like one
+    let s = 6, N = 0, T = 0, W = 0, H = 0, tick = 0, changed = -1, box = { x: 0, y: 0 };
+    let rows: Uint8Array[] = [], mask = new Uint8Array(0), g = new Uint8Array(0), scratch = new Uint8Array(0), drawing: { W: number; H: number; g: Uint8Array } | null = null;
+    let raster: Raster | null = null, cfg: Config | null = null, rnd = makeRng(1), autostop = false, startNext = false;
+    const speed = Object.assign(document.createElement('input'), { type: 'range', min: '0', max: '80', value: '54' }); // no slider to fiddle with: about 20 rows a second, 12 grids
+
     function config(): Config {
       if (fam === 'msca') return defaults(totalisticTable(code), totalisticTable(0), 1, 3);
-      if (fam === 'enca') return defaults(countTable(), new Uint8Array(32), 2, 2);
-      const cfg = defaults(tableOf(rule), tableOf(fam === 'aca' ? IDENTITY : psi));
-      if (fam === 'aca') cfg.alpha = alpha;
-      if (fam === 'sca') cfg.p = p;
-      if (fam === 'nuca') cfg.mask = mask;
-      return cfg;
+      const cf = defaults(tableOf(rule), tableOf(fam === 'aca' ? IDENTITY : psi));
+      if (fam === 'aca') cf.alpha = alpha;
+      if (fam === 'sca') cf.p = p;
+      if (fam === 'nuca') cf.mask = mask;
+      return cf;
     }
     function allocation(): Uint8Array {
       const m = new Uint8Array(N);
-      if (alloc === 'half') for (let i = (N >> 1) + 1; i < N; i++) m[i] = 1; // the seed itself stays on φ
+      if (alloc === 'half') for (let i = (N >> 1) + 1; i < N; i++) m[i] = 1; // the middle cell itself stays on φ
       else if (alloc === 'one') m[(N >> 1) + 6] = 1;
       else if (alloc === 'alt') for (let i = 1; i < N; i += 2) m[i] = 1;
       else return allocate(N, 0.5, makeRng(seed * 977 + 3));
       return m;
     }
-    /** Back to one live cell in the middle, with the knobs as they are now. */
+    /** Back to the start, with the knobs as they are now. */
     function reset() {
       if (!fam || !N) return;
+      rnd = makeRng(seed * 131 + 7); tick = 0; changed = -1;
+      if (grid2d()) {
+        g = new Uint8Array(W * H); scratch = new Uint8Array(W * H);
+        if (init2 === 'seed') g[(H >> 1) * W + (W >> 1)] = 1;
+        else if (init2 === 'random') for (let i = 0; i < g.length; i++) g[i] = rnd() < 0.35 ? 1 : 0;
+        else if (drawing) for (let y = 0; y < Math.min(H, drawing.H); y++) for (let x = 0; x < Math.min(W, drawing.W); x++) g[y * W + x] = drawing.g[y * drawing.W + x];
+        raster = new Raster(W, H);
+        return;
+      }
       mask = fam === 'nuca' ? allocation() : new Uint8Array(N);
-      cfg = config(); rnd = makeRng(seed * 131 + 7);
-      const row = new Uint8Array(N); row[N >> 1] = 1;
-      rows = [row]; tick = 0; raster = new Raster(N, T);
+      cfg = config();
+      const row = new Uint8Array(N);
+      if (init1 === 'seed') row[N >> 1] = 1;
+      else for (let i = 0; i < N; i++) row[i] = fam === 'msca' ? Math.floor(rnd() * 3) : rnd() < 0.5 ? 1 : 0;
+      rows = [row]; raster = new Raster(N, T);
     }
-    /** One tick; a full picture scrolls up. A run that started by itself pauses the first time the picture is full. */
+    /** One tick. Rows scroll once the picture is full; a run that started by itself pauses when the picture first fills,
+     * or, on the grid, once nothing moves any more or after LIFE_TICKS. */
     function advance(): boolean {
+      if (grid2d()) {
+        changed = stepLifeLike(g, W, H, scratch, B, S); [g, scratch] = [scratch, g]; tick++;
+        return autostop && (changed === 0 || tick >= LIFE_TICKS);
+      }
       if (!cfg) return true;
       rows.push(stepVariant(rows[rows.length - 1], cfg, rnd)); tick++;
       if (rows.length > T) rows.shift();
       return autostop && tick === T - 1;
     }
     const st = stepper(el, { advance, paint, reset, play: $<HTMLButtonElement>('play'), speed });
-    /** A fresh run that plays by itself until the picture is full (all at once for reduced motion). */
+    /** A fresh run that plays by itself (all at once for reduced motion); a blank drawing waits for you instead. */
     function start() {
       if (!N) { startNext = true; return; } // the canvas has just appeared; its first paint sizes it and comes back here
       st.loop.play(false); reset(); autostop = true;
+      if (grid2d() && init2 === 'draw' && !g.some((v) => v)) { paint(); return; }
       if (reducedMotion()) { while (!advance()); paint(); } else { paint(); st.loop.play(true); }
     }
 
     function paint() {
       const sz = fit(c); if (!sz || !fam) return;
-      const { w, h } = sz, ns = w >= 600 ? 6 : 4, nN = Math.max(31, (Math.floor((w - 8) / ns) - 1) | 1), nT = Math.max(10, Math.floor((h - 8) / ns));
-      if (ns !== s || nN !== N || nT !== T) { // a new size: the same run replayed to the same tick
-        s = ns; N = nN; T = nT;
+      const { w, h } = sz, ns = w >= 600 ? 6 : 4;
+      const nN = Math.max(31, (Math.floor((w - 8) / ns) - 1) | 1), nT = Math.max(10, Math.floor((h - 8) / ns)), nW = Math.floor((w - 8) / ns), nH = Math.floor((h - 8) / ns);
+      if (ns !== s || nN !== N || nT !== T || nW !== W || nH !== H) { // a new size: rows are replayed to the same tick, the grid keeps what fits
+        const old = { g, W, H };
+        s = ns; N = nN; T = nT; W = nW; H = nH;
         if (startNext) { startNext = false; start(); return; }
-        const k = tick; reset(); for (let i = 0; i < k; i++) advance();
+        const k = tick; reset();
+        if (grid2d()) { for (let y = 0; y < Math.min(H, old.H); y++) for (let x = 0; x < Math.min(W, old.W); x++) g[y * W + x] = old.g[y * old.W + x]; tick = k; }
+        else for (let i = 0; i < k; i++) advance();
       }
       if (!raster) return;
       const t = tokens(c), panelC = parse(t.panel), ink = parse(t.ink), acc = parse(t.accent), tint = mix(panelC, acc, 0.22);
-      const three: RGB[] = [panelC, mix(panelC, acc, 0.75), ink];
       raster.fill(panelC);
-      for (let y = 0; y < rows.length; y++) {
-        const r = rows[y];
-        for (let x = 0; x < N; x++) {
-          const v = r[x];
-          if (fam === 'msca') { if (v) raster.set(y * N + x, three[v]); }
-          else if (v) raster.set(y * N + x, ink);
-          else if (mask[x]) raster.set(y * N + x, tint);
+      let cw: number, ch: number;
+      if (grid2d()) {
+        for (let i = 0; i < g.length; i++) if (g[i]) raster.set(i, ink);
+        cw = W * s; ch = H * s;
+      } else {
+        const three: RGB[] = [panelC, mix(panelC, acc, 0.75), ink];
+        for (let y = 0; y < rows.length; y++) {
+          const r = rows[y];
+          for (let x = 0; x < N; x++) {
+            const v = r[x];
+            if (fam === 'msca') { if (v) raster.set(y * N + x, three[v]); }
+            else if (v) raster.set(y * N + x, ink);
+            else if (mask[x]) raster.set(y * N + x, tint);
+          }
         }
+        cw = N * s; ch = T * s;
       }
       raster.flush();
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
-      raster.blit(ctx, { x: Math.round((w - N * s) / 2), y: Math.round((h - T * s) / 2), w: N * s, h: T * s });
+      box = { x: Math.round((w - cw) / 2), y: Math.round((h - ch) / 2) };
+      raster.blit(ctx, { x: box.x, y: box.y, w: cw, h: ch });
+      if (grid2d()) { ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(box.x - 0.5, box.y - 0.5, cw + 1, ch + 1); }
       readout();
     }
 
+    const digits = (m: number) => [0, 1, 2, 3, 4, 5, 6, 7, 8].filter((k) => (m >> k) & 1).join('');
     function readout() {
       let text = '';
       const n1 = Array.from(mask).filter((v) => v).length;
@@ -261,11 +319,16 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       else if (fam === 'aca') text = `rule ${rule}, and each tick a cell updates with probability ${alpha.toFixed(2)}, otherwise it waits`;
       else if (fam === 'sca') text = `each cell, each tick: rule ${rule} with chance ${p.toFixed(2)}, rule ${psi} otherwise`;
       else if (fam === 'msca') text = `code ${code}, one of 3⁷ = 2187 rules that look at the total`;
-      else if (fam === 'enca') { const ks = [0, 1, 2, 3, 4, 5].filter((k) => (count >> k) & 1); text = `alive next when ${ks.length ? ks.join(', ') : 'never'} of the five are alive · one of 64 counting rules among 2³² ≈ 4.3 billion`; }
       else if (fam === 'nuca') text = `rule ${rule} on ${N - n1} cells, rule ${psi} on ${n1} (tinted) · ν = ${((N - n1) / N).toFixed(2)}`;
-      status.value = `${text} · ${N} cells`;
+      if (fam === 'enca') {
+        const pre = PRESETS.find((q) => q.b === B && q.s === S), alive = g.reduce((a, v) => a + v, 0);
+        text = `B${digits(B)}/S${digits(S)}${pre ? ` (${pre.name})` : ''}, one of 2⁹ × 2⁹ = 262,144 Life-like rules · ${alive} live cells on ${W} × ${H}`;
+        if (tick === 0 && init2 === 'draw' && !alive) text = 'draw on the grid (click or drag), then press play';
+        else if (tick > 0 && changed === 0) text += ' · nothing moves any more';
+      } else text += ` · ${N} cells`;
+      status.value = text;
       gen.value = `tick ${tick}`;
-      c.setAttribute('aria-label', `${TITLE[fam as F]}: ${status.value}`);
+      c.setAttribute('aria-label', `${TITLE[fam as F]}: ${text}`);
     }
 
     function show() {
@@ -275,17 +338,22 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       title.textContent = TITLE[fam];
       for (const d of texts) d.hidden = d.dataset.text !== fam;
       for (const k of knobs) k.hidden = !k.dataset.for!.split(' ').includes(fam);
+      c.classList.toggle('draw', grid2d());
+      for (const b of initBtns) b.setAttribute('aria-pressed', String(b.dataset.init === initNow()));
       ruleLabel.textContent = fam === 'eca' || fam === 'aca' ? 'rule' : 'first rule φ';
       ruleIn.value = String(rule); psiIn.value = String(psi); alphaIn.value = String(alpha); av.value = alpha.toFixed(2); pIn.value = String(p); pv.value = p.toFixed(2); allocIn.value = alloc;
-      for (const b of countBtns) b.setAttribute('aria-pressed', String(((count >> +b.dataset.count!) & 1) === 1));
+      for (const b of bBtns) b.setAttribute('aria-pressed', String(((B >> +b.dataset.b!) & 1) === 1));
+      for (const b of sBtns) b.setAttribute('aria-pressed', String(((S >> +b.dataset.s!) & 1) === 1));
+      presetIn.value = PRESETS.find((q) => q.b === B && q.s === S)?.name ?? '';
       const tt = totalisticTable(code);
       for (const b of totalBtns) { const v = tt[+b.dataset.total!]; b.dataset.v = String(v); b.querySelector('b')!.textContent = String(v); }
       const tb = tableOf(rule);
       for (const b of bits) { const k = +b.dataset.bit!; b.dataset.on = String(tb[k]); b.setAttribute('aria-pressed', String(tb[k] === 1)); b.textContent = String(tb[k]); }
+      speed.value = grid2d() ? '46' : '54'; speed.dispatchEvent(new Event('input'));
     }
     function sync() {
-      url.set('f', fam); url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('alpha', String(alpha)); url.set('p', String(p));
-      url.set('alloc', alloc); url.set('count', String(count)); url.set('code', String(code)); url.set('seed', String(seed));
+      url.set('f', fam); url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('alpha', String(alpha)); url.set('p', String(p)); url.set('alloc', alloc);
+      url.set('code', String(code)); url.set('b', String(B)); url.set('s', String(S)); url.set('init', init1); url.set('init2', init2); url.set('seed', String(seed));
     }
     const redo = () => { show(); sync(); start(); };
 
@@ -305,18 +373,33 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
     pIn.addEventListener('input', () => { p = +pIn.value; pv.value = p.toFixed(2); });
     pIn.addEventListener('change', () => redo());
     allocIn.addEventListener('change', () => { alloc = allocIn.value; redo(); });
-    for (const b of countBtns) b.addEventListener('click', () => { count ^= 1 << +b.dataset.count!; redo(); });
     for (const b of totalBtns) b.addEventListener('click', () => { const tt = totalisticTable(code), k = +b.dataset.total!; tt[k] = (tt[k] + 1) % 3; code = totalisticCode(tt); redo(); });
     for (const b of bits) b.addEventListener('click', () => { const tb = tableOf(rule); tb[+b.dataset.bit!] ^= 1; rule = ruleOf(tb); redo(); });
-    $('random').addEventListener('click', () => {
-      // an empty neighbourhood stays empty, or the whole row would flash on and off
-      if (fam === 'enca') { do count = Math.floor(Math.random() * 32) << 1; while (!count); }
-      else { const tt = new Uint8Array(7); for (let k = 1; k < 7; k++) tt[k] = Math.floor(Math.random() * 3); code = totalisticCode(tt); }
-      redo();
-    });
-    $('again').addEventListener('click', () => { seed++; redo(); }); // new coins for the random families
+    // a new Life-like rule applies to the grid as it is, without starting over
+    const relife = () => { show(); sync(); paint(); };
+    for (const b of bBtns) b.addEventListener('click', () => { B ^= 1 << +b.dataset.b!; relife(); });
+    for (const b of sBtns) b.addEventListener('click', () => { S ^= 1 << +b.dataset.s!; relife(); });
+    presetIn.addEventListener('change', () => { const q = PRESETS.find((x) => x.name === presetIn.value); if (q) { B = q.b; S = q.s; redo(); } });
+    $('random').addEventListener('click', () => { const tt = new Uint8Array(7); for (let k = 1; k < 7; k++) tt[k] = Math.floor(Math.random() * 3); code = totalisticCode(tt); redo(); }); // total 0 stays 0, or the empty row would flash
+    for (const b of initBtns) b.addEventListener('click', () => { const v = b.dataset.init as Init; if (grid2d()) init2 = v; else if (v !== 'draw') init1 = v; if (v === 'random') seed++; redo(); });
+    $('clear').addEventListener('click', () => { init2 = 'draw'; drawing = null; redo(); });
+    $('again').addEventListener('click', () => { seed++; redo(); }); // new coins for everything random
     $('step').addEventListener('click', st.step);
-    $('play').addEventListener('click', () => { autostop = false; }); // pressed by hand: keep going, scrolling
+    $('play').addEventListener('click', () => { autostop = false; }); // pressed by hand: keep going
+
+    // Drawing on the Life-like grid: a stroke paints the opposite of the cell it starts on. At tick 0 it changes the start
+    // itself, so "start again" comes back to it; later it only changes the grid as it runs.
+    let paintVal = -1;
+    const cellAt = (e: PointerEvent) => { const r = c.getBoundingClientRect(), x = Math.floor((e.clientX - r.left - box.x) / s), y = Math.floor((e.clientY - r.top - box.y) / s); return x >= 0 && x < W && y >= 0 && y < H ? y * W + x : -1; };
+    const touch = (e: PointerEvent) => { const i = cellAt(e); if (i < 0) return; if (paintVal < 0) paintVal = 1 - g[i]; if (g[i] !== paintVal) { g[i] = paintVal; changed = -1; paint(); } };
+    c.addEventListener('pointerdown', (e) => { if (!grid2d() || !raster) return; c.setPointerCapture(e.pointerId); paintVal = -1; touch(e); });
+    c.addEventListener('pointermove', (e) => { if (paintVal >= 0) touch(e); });
+    const lift = () => {
+      if (paintVal < 0) return;
+      paintVal = -1;
+      if (tick === 0) { init2 = 'draw'; drawing = { W, H, g: g.slice() }; show(); sync(); paint(); }
+    };
+    c.addEventListener('pointerup', lift); c.addEventListener('pointercancel', lift);
 
     watch(c, paint);
     startNext = !!fam; // a link that names a family opens it running

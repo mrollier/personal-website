@@ -62,7 +62,7 @@ const { kind = 'npa' } = Astro.props;
   import { spearman } from '../scripts/stats';
   import { ruleName } from '../scripts/llna';
   import { latticeLink, type Net } from '../scripts/net';
-  import { buildLive } from '../scripts/settle';
+  import { buildLive, settling, arranging } from '../scripts/settle';
   import { Jobs, Cancelled } from '../scripts/jobs';
   import type { EtaResult } from '../scripts/consensus';
   import { parse, mix, css } from '../scripts/palette';
@@ -94,6 +94,7 @@ const { kind = 'npa' } = Astro.props;
       drawNet(t, nb); drawScatter(t, sb); readout();
     }
     function drawNet(t: ReturnType<typeof tokens>, b: Box) {
+      if (settling(net)) { arranging(ctx, b, t); return; }
       const n = net.n, X = (i: number) => b.x + net.xy[2 * i] * b.w, Y = (i: number) => b.y + net.xy[2 * i + 1] * b.h;
       ctx.lineWidth = 1; ctx.strokeStyle = t.line; ctx.beginPath();
       for (const [i, j] of net.edges) { if (kind === 'lat' && latticeLink(net, i, j).wraps) continue; ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }

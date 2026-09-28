@@ -1,7 +1,7 @@
 // The one worker behind every heavy figure on the thesis page. A job is a pure generator function in
 // an engine module; this file drives it and posts each yield as progress, then the return value as the
 // result. Cancelling is done by terminating the worker (see jobs.ts), so nothing here needs to listen.
-import { omegaSweep } from './centrality';
+import { omegaSweep, measureJob, centralityJob } from './centrality';
 import { successSweep } from './sync';
 import { swapCurve, etaScan } from './consensus';
 import { spectrumJob, benettin } from './lyapunov';
@@ -9,6 +9,8 @@ import { layoutJob } from './net';
 
 const JOBS: Record<string, (params: any) => Generator<{ p: number; partial?: unknown }, unknown>> = {
   'omega-sweep': omegaSweep,
+  'measure': measureJob,
+  'centrality': centralityJob,
   'success-sweep': successSweep,
   'swap-curve': swapCurve,
   'eta': etaScan,

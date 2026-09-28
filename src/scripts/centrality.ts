@@ -132,11 +132,31 @@ export function references(spec: NetSpec, seed: number, seeds = 3): { cLatt: num
   return { cLatt, lRand: lRand / seeds };
 }
 
+/** The seed and count of the lattice and random reference networks, the same for the figure's readout, its worker and the sweep. */
+export const REF_SEED = 99, REF_SEEDS = 2;
+
+/** The measurements of a network too big to measure between two frames, as a worker job: the network is rebuilt from its spec
+ * and seed, which gives the same links as on the page. `refs` asks for the lattice and random references too. */
+export function* measureJob(params: { spec: NetSpec; seed: number; refs: boolean }): Generator<{ p: number }, { C: number; l: number; cLatt: number; lRand: number }> {
+  const net = buildNet(params.spec, params.seed, 'none');
+  const C = clustering(net).mean; yield { p: 0.2 };
+  const l = pathLength(net); yield { p: 0.4 };
+  const r = params.refs ? references(params.spec, REF_SEED, REF_SEEDS) : { cLatt: NaN, lRand: NaN };
+  return { C, l, ...r };
+}
+
+/** One centrality of a big network, as a worker job. */
+export function* centralityJob(params: { spec: NetSpec; seed: number; which: Centrality }): Generator<{ p: number }, Float64Array> {
+  const net = buildNet(params.spec, params.seed, 'none'); yield { p: 0.1 };
+  return centrality(params.which, net);
+}
+
 export type OmegaPoint = { p: number; omega: number; C: number; l: number };
 
 /** Worker job: ω over a list of rewiring probabilities, `seeds` networks each; yields the points so far. */
-export function* omegaSweep(params: { spec: NetSpec & { kind: 'ws' | 'lat' }; ps: number[]; seeds: number; seed: number }): Generator<{ p: number; partial: OmegaPoint[] }, OmegaPoint[]> {
-  const { spec, ps, seeds, seed } = params, ref = references(spec, seed, seeds), out: OmegaPoint[] = [];
+export function* omegaSweep(params: { spec: NetSpec & { kind: 'ws' | 'lat' }; ps: number[]; seeds: number; seed: number; ref?: { cLatt: number; lRand: number } }): Generator<{ p: number; partial: OmegaPoint[] }, OmegaPoint[]> {
+  // `ref`: the figure's own lattice and random references, so its readout and the curve are measured against the same thing
+  const { spec, ps, seeds, seed } = params, ref = params.ref ?? references(spec, REF_SEED, REF_SEEDS), out: OmegaPoint[] = [];
   for (let i = 0; i < ps.length; i++) {
     let C = 0, l = 0;
     for (let s = 0; s < seeds; s++) {

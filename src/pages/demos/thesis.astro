@@ -211,7 +211,7 @@ const tabs = [
               the arrow between the two circles: try it and compare. With two proper rules the rows form a Markov
               chain, and as the weight of the coin moves, the behaviour can change abruptly, a phase transition.
               And when all cells switch rules together, two rules that are each chaotic can jointly settle into a
-              periodic pattern. <em>Run again</em> draws new coins.
+              periodic pattern. <em>Start again</em> draws new coins.
             </p>
           </Fragment>
           <Fragment slot="msca">
@@ -231,25 +231,27 @@ const tabs = [
           </Fragment>
           <Fragment slot="enca">
             <p>
-              Let each cell see further: two cells on either side instead of one, five in all. If every
-              combination of five cells gets its own answer, there are 2<sup>32</sup>, over four billion, rules,
-              and no table on a page can show them. So the figure keeps the rules that only count: a cell is alive
-              next if the number of living cells among the five is in the set you pick. It opens with 1, 3 or 4.
+              Let each cell see further, or in more directions. Two cells on either side instead of one already
+              gives 2<sup>32</sup>, over four billion, rules. The best-known member of this family, though, is the
+              Game of Life: a grid in two dimensions where each cell counts its eight neighbours. A dead cell with
+              exactly three living neighbours is born, a living cell with two or three survives, and everything
+              else dies or stays dead. In the usual shorthand that is B3/S23, and the grid below opens with it.
             </p>
             <p>
-              Counting is not a shortcut, it is where the thesis is heading. Push the idea further and the
-              neighbours need not be next door at all, but whatever a cell is wired to. Then the row is a network,
-              the neighbours no longer come in any order, and a sensible rule can only count them. That is a
-              network automaton, the subject of the rest of the thesis; the <a href="#networks">next tab</a> is
-              about the networks.
+              Pick other numbers to be born or to survive with and you get the other <em>Life-like</em> automata,
+              2<sup>9</sup> × 2<sup>9</sup> = 262,144 of them. That is exactly the number of network automata
+              the <a href="#synchronisation">Synchronisation</a> tab starts from, and not by coincidence. Keep the
+              counting but put the cells on a network, and each cell simply counts whatever it is wired to: the
+              neighbours no longer come in any order, so counting is all a sensible rule can do. Those are the
+              Life-like network automata that the thesis studies from the <a href="#two-numbers">Two numbers</a> tab
+              onwards, and on a grid where every cell has eight neighbours they are these rules exactly.
             </p>
             <p>
-              This family is also where the Game of Life lives. Its grid is two-dimensional, and each cell counts
-              its eight neighbours: a dead cell with exactly three living neighbours is born, a living cell with two
-              or three survives, and everything else dies or stays dead. Change those numbers and you get the
-              other Life-like automata. Keep the counting but put the cells on a network, and you get the Life-like
-              network automata that the thesis studies from the <a href="#two-numbers">Two numbers</a> tab
-              onwards. Life itself is on the <a href="#roadmap">first tab</a>, and on the <a href="#cover">cover</a>.
+              Things to try. From one cell, Life dies at once, but Gnarl (B1/S1) and Replicator grow a whole
+              pattern. HighLife is Life with one extra way to be born. <em>Clear, to draw</em> gives an empty grid:
+              draw a row of three cells and it blinks; draw a small shape and see whether it survives. You can draw
+              while the grid runs, too. Life itself also opens the <a href="#roadmap">first tab</a>, and
+              the <a href="#cover">cover</a> is made of it.
             </p>
           </Fragment>
           <Fragment slot="nuca">

@@ -30,6 +30,14 @@ npm run check    # build + link check
 
 A wrong field in a YAML file fails `npm run build`, which is the test.
 
+## Presenting offline
+
+The public PhD defence (2 October 2026) is `/demos/defence/`: every slide as a live card in tabs, and a Present button. The deck lives in `src/components/defence/` (one component per block, `Deck.astro` for the shell) and `src/scripts/defence/` (`deck.ts` is the engine); its precomputed data in `src/data/defence/` comes from `npm run precompute` (`scripts/defence/precompute.ts`, seeded). `npm run build` also writes `dist/demos/defence/rollier-defence.html` (`scripts/inline-defence.mjs`): the whole deck in one file, no network requests, which is the file to present from.
+
+- Launch: `firefox --kiosk "file:///path/to/rollier-defence.html"` gives true fullscreen without the fullscreen API, so Escape cannot end it. Press the clicker once to start. Without kiosk mode, click Start for fullscreen; Escape then leaves fullscreen but not the deck, and `f` goes back.
+- Keys: PageDown, right arrow, space or `n` for the next build or slide; PageUp, left arrow, Backspace or `p` for back; `b` or `.` blanks the screen (the next press only unblanks); `f` fullscreen; `t` a rehearsal clock with the time the current block should end; digits and Enter jump to a slide; `Home` the start; `a` the backup slides; `c` on the rounds slide turns the countdown off; `q` leaves (on the site). F5 and Ctrl+R do nothing while presenting.
+- Test on the actual projector the day before: resolution, colours, and the clicker's buttons.
+
 ## Deploy
 
 Push to `main`. GitHub Actions builds and publishes. DNS for the apex and `www` points at GitHub Pages from Vimexx.

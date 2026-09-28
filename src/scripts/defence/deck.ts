@@ -171,7 +171,8 @@ export function mountDeck(deck: HTMLElement): void {
   deck.querySelector('[data-exit]')?.addEventListener('click', stop);
   deck.addEventListener('click', (e) => {
     const go = (e.target as HTMLElement).closest<HTMLElement>('[data-go]');
-    if (go && presenting) { e.preventDefault(); show(+go.dataset.go!); }
+    const to = go ? document.getElementById(go.dataset.go!)?.closest<HTMLElement>('[data-slide]') : null;
+    if (to && presenting) { e.preventDefault(); show(+to.dataset.index!); }
   });
   gate?.querySelector('button')?.addEventListener('click', () => start(cur));
   for (const b of document.querySelectorAll<HTMLElement>(`[data-present="${deck.id}"]`)) b.addEventListener('click', () => start(0));

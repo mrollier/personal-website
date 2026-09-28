@@ -1,0 +1,104 @@
+---
+// I1–I3: the chain from rule 90 to network science, what comes after the thesis, and the close: the cover art, a QR
+// code to the site (drawn at build time, no library at run time) and one flipped cell that sets the still life moving.
+import Slide from './Slide.astro';
+import { qr, qrPath } from '../../scripts/defence/qr';
+const code = qr('https://michielrollier.be', 'M');
+const qd = qrPath(code), qsize = code.size + 8;
+const chain = [
+  { step: 'rule 90', g: 'left XOR right', p: 'a Sierpiński triangle' },
+  { step: '256 elementary rules', g: 'eight-case tables', p: 'dies, repeats, random, structures' },
+  { step: 'the Game of Life', g: 'born at 3, survives at 2 or 3', p: 'gliders and still lifes' },
+  { step: 'Life-like network automata', g: 'rules on shares', p: 'any network' },
+  { step: 'two numbers, two curves', g: 'Hamming weight, Boolean sensitivity', p: 'final share, spreading differences' },
+  { step: '27 synchronisers, consensus rules', g: 'mean-field conditions', p: 'flashing, freezing' },
+  { step: 'network science', g: 'jaggedness, a probe rule', p: 'classifying networks · finding important nodes' },
+];
+---
+<Slide label="What we did" class="i1">
+  <h2>What we did</h2>
+  <div class="chain">
+    <p class="band g">genotype: the rule</p>
+    <div class="steps">
+      {chain.map((c) => (
+        <div class="step">
+          <p class="gt">{c.g}</p>
+          <p class="nm">{c.step}</p>
+          <p class="ph">{c.p}</p>
+        </div>
+      ))}
+    </div>
+    <p class="band p">phenotype: the behaviour</p>
+  </div>
+</Slide>
+
+<Slide label="Beyond this thesis" class="i2">
+  <h2>Beyond this thesis</h2>
+  <ol class="beyond">
+    <li><b>Space and time at BionamiX.</b> The cellular-automaton paradigm models spatial processes, such as groundwater (MACCA-GW, ACRI 2026 proceedings) and wildfire spread. They need the extensions reviewed in the taxonomy: non-uniform rules, more states, larger neighbourhoods.</li>
+    <li><b>Discrete dynamics and deep learning.</b> Modest work: cellular automata can be hosted <i>exactly</i> inside neural networks, and neural networks can classify their patterns. One lesson: a network scored 98% at classifying behaviour, but one row of the picture already contains the whole rule, with more than 99% probability. High accuracy is not understanding.</li>
+    <li><b>Next: mechanistic interpretability.</b> Reading the rules inside artificial neural networks: the same gap between rule and behaviour.</li>
+  </ol>
+</Slide>
+
+<Slide label="Thank you" builds={1} class="i3">
+  <canvas class="art" aria-hidden="true"></canvas>
+  <div class="thanks">
+    <p class="ty">Thank you</p>
+    <svg class="qr" viewBox={`0 0 ${qsize} ${qsize}`} role="img" aria-label="QR code for michielrollier.be"><rect width={qsize} height={qsize} fill="#fff" /><path d={qd} fill="#000" /></svg>
+    <p class="url mono">michielrollier.be</p>
+    <p class="small">every demo of tonight, and the thesis chapter by chapter</p>
+  </div>
+</Slide>
+
+<style>
+  .chain { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: calc(18 * var(--u)); }
+  .band { font-family: var(--mono); font-size: calc(30 * var(--u)); color: var(--muted); border-bottom: calc(3 * var(--u)) solid var(--line); padding-bottom: calc(6 * var(--u)); }
+  .band.p { border-bottom: 0; border-top: calc(3 * var(--u)) solid var(--line); padding-top: calc(6 * var(--u)); }
+  .steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: calc(14 * var(--u)); }
+  .step { display: flex; flex-direction: column; gap: calc(14 * var(--u)); text-align: center; position: relative; }
+  .step + .step::before { content: '→'; position: absolute; left: calc(-24 * var(--u)); top: 50%; transform: translateY(-50%); font-size: calc(34 * var(--u)); color: var(--muted); }
+  .gt, .ph { font-size: calc(25 * var(--u)); color: var(--muted); min-height: 3.8em; display: flex; align-items: center; justify-content: center; }
+  .gt { align-items: flex-end; }
+  .ph { align-items: flex-start; }
+  .nm { font-size: calc(31 * var(--u)); font-weight: 600; background: var(--panel); padding: calc(20 * var(--u)) calc(10 * var(--u)); min-height: 4.2em; display: flex; align-items: center; justify-content: center; }
+
+  .beyond { font-size: calc(36 * var(--u)); gap: calc(34 * var(--u)); max-width: calc(1600 * var(--u)); margin-top: calc(10 * var(--u)); }
+
+  .art { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .thanks { position: absolute; left: calc(110 * var(--u)); top: calc(90 * var(--u)); display: flex; flex-direction: column; gap: calc(22 * var(--u)); background: var(--bg); padding: calc(30 * var(--u)); }
+  .ty { font-family: var(--mono); font-weight: 600; font-size: calc(96 * var(--u)); letter-spacing: -0.02em; }
+  .qr { width: calc(470 * var(--u)); height: calc(470 * var(--u)); }
+  .url { font-size: calc(46 * var(--u)); }
+</style>
+
+<script>
+  import { slide, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { stillMosaic, drawCells } from '../../scripts/defence/cover';
+  import { ActiveLife } from '../../scripts/life';
+  import tiles from '../../data/tiles.json';
+
+  // ── I3: the still life, then one flipped cell ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, view = 216;
+    const base = stillMosaic(tiles, 13, 8, 3, 20261002, 0.5);
+    let art = { ...base, g: base.g.slice() }, life = new ActiveLife(art.W, art.H), gens = 0;
+    // the flipped cell: the live cell nearest to a fixed point in the dense part of the view
+    let flip = -1, best = Infinity;
+    for (let y = 0; y < 122; y++) for (let x = 0; x < view; x++) if (base.g[y * base.W + x]) { const d = (x - 168) ** 2 + (y - 60) ** 2; if (d < best) { best = d; flip = y * base.W + x; } }
+    const reset = () => { art = { ...base, g: base.g.slice() }; life = new ActiveLife(art.W, art.H); gens = 0; };
+    const paint = () => { const st = stage(c); if (st) drawCells(st.ctx, art, 0, 0, st.w / view, st.w, st.h, st.t.ink); };
+    const run = ticker(s, 10, () => { gens++; return life.step(art.g) === 0; }, paint);
+    slide(s, {
+      set(b: number, how: How) {
+        if (b === 0) { run.play(false); reset(); }
+        else if (how === 'next' || gens === 0) { reset(); art.g[flip] ^= 1; life.touch(flip % art.W, Math.floor(flip / art.W)); run.play(true); }
+        paint();
+      },
+      enter() { reset(); },
+      leave() { run.play(false); },
+    });
+    onSize(c, paint);
+  }
+</script>

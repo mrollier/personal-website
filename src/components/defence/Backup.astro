@@ -1,0 +1,85 @@
+---
+// The appendix: backup slides for questions, reachable only by `a`, a slide number or the index. Each is a question,
+// three to five bullets from the thesis, and where in the thesis it is. No names of jury members anywhere here.
+import Slide from './Slide.astro';
+import clamp from '../../data/defence/clamp.json';
+const cs = clamp.summary;
+const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
+  { id: 'q1', q: 'What single question unifies the thesis?', ref: 'Ch. 1 §1.3, Ch. 11', bullets: [
+    'How much does a simple local rule tell you about the global behaviour it produces, and what does the behaviour tell you about the rule and the network: genotype against phenotype.',
+    'Three objectives: rigorous foundations for these systems; how network topology shapes the dynamics; the systems turned into instruments, for neural networks and for network science.',
+    'In the thesis’s words: to map, understand and apply the link between iterating simple local rules and the rich landscape of emergent outcomes.',
+    'Chapters 4 to 10 each answer one part; Chapter 11 puts the answers side by side.' ] },
+  { id: 'q2', q: 'What makes the best classification rule special?', ref: 'Ch. 9 §9.6.3, §9.7', bullets: [
+    'The analysis works at the level of partitions of the rule space by jaggedness, not rule by rule.',
+    'The best individual rules were not examined one by one.',
+    'Calling the rules in the sweet spot “complex” is a hypothesis; it was not tested.' ] },
+  { id: 'q3', q: 'Is dynamical importance confounded by conditioning on consensus?', ref: 'Ch. 10 §10.2.2, §10.4', bullets: [
+    'η pools clampings that change a node’s start (its hand was up) with ones that only confirm it (already down).',
+    'Which starts reach consensus is itself linked to centrality; the thesis does not separate the two.',
+    `On the toy network of tonight: Spearman(η, degree) = ${cs.spearmanEtaDegree.toFixed(2)} overall, ${cs.spearmanGenuineDegree.toFixed(2)} from the changing clampings only, ${cs.spearmanConfirmatoryDegree.toFixed(2)} from the confirming ones only.`,
+    'So the ranking survives the split here, on one toy network; that is an illustration, not a result.' ] },
+  { id: 'q4', q: 'Is your Lyapunov exponent really an entropy?', ref: 'Ch. 4', bullets: [
+    'It is a tangent-space quantity: the growth rate of a count of walks along which a defect can travel, which makes it entropy-like by construction.',
+    'For the parity rule on a graph the exponents are ln|λₖ(A) + a∘|, the maximal one ln ρ(A + a∘I); for the rule without self, the logarithms of the adjacency eigenvalues.',
+    'The thesis itself calls it closer to an entropy than to a rate of separation.',
+    'Wolfram (1984) introduced both notions for cellular automata side by side.' ] },
+  { id: 'q5', q: 'Does small-world structure cause synchronisation?', ref: 'Ch. 6 §6.1.3', bullets: [
+    'No causal claim. The rule fails for p ≤ 0.04, peaks near p ≈ 0.3 (94%), beyond the small-world band, and drops to 39% at p = 1.',
+    'Short paths look necessary but not sufficient, for this rule.',
+    'Rewired grids behave differently: 82% unrewired, above 95% for 0.02 ≤ p ≤ 0.4.',
+    'At p = 0.2 the thesis reports 83% from the screening and 78% from the sweep, both at half the nodes on: two estimates of one point.' ] },
+  { id: 'q6', q: 'Can a classifier discover behaviour classes, or only transfer known ones?', ref: 'Ch. 8', bullets: [
+    'Its output only transfers the labels it was trained on.',
+    'Its internal representation can support exploration without labels, but that is not discovery.',
+    'A self-supervised attempt turned out hard.' ] },
+  { id: 'q7', q: 'What do cellular automata offer interpretability research?', ref: 'Chs. 7, 8', bullets: [
+    'Circuits whose weights are known exactly: a cellular automaton written into a neural network by hand (Ch. 7).',
+    'The shortcut lesson: high accuracy that came from reading the rule off the first row, not from the behaviour (Ch. 8).',
+    'An idea for future work, not a result of the thesis.' ] },
+  { id: 'q8', q: 'Is the genotype filter really cheaper than a genetic algorithm?', ref: 'Ch. 6 §6.1.3', bullets: [
+    'The genetic algorithm of Das et al. spends some 10⁷ to 10⁸ simulations on the search.',
+    'The filter simulates nothing: a bitwise condition and 512 mean-field curves, in a fraction of a second.',
+    'Verification costs both the same order: the saving is in the search.',
+    'The evolved rules of Das et al. synchronise better, on lattices: φ⁹₂₃,₄₇ is not the best synchroniser available, and the rule spaces differ.' ] },
+  { id: 'q9', q: 'How good is the mean-field approximation?', ref: 'Ch. 5 §5.3', bullets: [
+    'It is one step deep and annealed: every round, contacts are redrawn at random.',
+    'It ignores correlations and clustering, which the real network builds up at once.',
+    'Hence simulation remains necessary; the genotype narrows the search, it does not replace it.' ] },
+  { id: 'q10', q: 'Why not graph neural networks or graph kernels for classification?', ref: 'Ch. 9 §9.7', bullets: [
+    'Beating them was not the aim; on social and chemical benchmarks they do better.',
+    'The rule-based pipeline needs no node attributes, handles networks of any size, and comes with one interpretable parameter: the rule.' ] },
+  { id: 'q11', q: 'Why odd resolutions and mirrored intervals?', ref: 'Ch. 5 §5.2, App. C', bullets: [
+    'Complementation symmetry: swapping on and off must map the rule space onto itself.',
+    'That needs the cut of the density axis mirrored around ½, with a middle interval that contains ½, hence an odd number of intervals.' ] },
+  { id: 'q12', q: 'Why is the groundwater work not in the thesis?', ref: 'MACCA-GW', bullets: [
+    'It is a spatially explicit cellular-automaton model of groundwater flow, not a network automaton.',
+    'It does not fit the thesis’s story from rules to networks, so it is published separately, in the ACRI 2026 proceedings.' ] },
+  { id: 'q13', q: 'Clamping is an intervention; what does merely swapping states do?', ref: 'Ch. 10 §10.3.1', bullets: [
+    'Swap the most central person who is up with the least central one who is down, again and again.',
+    'On preferential-attachment networks with 8 contacts: at most 10 swaps by closeness flip the outcome 90% of the time.',
+    'Random swaps only push the outcome towards a coin toss: the 90% mark is never reached.' ] },
+];
+---
+<Slide label="Backup slides" appendix id="backup" class="bk">
+  <h2>Questions</h2>
+  <ol class="index">
+    {qs.map((x) => <li><a href={`#${x.id}`} data-go={x.id}>{x.q}</a></li>)}
+  </ol>
+</Slide>
+{qs.map((x) => (
+  <Slide label={x.q} appendix id={x.id} class="bk">
+    <h2 class="bq">{x.q}</h2>
+    <ul class="bl">{x.bullets.map((b) => <li>{b}</li>)}</ul>
+    <p class="cite">{x.ref} · <a href="#backup" data-go="backup">back to the questions</a></p>
+  </Slide>
+))}
+
+<style>
+  .index { columns: 2; column-gap: calc(60 * var(--u)); font-size: calc(31 * var(--u)); display: block; margin-top: calc(10 * var(--u)); }
+  .index li { break-inside: avoid; margin-bottom: calc(16 * var(--u)); }
+  .index a, .cite a { color: var(--ink); text-decoration: none; }
+  .index a:hover, .cite a:hover { color: var(--accent); }
+  .bq { font-size: calc(56 * var(--u)); max-width: calc(1600 * var(--u)); }
+  .bl { font-size: calc(38 * var(--u)); gap: calc(26 * var(--u)); max-width: calc(1600 * var(--u)); margin-top: calc(20 * var(--u)); }
+</style>

@@ -114,14 +114,19 @@ const boxes = ['network', 'run one rule', 'pattern: who is up when', 'statistics
   // ── G2: one pattern per type, then its fingerprint, then all five networks of the type ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.g2')) {
     const rule = { r: TOY.r, B: sweet.B, S: sweet.S, part: 'uni' as const };
-    const figs = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]')).map((f) => {
+    // the three runs are made the first time the slide is drawn, not at page load
+    type Fig = { c: number; net: ReturnType<typeof toyNet>; run: ReturnType<typeof toyRun>; ras: Raster; raster: HTMLCanvasElement; hist: HTMLCanvasElement };
+    const els = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]'));
+    let made: Fig[] | null = null;
+    const figsOf = () => (made ??= els.map((f) => {
       const c = +f.dataset.type!, net = toyNet(c, 0), run = toyRun(net, rule, startSeed(c, 0)), ras = new Raster(TOY.T, net.n);
       return { c, net, run, ras, raster: f.querySelector<HTMLCanvasElement>('canvas.raster')!, hist: f.querySelector<HTMLCanvasElement>('canvas.hist')! };
-    });
+    }));
     const top = ymax(sweet.fps);
     let at = 0;
     function paint() {
-      for (const g of figs) {
+      if (s.getBoundingClientRect().width < 1) return;
+      for (const g of figsOf()) {
         const st = stage(g.raster);
         if (st) {
           const on = parse(st.t.ink), off = parse(st.t.panel);
@@ -140,7 +145,7 @@ const boxes = ['network', 'run one rule', 'pattern: who is up when', 'statistics
       }
     }
     slide(s, { set(b) { at = b; paint(); } });
-    for (const g of figs) { onSize(g.raster, paint); onSize(g.hist, paint); }
+    for (const f of els) { onSize(f.querySelector<HTMLCanvasElement>('canvas.raster')!, paint); onSize(f.querySelector<HTMLCanvasElement>('canvas.hist')!, paint); }
   }
 
   // ── G3: a smooth and a jagged rule, their diagrams and their fifteen fingerprints ──

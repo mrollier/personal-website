@@ -12,6 +12,8 @@ import ThesisMap from './ThesisMap.astro';
 import Genotype from './Genotype.astro';
 import WhichNetwork from './WhichNetwork.astro';
 import Stubborn from './Stubborn.astro';
+import Closing from './Closing.astro';
+import Backup from './Backup.astro';
 import Hud from './Hud.astro';
 type Props = { mode: 'page' | 'present' };
 const { mode } = Astro.props;
@@ -26,6 +28,8 @@ const blocks = [
   { id: 'genotype', name: 'Reading the rule', until: '21:30', C: Genotype, intro: 'From two neighbours in a row to contacts anywhere in a network, the Game of Life as a rule on shares, the two numbers that read a rule before it runs, and how they pick 27 synchronisers out of 262,144 rules without a single simulation.' },
   { id: 'which-network', name: 'Which network?', until: '26:00', C: WhichNetwork, intro: 'Run one rule on a network and the pattern it draws gives the network away. Some rules are better detectives than others, and the shape of the rule tells which.' },
   { id: 'stubborn', name: 'The stubborn person', until: '30:30', C: Stubborn, intro: 'Make one person stubborn and see whether the room follows: the dynamical importance of every node, found by simulation alone.' },
+  { id: 'closing', name: 'Closing', until: '34:30', C: Closing, intro: 'From rule 90 to network science in one chain, what comes after the thesis, and the cover once more, until one cell changes.' },
+  { id: 'questions', name: 'Questions', until: '', C: Backup, intro: 'Backup slides for the questions afterwards. In the deck they are reached with the key a, a slide number, or the index.' },
 ];
 ---
 {page ? (
@@ -46,7 +50,7 @@ const blocks = [
     </div>
   </div>
 ) : (
-  <div class="deck" id="deck" data-deck data-standalone tabindex="-1">
+  <div class="deck presenting full" id="deck" data-deck data-standalone tabindex="-1">
     {blocks.map(({ id, until, C }) => <div class="block" data-block={id} data-until={until}><C /></div>)}
     <Hud exit={false} />
     <div class="gate" data-gate>

@@ -7,11 +7,16 @@ export type Tiles = Record<string, string[]>; // src/data/tiles.json: per level,
 
 export type Cells = { W: number; H: number; g: Uint8Array };
 
+const banks = new Map<string, Uint8Array[]>(); // decoded once per level, however many slides ask
 function bank(tiles: Tiles, level: number): Uint8Array[] {
-  return tiles[level].map((b) => {
+  const key = String(level), hit = banks.get(key);
+  if (hit) return hit;
+  const out = tiles[level].map((b) => {
     const bytes = atob(b);
     return Uint8Array.from({ length: 36 * level * level }, (_, k) => (bytes.charCodeAt(k >> 3) >> (7 - (k & 7))) & 1);
   });
+  banks.set(key, out);
+  return out;
 }
 
 /** tilesX × tilesY tile periods of level `level`; the density rises from nothing at `from` (share of the width) to the

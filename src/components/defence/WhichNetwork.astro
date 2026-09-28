@@ -1,0 +1,170 @@
+---
+// G1–G3: the stadium game (classify a network by the pattern one rule draws on it), fingerprints on toy networks,
+// and why some rules are better detectives. Toy data from src/data/defence/classify.json (scripts/defence/precompute.ts).
+import Slide from './Slide.astro';
+import Phi from './Phi.astro';
+import classify from '../../data/defence/classify.json';
+const [smooth, sweet] = classify.examples;
+const boxes = ['network', 'run one rule', 'pattern: who is up when', 'statistics: histograms', 'simple classifier'];
+---
+<Slide label="The stadium game" class="g1">
+  <h2>Which network is this?</h2>
+  <p class="lede">The same instructions, the stadium wave, in different stadiums: can you tell the stadium from the wave?</p>
+  <div class="pipe">
+    {boxes.map((b, i) => (
+      <>
+        <div class="box"><svg viewBox="0 0 120 90" aria-hidden="true" data-glyph={i}></svg><span>{b}</span></div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </>
+    ))}
+    <div class="box out"><span>network type</span></div>
+  </div>
+  <p class="cite">Pipeline: G. H. B. Miranda et al. 2016; J. Ribas et al. 2020; K. M. C. Zielinski et al. 2024 · Chapter 9: L. C. de Oliveira, M. Rollier, J. M. Baetens, O. M. Bruno (under review)</p>
+</Slide>
+
+<Slide label="Fingerprints" builds={3} class="g2">
+  <h2>Fingerprints</h2>
+  <div class="cols">
+    {classify.params.types.map((ty, c) => (
+      <figure data-type={c}>
+        <figcaption class="mono">{ty.name}</figcaption>
+        <canvas class="raster" data-b="1" aria-label={`who is up when on a ${ty.name} network: people down the side, rounds across`}></canvas>
+        <canvas class="hist" data-b="2" aria-label={`the fingerprint of the ${ty.name} network`}></canvas>
+      </figure>
+    ))}
+  </div>
+  <p class="cite">One rule, <Phi r={5} b={sweet.B} s={sweet.S} />, on networks of 200 people with 8 contacts on average · rows: people, most contacts on top · fingerprint: how often each share of contacts with a hand up occurs</p>
+  <p class="illus">illustration — toy networks; the thesis used 23 datasets and density-pattern histograms</p>
+</Slide>
+
+<Slide label="Some rules are better detectives" builds={1} class="g3">
+  <h2>Some rules are better detectives</h2>
+  <div class="two">
+    {[smooth, sweet].map((x) => (
+      <figure data-rule={`${x.B},${x.S}`}>
+        <canvas class="diag" aria-label="the rule diagram"></canvas>
+        <p class="jbar"><b>{x.role === 'smooth' ? 'smooth' : 'jagged'}</b> · jaggedness J̄ = {x.jbar.toFixed(2)}</p>
+        <canvas class="fps" aria-label="every network as one dot: the average and the spread of its fingerprint"></canvas>
+        <p class="verdict">{x.role === 'smooth' ? 'the fingerprints overlap' : 'the fingerprints separate'}</p>
+      </figure>
+    ))}
+    <p class="keys"><span class="k0">random</span> <span class="k1">scale-free</span> <span class="k2">small-world ring</span></p>
+  </div>
+  <p class="result" data-b="1">Across 23 datasets: in 13 (mostly synthetic and metabolic), rules with higher jaggedness classify somewhat better (r ≈ 0.2–0.46); the best rules sit at J̄ ≈ 0.5–0.9; a jaggedness-guided search gets within 5% of the best rule while trying only 10–20% of the rules. On social and chemical networks: no such pattern, and the method itself is mediocre there.</p>
+  <p class="cite">each dot: one network, placed by the average and the spread of its fingerprint; five of each kind</p>
+  <p class="illus">illustration — toy networks, not a thesis figure</p>
+</Slide>
+
+<style>
+  .pipe { display: flex; align-items: center; justify-content: center; gap: calc(12 * var(--u)); flex: 1; }
+  .box { width: calc(250 * var(--u)); height: calc(250 * var(--u)); border: calc(3 * var(--u)) solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(14 * var(--u)); text-align: center; font-size: calc(32 * var(--u)); padding: calc(14 * var(--u)); background: var(--bg); }
+  .box svg { width: calc(140 * var(--u)); }
+  .box.out { border-color: var(--accent); color: var(--accent); font-weight: 600; width: calc(200 * var(--u)); }
+  .arrow { font-size: calc(46 * var(--u)); color: var(--muted); }
+
+  .cols { display: flex; justify-content: space-between; flex: 1; }
+  .cols figure { margin: 0; display: flex; flex-direction: column; gap: calc(12 * var(--u)); align-items: center; }
+  .cols figcaption { font-size: calc(38 * var(--u)); }
+  .raster { width: calc(540 * var(--u)); height: calc(430 * var(--u)); }
+  .hist { width: calc(540 * var(--u)); height: calc(250 * var(--u)); }
+
+  .two { display: flex; justify-content: space-around; align-items: flex-start; position: relative; }
+  .two figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
+  .diag { width: calc(520 * var(--u)); height: calc(150 * var(--u)); }
+  .fps { width: calc(640 * var(--u)); height: calc(360 * var(--u)); }
+  .jbar { font-size: calc(34 * var(--u)); }
+  .verdict { font-size: calc(36 * var(--u)); color: var(--accent); font-weight: 600; }
+  .keys { position: absolute; left: 50%; top: calc(170 * var(--u)); transform: translateX(-50%); display: flex; flex-direction: column; gap: calc(10 * var(--u)); font-size: calc(28 * var(--u)); }
+  .keys span::before { content: ''; display: inline-block; width: calc(34 * var(--u)); height: calc(6 * var(--u)); margin-right: calc(10 * var(--u)); vertical-align: middle; }
+  .k0::before { background: var(--muted); } .k1::before { background: var(--accent); } .k2::before { background: #a37f00; }
+  .result { font-size: calc(31 * var(--u)); line-height: 1.3; background: var(--panel); padding: calc(16 * var(--u)) calc(22 * var(--u)); margin-bottom: calc(26 * var(--u)); }
+</style>
+
+<script>
+  import { slide } from '../../scripts/defence/deck';
+  import { stage, onSize } from '../../scripts/defence/stage';
+  import { axes, dot, label, px, py, type Plot } from '../../scripts/defence/plot';
+  import { TOY, toyNet, toyRun, startSeed } from '../../scripts/defence/toy';
+  import { Raster } from '../../scripts/raster';
+  import { parse } from '../../scripts/palette';
+  import classify from '../../data/defence/classify.json';
+
+  const TYPE = (t: { ink: string; accent: string; muted: string }, c: number) => [t.muted, t.accent, '#a37f00'][c];
+  const [smooth, sweet] = classify.examples;
+
+  // ── G1: little pictures in the pipeline boxes ──
+  const glyphs = [
+    '<g stroke="currentColor" stroke-width="3" fill="none"><path d="M20 20 L60 45 L100 25 M60 45 L40 75 L90 70 L60 45 M20 20 L40 75"/></g><g fill="currentColor"><circle cx="20" cy="20" r="7"/><circle cx="60" cy="45" r="7"/><circle cx="100" cy="25" r="7"/><circle cx="40" cy="75" r="7"/><circle cx="90" cy="70" r="7"/></g>',
+    '<g fill="var(--panel)" stroke="var(--line)" stroke-width="2"><rect x="10" y="20" width="20" height="22"/><rect x="30" y="20" width="20" height="22" fill="var(--accent)"/><rect x="50" y="20" width="20" height="22"/><rect x="70" y="20" width="20" height="22" fill="var(--accent)"/><rect x="90" y="20" width="20" height="22"/><rect x="10" y="48" width="20" height="22" fill="var(--ink)"/><rect x="30" y="48" width="20" height="22"/><rect x="50" y="48" width="20" height="22" fill="var(--ink)"/><rect x="70" y="48" width="20" height="22" fill="var(--ink)"/><rect x="90" y="48" width="20" height="22"/></g>',
+    Array.from({ length: 48 }, (_, k) => { const x = k % 12, y = Math.floor(k / 12); return ((x * 7 + y * 3 + x * y) % 5 < 2) ? `<rect x="${6 + x * 9}" y="${10 + y * 18}" width="8" height="16" fill="currentColor"/>` : ''; }).join(''),
+    [18, 34, 52, 30, 16, 8].map((h, k) => `<rect x="${12 + k * 17}" y="${80 - h}" width="14" height="${h}" fill="var(--accent)"/>`).join('') + '<path d="M6 80 H114" stroke="currentColor" stroke-width="2"/>',
+    '<g stroke="currentColor" stroke-width="3" fill="none"><path d="M10 70 L110 20"/></g><g fill="var(--accent)"><circle cx="30" cy="30" r="6"/><circle cx="42" cy="22" r="6"/><circle cx="24" cy="44" r="6"/></g><g fill="currentColor"><rect x="80" y="55" width="11" height="11"/><rect x="94" y="64" width="11" height="11"/><rect x="72" y="70" width="11" height="11"/></g>',
+  ];
+  document.querySelectorAll<SVGSVGElement>('.slide.g1 svg[data-glyph]').forEach((s) => { s.innerHTML = glyphs[+s.dataset.glyph!]; });
+
+  /** A fingerprint as a line over the 20 bins of the share. */
+  function fpLine(st: NonNullable<ReturnType<typeof stage>>, p: Plot, f: number[], color: string, width: number) {
+    const { ctx } = st, bins = f.length;
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round'; ctx.beginPath();
+    f.forEach((v, k) => { const x = px(p, (k + 0.5) / bins), y = py(p, v); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    ctx.stroke();
+  }
+  const ymax = (fps: number[][]) => Math.max(...fps.flat()) * 1.08;
+
+  // ── G2: one pattern per type, then its fingerprint, then all five networks of the type ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.g2')) {
+    const rule = { r: TOY.r, B: sweet.B, S: sweet.S, part: 'uni' as const };
+    const figs = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]')).map((f) => {
+      const c = +f.dataset.type!, net = toyNet(c, 0), run = toyRun(net, rule, startSeed(c, 0)), ras = new Raster(TOY.T, net.n);
+      return { c, net, run, ras, raster: f.querySelector<HTMLCanvasElement>('canvas.raster')!, hist: f.querySelector<HTMLCanvasElement>('canvas.hist')! };
+    });
+    const top = ymax(sweet.fps);
+    let at = 0;
+    function paint() {
+      for (const g of figs) {
+        const st = stage(g.raster);
+        if (st) {
+          const on = parse(st.t.ink), off = parse(st.t.panel);
+          g.net.order.forEach((node, row) => { for (let t = 0; t < TOY.T; t++) g.ras.set(row * TOY.T + t, g.run.s[t * g.net.n + node] ? on : off); });
+          g.ras.flush(); g.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
+        }
+        const sh = stage(g.hist);
+        if (sh) {
+          const p: Plot = { x: 20, y: 14, w: sh.w - 40, h: sh.h - 80, x0: 0, x1: 1, y0: 0, y1: top };
+          sh.ctx.strokeStyle = sh.t.muted; sh.ctx.lineWidth = 2; sh.ctx.beginPath(); sh.ctx.moveTo(p.x, p.y + p.h); sh.ctx.lineTo(p.x + p.w, p.y + p.h); sh.ctx.stroke();
+          label(sh, '0', p.x, p.y + p.h + 26, { size: 26, mono: true, color: sh.t.muted }); label(sh, 'share up', p.x + p.w / 2, p.y + p.h + 26, { size: 26, align: 'center', color: sh.t.muted }); label(sh, '1', p.x + p.w, p.y + p.h + 26, { size: 26, mono: true, align: 'right', color: sh.t.muted });
+          const own = sweet.fps.slice(g.c * TOY.perType, (g.c + 1) * TOY.perType);
+          if (at >= 3) for (const f of own) fpLine(sh, p, f, TYPE(sh.t, g.c), 3);
+          else fpLine(sh, p, own[0], TYPE(sh.t, g.c), 5);
+        }
+      }
+    }
+    slide(s, { set(b) { at = b; paint(); } });
+    for (const g of figs) { onSize(g.raster, paint); onSize(g.hist, paint); }
+  }
+
+  // ── G3: a smooth and a jagged rule, their diagrams and their fifteen fingerprints ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.g3')) {
+    for (const [x, fig] of [smooth, sweet].map((x, i) => [x, s.querySelectorAll<HTMLElement>('figure[data-rule]')[i]] as const)) {
+      const [diag, fps] = Array.from(fig.querySelectorAll<HTMLCanvasElement>('canvas'));
+      onSize(diag, () => {
+        const st = stage(diag); if (!st) return;
+        const { ctx, t } = st, r = TOY.r, w = (st.w - 150) / r, h = (st.h - 16) / 2;
+        label(st, 'raise', 130, 8 + h / 2, { size: 26, align: 'right', color: t.muted }); label(st, 'keep', 130, 12 + 1.5 * h, { size: 26, align: 'right', color: t.muted });
+        for (let i = 0; i < r; i++) for (const [row, mask, col] of [[0, x.B, t.accent], [1, x.S, t.ink]] as const) {
+          const on = (mask >> i) & 1, X = 145 + i * w, Y = 4 + row * (h + 8);
+          ctx.fillStyle = on ? col : t.panel; ctx.fillRect(X + 2, Y, w - 4, h);
+          if (!on) { ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(X + 3, Y + 1, w - 6, h - 2); }
+        }
+      });
+      // every network as a dot: the mean and the spread of its fingerprint, on the same axes for both rules
+      const pts = x.fps.map((f) => { const b = f.length; let m = 0; f.forEach((v, k) => { m += (v * (k + 0.5)) / b; }); let q = 0; f.forEach((v, k) => { q += v * ((k + 0.5) / b - m) ** 2; }); return [m, Math.sqrt(q)]; });
+      onSize(fps, () => {
+        const st = stage(fps); if (!st) return;
+        const p: Plot = { x: 140, y: 10, w: st.w - 160, h: st.h - 110, x0: 0.45, x1: 0.75, y0: 0.1, y1: 0.5 };
+        axes(st, p, { xticks: [[0.5, '0.5'], [0.6, '0.6'], [0.7, '0.7']], yticks: [[0.2, '0.2'], [0.4, '0.4']], xname: 'average share up', yname: 'spread' });
+        pts.forEach(([m, sd], k) => dot(st, px(p, m), py(p, sd), 11, TYPE(st.t, Math.floor(k / TOY.perType)), st.t.bg));
+      });
+    }
+  }
+</script>

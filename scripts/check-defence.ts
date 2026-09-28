@@ -72,3 +72,31 @@ import { pearson } from '../src/scripts/stats.ts';
   for (const t of sync.trials) { const v = replay(t.netSeed, t.startSeed); assert.equal(v.ok, t.ok); assert.equal(v.tick, t.tick); }
   console.log('genotype anchors of the brief hold');
 }
+
+// ── G and H: the precomputed toy data replays exactly from its seeds ──
+import { toyNet, toyRun, startSeed, TOY } from '../src/scripts/defence/toy.ts';
+import { runFrom } from '../src/scripts/consensus.ts';
+import { buildNet } from '../src/scripts/net.ts';
+{
+  const classify = JSON.parse(readFileSync(new URL('../src/data/defence/classify.json', import.meta.url), 'utf8'));
+  for (const x of classify.examples) {
+    const rule: Rule = { r: TOY.r, B: x.B, S: x.S, part: 'uni' };
+    for (const [c, j] of [[0, 0], [1, 2], [2, 4]]) {
+      const fp = toyRun(toyNet(c, j), rule, startSeed(c, j)).fp;
+      fp.forEach((v, k) => assert.ok(Math.abs(v - x.fps[c * TOY.perType + j][k]) < 1e-4, `classify.json fingerprint ${x.B},${x.S} type ${c} net ${j}`));
+    }
+  }
+  const [smooth, sweet] = classify.examples;
+  assert.ok(smooth.jbar <= 0.2 && sweet.jbar >= 0.5 && sweet.jbar <= 0.9 && sweet.acc === 1);
+  const clamp = JSON.parse(readFileSync(new URL('../src/data/defence/clamp.json', import.meta.url), 'utf8'));
+  const net = buildNet(clamp.params.spec, clamp.params.seed, 'none'), rule: Rule = { r: 9, B: 464, S: 488 };
+  assert.deepEqual(Array.from(net.deg), clamp.deg);
+  const s0 = Uint8Array.from(clamp.demo.bits, (ch: string) => +ch), n = net.n, cl = new Int8Array(n);
+  assert.equal(runFrom(net, rule, s0, 100).rho, 1, 'the H1 start ends all up');
+  for (const [k, want] of [['hi', 0], ['lo', (n - 1) / n]] as const) {
+    cl.fill(-1); cl[clamp.demo[k]] = 0; const x = s0.slice(); x[clamp.demo[k]] = 0;
+    assert.ok(Math.abs(runFrom(net, rule, x, 100, cl).rho - want) < 1e-9, `H1 clamp ${k}`);
+  }
+  assert.ok(clamp.summary.spearmanEtaDegree > 0.5 && clamp.summary.spearmanEtaDegree < 0.9);
+  console.log('toy data for G and H replays');
+}

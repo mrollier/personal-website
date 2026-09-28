@@ -7,7 +7,7 @@ import { type Rule, meanField, trial, randomState } from '../../src/scripts/llna
 import { runFrom } from '../../src/scripts/consensus.ts';
 import { candidates, sensitivity, jaggedness } from '../../src/scripts/genotype.ts';
 import { pearson, spearman, median } from '../../src/scripts/stats.ts';
-import { TOY, toyNet, toyRun, startSeed, separability } from '../../src/scripts/defence/toy.ts';
+import { TOY, FEATURES, toyNet, toyFeatures, startSeed, separability, type Features } from '../../src/scripts/defence/toy.ts';
 
 const out = new URL('../../src/data/defence/', import.meta.url);
 mkdirSync(out, { recursive: true });
@@ -41,33 +41,44 @@ function sync() {
   });
 }
 
-// ── classify.json: which rule tells random, scale-free and small-world networks apart (G2, G3) ──
-type Row = { B: number; S: number; J: number; jbar: number; acc: number; ratio: number; fps: number[][]; lively: boolean };
+// ── classify.json: a consensus-seeking rule and a jagged rule on three network types (G2, G3) ──
+type Sep = { acc: number; ratio: number };
+type Row = { B: number; S: number; J: number; jbar: number; lively: boolean; lz: Sep; we: Sep; density: Sep };
+const FEATS = ['lz', 'we', 'density'] as const;
 function classify() {
   const nets = TOY.types.flatMap((_, c) => Array.from({ length: TOY.perType }, (_, j) => ({ c, j, net: toyNet(c, j) })));
   const cls = nets.map((x) => x.c), rows: Row[] = [];
+  const featuresOf = (rule: Rule) => nets.map((x) => toyFeatures(x.net, rule, startSeed(x.c, x.j)));
+  // lively: on every network the rule keeps between a fifth and four fifths of the hands up and at least a fifth changing
+  // each round after the transient, so it separates by the texture of its pattern, not by dying out on one kind of network
+  const isLively = (fs: Features[]) => fs.every((f, k) => { const n = nets[k].net.n, t0 = TOY.burn * n; let on = 0, flip = 0; for (let t = t0; t < f.s.length; t++) { on += f.s[t]; if (t >= t0 + n) flip += f.s[t] ^ f.s[t - n]; } const d = on / (f.s.length - t0), fl = flip / (f.s.length - t0 - n); return d >= 0.2 && d <= 0.8 && fl >= 0.2; });
+  const seps = (fs: Features[]) => Object.fromEntries(FEATS.map((k) => [k, separability(fs.map((f) => f[k]), cls)])) as Record<(typeof FEATS)[number], Sep>;
   for (let B = 0; B < 1 << TOY.r; B++) for (let S = 0; S < 1 << TOY.r; S++) {
-    const rule: Rule = { r: TOY.r, B, S, part: 'uni' }, { J, Jbar } = jaggedness(rule);
-    const runs = nets.map((x) => toyRun(x.net, rule, startSeed(x.c, x.j)));
-    // lively: on every network the rule keeps between a fifth and four fifths of the hands up and at least a fifth changing
-    // each round after the transient, so it separates by the texture of its pattern, not by dying out on one kind of network
-    const lively = runs.every((r, k) => { const n = nets[k].net.n, t0 = TOY.burn * n; let on = 0, flip = 0; for (let t = t0; t < r.s.length; t++) { on += r.s[t]; if (t >= t0 + n) flip += r.s[t] ^ r.s[t - n]; } const d = on / (r.s.length - t0), f = flip / (r.s.length - t0 - n); return d >= 0.2 && d <= 0.8 && f >= 0.2; });
-    const fps = runs.map((r) => r.fp);
-    rows.push({ B, S, J, jbar: Jbar, ...separability(fps, cls), fps, lively });
+    const rule: Rule = { r: TOY.r, B, S, part: 'uni' }, { J, Jbar } = jaggedness(rule), fs = featuresOf(rule);
+    rows.push({ B, S, J, jbar: Jbar, lively: isLively(fs), ...seps(fs) });
   }
-  const byScore = (a: Row, b: Row) => a.acc - b.acc || a.ratio - b.ratio;
-  const typical = (xs: Row[]) => xs.slice().sort(byScore)[Math.floor((xs.length - 1) / 2)];
-  const sweet = rows.filter((x) => x.jbar >= 0.5 && x.jbar <= 0.9 && x.lively).sort(byScore).at(-1)!;
-  const smooth = typical(rows.filter((x) => x.jbar <= 0.2)), jagged = typical(rows.filter((x) => x.jbar >= 0.9));
-  const corr = pearson(rows.map((x) => x.jbar), rows.map((x) => x.acc));
-  const mean = (lo: number, hi: number) => { const g = rows.filter((x) => x.jbar >= lo && x.jbar <= hi); return r3(g.reduce((s, x) => s + x.acc, 0) / g.length); };
-  const pick = (x: Row, role: string) => ({ role, B: x.B, S: x.S, J: x.J, jbar: r3(x.jbar), acc: r3(x.acc), ratio: r3(x.ratio), fps: x.fps.map((f) => f.map((v) => Math.round(v * 1e4) / 1e4)) });
-  console.log(`classify: sweet ${sweet.B},${sweet.S} (J̄ ${sweet.jbar}, acc ${sweet.acc.toFixed(2)}, ratio ${sweet.ratio.toFixed(2)}), smooth ${smooth.B},${smooth.S} (J̄ ${smooth.jbar}, acc ${smooth.acc.toFixed(2)}), jagged ${jagged.B},${jagged.S} (acc ${jagged.acc.toFixed(2)}); Pearson(J̄, acc) over ${rows.length} rules = ${corr.toFixed(3)}; mean acc smooth/sweet/jagged ${mean(0, 0.2)}/${mean(0.5, 0.9)}/${mean(0.9, 1)}`);
+  // the detective: chosen by eye for three clearly different textures among the rules that qualify (lively, 0.5 ≤ J̄ ≤ 0.9,
+  // every feature classifying all fifteen networks right); the qualifying rules are ranked by their weakest spread ratio
+  const qualifies = (x: Row) => x.lively && x.jbar >= 0.5 && x.jbar <= 0.9 && FEATS.every((k) => x[k].acc === 1);
+  const weakest = (x: Row) => Math.min(...FEATS.map((k) => x[k].ratio));
+  const ranked = rows.filter(qualifies).sort((x, y) => weakest(y) - weakest(x));
+  const det = rows.find((x) => x.B === 14 && x.S === 13)!;
+  if (!qualifies(det)) throw new Error('φ⁵₁₄,₁₃ no longer qualifies as the detective');
+  // the consensus-seeking rule of slide F8 (φ⁹₄₈₈,₄₆₄): how many networks reach consensus, and how alike its fingerprints are
+  const cons: Rule = { r: 9, B: 488, S: 464 }, cf = featuresOf(cons), df = featuresOf({ r: TOY.r, B: det.B, S: det.S, part: 'uni' });
+  const consensus = cf.map((f, k) => { const n = nets[k].net.n; for (let t = 0; t < TOY.T; t++) { let on = 0; for (let i = 0; i < n; i++) on += f.s[t * n + i]; if (on === 0 || on === n) return { round: t, up: on === n }; } return null; });
+  const csep = seps(cf), accOf = (xs: Row[], k: (typeof FEATS)[number]) => r3(xs.reduce((acc, x) => acc + x[k].acc, 0) / xs.length);
+  const band = (lo: number, hi: number) => rows.filter((x) => x.jbar >= lo && x.jbar <= hi);
+  const corr = pearson(rows.map((x) => x.jbar), rows.map((x) => x.lz.acc));
+  const r4 = (f: number[]) => f.map((v) => Math.round(v * 1e4) / 1e4);
+  const pack = (role: string, rule: Rule, fs: Features[], sep: Record<(typeof FEATS)[number], Sep>) => ({ role, r: rule.r, B: rule.B, S: rule.S, part: rule.part ?? 'pal', jbar: r3(jaggedness(rule).Jbar), acc: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].acc)])), ratio: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].ratio)])), lz: fs.map((f) => r4(f.lz)), we: fs.map((f) => r4(f.we)), density: fs.map((f) => r4(f.density)) });
+  console.log(`classify: detective ${det.B},${det.S} (J̄ ${det.jbar}, weakest ratio ${weakest(det).toFixed(2)}, rank ${ranked.indexOf(det) + 1} of ${ranked.length} qualifying; top ${ranked.slice(0, 3).map((x) => `${x.B},${x.S}`).join(' ')}); consensus φ⁹₄₈₈,₄₆₄ reaches consensus on ${consensus.filter(Boolean).length}/15, LZ accuracy ${csep.lz.acc.toFixed(2)} ratio ${csep.lz.ratio.toFixed(2)}; Pearson(J̄, LZ accuracy) over ${rows.length} rules = ${corr.toFixed(3)}`);
   save('classify.json', {
-    about: 'Toy version of the Ch. 9 pipeline: which r = 5 rule (uniform left-closed cut) tells three network types apart from their density fingerprints. Illustration, not a thesis figure; the thesis used 23 datasets, degree-segmented density histograms and an SVM.',
-    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', fingerprint: 'normalised histogram of the neighbourhood density of every node, rounds burn to T − 1', classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index', tieBreak: 'between/within spread ratio', choice: 'sweet = most separable (accuracy, then spread ratio) with 0.5 ≤ J̄ ≤ 0.9 among lively rules; smooth = median separability with J̄ ≤ 0.2; jagged = median with J̄ ≥ 0.9', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient' },
-    summary: { rules: rows.length, lively: rows.filter((x) => x.lively).length, pearsonJbarAcc: r3(corr), meanAccSmooth: mean(0, 0.2), meanAccSweet: mean(0.5, 0.9), meanAccJagged: mean(0.9, 1), perfect: rows.filter((x) => x.acc === 1).length },
-    examples: [pick(smooth, 'smooth'), pick(sweet, 'sweet'), pick(jagged, 'jagged')],
+    about: 'Toy version of the Ch. 9 pipeline: fingerprints of three network types under a jagged r = 5 rule (uniform left-closed cut) and under the consensus-seeking rule φ⁹₄₈₈,₄₆₄. Illustration, not a thesis figure; the thesis used 23 datasets, degree-segmented density histograms and an SVM.',
+    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', features: { lz: { ...FEATURES.lz, about: 'Lempel–Ziv (1976) complexity of each person’s row after the transient, times log₂ n / n' }, we: { ...FEATURES.we, about: 'Shannon entropy (bits) of the lengths of the runs of 1s in each person’s row after the transient' }, density: { lo: 0, hi: 1, bins: TOY.bins, about: 'the share of contacts up that every person sees, every round after the transient (Ch. 9 used this, per degree, 40 bins)' } }, classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index; ratio = between-centroid over within-type spread', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient', choice: 'detective φ⁵₁₄,₁₃ picked by eye for distinct textures among the qualifying rules (lively, 0.5 ≤ J̄ ≤ 0.9, accuracy 1 on all three features); consensus φ⁹₄₈₈,₄₆₄ = the consensus-seeking rule of slide F8' },
+    summary: { rules: rows.length, lively: rows.filter((x) => x.lively).length, qualifying: ranked.length, detectiveRank: ranked.indexOf(det) + 1, consensusReached: consensus.filter(Boolean).length, pearsonJbarLzAcc: r3(corr), meanLzAccSmooth: accOf(band(0, 0.2), 'lz'), meanLzAccBand: accOf(band(0.5, 0.9), 'lz'), meanLzAccJagged: accOf(band(0.9, 1), 'lz') },
+    consensusRounds: consensus,
+    examples: [pack('consensus', cons, cf, csep), pack('detective', { r: TOY.r, B: det.B, S: det.S, part: 'uni' }, df, seps(df))],
   });
 }
 

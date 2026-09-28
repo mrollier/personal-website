@@ -117,7 +117,7 @@ import Phi from './Phi.astro';
       label(st, 'survive set σ →', x0, y0 - 30, { size: 28, color: t.muted, mono: true });
       ctx.save(); ctx.translate(x0 - 22, y0); ctx.rotate(Math.PI / 2); label(st, 'born set β →', 0, 0, { size: 28, color: t.muted, mono: true }); ctx.restore();
       if (at < 1) return;
-      const faint = mix(parse(t.panel), parse(t.muted), at >= 2 ? 0.28 : 0.55);
+      const faint = mix(parse(t.panel), parse(t.line), at >= 2 ? 0.4 : 0.75);
       ras.fill(faint); ras.flush(); ras.blit(ctx, { x: x0, y: y0, w: side, h: side }, true);
       const k = side / 512, at2 = (B: number, S: number) => [x0 + (S + 0.5) * k, y0 + (B + 0.5) * k];
       if (at >= 2) for (let B = 0; B < 512; B++) { const [x, y] = at2(B, 511 & ~mirror(B, 9)); dot(st, x, y, 3.2, t.accent); }

@@ -1,6 +1,8 @@
 // Plots on a slide, in design pixels: a unit square (or any range) mapped into a box, axes with a few labelled
 // ticks, curves, dots. Big enough to read from the back row: 28 px tick labels, 32 px axis names.
 import type { Stage } from './stage';
+import { Raster } from '../raster';
+import { parse } from '../palette';
 
 export type Plot = { x: number; y: number; w: number; h: number; x0: number; x1: number; y0: number; y1: number };
 export const px = (p: Plot, v: number) => p.x + ((v - p.x0) / (p.x1 - p.x0)) * p.w;
@@ -51,4 +53,14 @@ export function label(st: Stage, s: string, x: number, y: number, o: { color?: s
     ctx.fillStyle = t.bg; ctx.fillRect(x0 - 6, y - size * 0.62, w + 12, size * 1.24);
   }
   ctx.fillStyle = o.color ?? t.ink; ctx.fillText(s, x, y);
+}
+
+const rasters = new Map<string, Raster>(); // one bitmap per size, written and drawn in the same call
+/** A node × time pattern with square cells: `rows` people (a sample through `order`, most contacts first) down, `rounds`
+ * rounds across, `on(t, i)` whether person i has a hand up in round t; drawn as a crisp bitmap from (x, y). */
+export function pattern(st: Stage, order: number[], rows: number, rounds: number, on: (t: number, i: number) => boolean, x = 0, y = 0, side = Math.min(st.w / rounds, st.h / rows)): void {
+  const key = `${rounds}x${rows}`, ras = rasters.get(key) ?? new Raster(rounds, rows), ink = parse(st.t.ink), off = parse(st.t.panel);
+  rasters.set(key, ras);
+  for (let r = 0; r < rows; r++) { const i = order[Math.floor((r * order.length) / rows)]; for (let t = 0; t < rounds; t++) ras.set(r * rounds + t, on(t, i) ? ink : off); }
+  ras.flush(); ras.blit(st.ctx, { x, y, w: rounds * side, h: rows * side });
 }

@@ -1,34 +1,32 @@
 ---
-// I1–I3: the chain from rule 90 to network science, what comes after the thesis, and the close: the cover art, a QR
-// code to the site (drawn at build time, no library at run time) and one flipped cell that sets the still life moving.
+// I1–I3: the talk once more, one block at a time, each with a small animation to remind the room what happened; what
+// comes after the thesis; and the close: the title's slogan over the cover's landscape, brought together, then one
+// flipped cell that sets the still life moving, a QR code to the site (drawn at build time, no library at run time).
 import Slide from './Slide.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
 const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
-const chain = [
-  { step: 'rule 90', g: 'left XOR right', p: 'a Sierpiński triangle' },
-  { step: '256 elementary rules', g: 'eight-case tables', p: 'dies, repeats, random, structures' },
-  { step: 'the Game of Life', g: 'born at 3, survives at 2 or 3', p: 'gliders and still lifes' },
-  { step: 'Life-like network automata', g: 'rules on shares', p: 'any network' },
-  { step: 'two numbers, two curves', g: 'Hamming weight, Boolean sensitivity', p: 'final share, spreading differences' },
-  { step: '27 synchronisers, consensus rules', g: 'mean-field conditions', p: 'flashing, freezing' },
-  { step: 'network science', g: 'jaggedness, a probe rule', p: 'classifying networks · finding important nodes' },
+const recap = [
+  { name: 'Be a cell', say: 'You were cells. One rule about two neighbours, rule 90, drew a Sierpiński triangle.' },
+  { name: 'Cellular automata', say: 'Change the rule and the world changes: 256 rules in a row, and the Game of Life on a grid.' },
+  { name: 'Network automata', say: 'On a network, anyone can be your neighbour: count the share of your contacts, not the number.' },
+  { name: 'Reading the rule', say: 'Two numbers read a rule before it runs, and found 27 synchronisers among 262,144 rules without a single simulation.' },
+  { name: 'Which network?', say: 'A jagged rule draws a fingerprint of the network it runs on.' },
+  { name: 'The stubborn person', say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
 ];
 ---
-<Slide label="What we did" class="i1">
+<Slide label="What we did" builds={recap.length - 1} class="i1">
   <h2>What we did</h2>
-  <div class="chain">
-    <p class="band g">genotype: the rule</p>
-    <div class="steps">
-      {chain.map((c) => (
-        <div class="step">
-          <p class="gt">{c.g}</p>
-          <p class="nm">{c.step}</p>
-          <p class="ph">{c.p}</p>
-        </div>
-      ))}
+  <div class="row grow i1-row">
+    <ol class="i1-steps">
+      {recap.map((r, k) => <li data-k={k}>{r.name}</li>)}
+    </ol>
+    <div class="col i1-show">
+      <canvas class="i1-anim" aria-label="A small animation of the part of the talk named on the left"></canvas>
+      <div class="stack i1-say">
+        {recap.map((r, k) => <p data-b={k || undefined} data-b-off={k < recap.length - 1 ? k + 1 : undefined}>{r.say}</p>)}
+      </div>
     </div>
-    <p class="band p">phenotype: the behaviour</p>
   </div>
 </Slide>
 
@@ -36,67 +34,248 @@ const chain = [
   <h2>Beyond this thesis</h2>
   <ol class="beyond">
     <li><b>Space and time at BionamiX.</b> The cellular-automaton paradigm models spatial processes, such as groundwater and wildfire spread. They need the extensions reviewed in the taxonomy: non-uniform rules, more states, larger neighbourhoods.<span class="pub" data-b="1"><span class="title">The MACCA-GW groundwater flow model</span><span class="where">ACRI 2026 proceedings, accepted</span></span></li>
-    <li><b>Discrete dynamics and deep learning.</b> Modest work: cellular automata can be hosted <i>exactly</i> inside neural networks, and neural networks can classify their patterns. One lesson: a network scored 98% at classifying behaviour, but one row of the picture already contains the whole rule, with more than 99% probability. High accuracy is not understanding.</li>
-    <li><b>Next: mechanistic interpretability.</b> Reading the rules inside artificial neural networks: the same gap between rule and behaviour.</li>
+    <li><b>Next: what goes on inside artificial intelligence.</b> A trained neural network is simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. That is where I want to go, and the way of thinking in this thesis, from the parts to the whole and back, can help.</li>
   </ol>
 </Slide>
 
-<Slide label="Thank you" builds={1} class="i3">
+<Slide label="Thank you" builds={2} class="i3">
   <canvas class="art" aria-hidden="true"></canvas>
-  <div class="thanks">
-    <p class="ty">Thank you</p>
-    <svg class="qr" viewBox={`0 0 ${qsize} ${qsize}`} role="img" aria-label="QR code for michielrollier.be"><rect width={qsize} height={qsize} fill="#fff" /><path d={qd} fill="#000" /></svg>
-    <p class="url mono">michielrollier.be</p>
-    <p class="small">every demo of tonight, and the thesis chapter by chapter</p>
+  <div class="i3-t">
+    <div class="slogan">
+      <p class="half top">The rich landscape<span class="mono">what we see</span></p>
+      <p class="half bottom">of iterated simplicity<span class="mono">what we write down</span></p>
+    </div>
+    <p class="worlds" data-b="1">We brought these two worlds closer together.</p>
+    <div class="thanks" data-b="2">
+      <p class="ty">Thank you</p>
+      <div class="qrrow">
+        <svg class="qr" viewBox={`0 0 ${qsize} ${qsize}`} role="img" aria-label="QR code for michielrollier.be"><rect width={qsize} height={qsize} fill="#fbf8f1" /><path d={qd} fill="#0c2448" /></svg>
+        <div class="col"><p class="url mono">michielrollier.be</p><p class="small">every demo of tonight, and the thesis chapter by chapter</p></div>
+      </div>
+    </div>
   </div>
 </Slide>
 
 <style>
-  .chain { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: calc(18 * var(--u)); }
-  .band { font-family: var(--mono); font-size: calc(30 * var(--u)); color: var(--muted); border-bottom: calc(3 * var(--u)) solid var(--line); padding-bottom: calc(6 * var(--u)); }
-  .band.p { border-bottom: 0; border-top: calc(3 * var(--u)) solid var(--line); padding-top: calc(6 * var(--u)); }
-  .steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: calc(14 * var(--u)); }
-  .step { display: flex; flex-direction: column; gap: calc(14 * var(--u)); text-align: center; position: relative; }
-  .step + .step::before { content: '→'; position: absolute; left: calc(-24 * var(--u)); top: 50%; transform: translateY(-50%); font-size: calc(34 * var(--u)); color: var(--muted); }
-  .gt, .ph { font-size: calc(25 * var(--u)); color: var(--muted); min-height: 3.8em; display: flex; align-items: center; justify-content: center; }
-  .gt { align-items: flex-end; }
-  .ph { align-items: flex-start; }
-  .nm { font-size: calc(31 * var(--u)); font-weight: 600; background: var(--panel); padding: calc(20 * var(--u)) calc(10 * var(--u)); min-height: 4.2em; display: flex; align-items: center; justify-content: center; }
+  .i1-row { gap: calc(70 * var(--u)); align-items: stretch; }
+  .i1-steps { list-style: none; padding: 0; width: calc(430 * var(--u)); gap: calc(26 * var(--u)); justify-content: center; counter-reset: step; }
+  .i1-steps li { font-family: var(--mono); font-size: calc(34 * var(--u)); color: var(--muted); counter-increment: step; display: flex; gap: calc(18 * var(--u)); align-items: baseline; transition: color 0.3s ease; }
+  .i1-steps li::before { content: counter(step); font-size: 0.75em; width: 1.6em; height: 1.6em; display: inline-grid; place-items: center; border: calc(3 * var(--u)) solid var(--line); border-radius: 50%; flex: none; }
+  .i1-steps li.done { color: var(--ink); }
+  .i1-steps li.now { color: var(--accent); font-weight: 700; }
+  .i1-steps li.now::before { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .i1-show { flex: 1; gap: calc(24 * var(--u)); }
+  .i1-anim { width: calc(1130 * var(--u)); height: calc(640 * var(--u)); }
+  .i1-say p { font-size: calc(38 * var(--u)); line-height: 1.3; max-width: calc(1130 * var(--u)); }
 
   .pub { display: flex; align-items: baseline; gap: calc(20 * var(--u)); width: fit-content; margin-top: calc(14 * var(--u)); background: var(--panel); padding: calc(12 * var(--u)) calc(18 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); }
   .pub .title { font-size: calc(30 * var(--u)); }
   .pub .where { font-family: var(--mono); font-size: calc(24 * var(--u)); color: var(--muted); }
-  .beyond { font-size: calc(36 * var(--u)); gap: calc(34 * var(--u)); max-width: calc(1600 * var(--u)); margin-top: calc(10 * var(--u)); }
+  .beyond { font-size: calc(38 * var(--u)); gap: calc(44 * var(--u)); max-width: calc(1560 * var(--u)); margin-top: calc(30 * var(--u)); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .thanks { position: absolute; left: calc(110 * var(--u)); top: calc(90 * var(--u)); display: flex; flex-direction: column; gap: calc(22 * var(--u)); background: var(--bg); padding: calc(30 * var(--u)); }
-  .ty { font-family: var(--mono); font-weight: 600; font-size: calc(96 * var(--u)); letter-spacing: -0.02em; }
-  .qr { width: calc(470 * var(--u)); height: calc(470 * var(--u)); }
-  .url { font-size: calc(46 * var(--u)); }
+  /* three states: the halves far apart; brought together (.together); moved up to make room for the thanks (.thanked) */
+  .i3-t { position: relative; width: calc(1060 * var(--u)); height: 100%; }
+  .half, .worlds { position: absolute; left: 0; transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1); }
+  .half { font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; font-size: calc(84 * var(--u)); }
+  .half span { display: block; font-size: calc(30 * var(--u)); font-weight: 400; letter-spacing: 0; color: var(--muted); margin-top: calc(8 * var(--u)); transition: opacity 0.6s ease; }
+  .half.top { top: calc(60 * var(--u)); }
+  .half.bottom { top: calc(390 * var(--u)); }
+  .worlds { top: calc(420 * var(--u)); font-size: calc(46 * var(--u)); }
+  :global(.i3.together) .half.top { transform: translateY(calc(130 * var(--u))); }
+  :global(.i3.together) .half.bottom { transform: translateY(calc(-110 * var(--u))); }
+  :global(.i3.together) .half span { opacity: 0; }
+  :global(.i3.thanked) .half.top { transform: translateY(0); }
+  :global(.i3.thanked) .half.bottom { transform: translateY(calc(-240 * var(--u))); }
+  :global(.i3.thanked) .worlds { transform: translateY(calc(-130 * var(--u))); }
+  .thanks { position: absolute; left: 0; top: calc(420 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .ty { font-family: var(--mono); font-weight: 600; font-size: calc(72 * var(--u)); letter-spacing: -0.02em; }
+  .qrrow { display: flex; gap: calc(30 * var(--u)); align-items: center; }
+  .qr { width: calc(270 * var(--u)); height: calc(270 * var(--u)); flex: none; }
+  .url { font-size: calc(44 * var(--u)); }
+  .qrrow .small { max-width: calc(480 * var(--u)); }
 </style>
 
 <script>
   import { slide, type How } from '../../scripts/defence/deck';
-  import { stage, onSize, ticker } from '../../scripts/defence/stage';
-  import { stillMosaic, drawCells } from '../../scripts/defence/cover';
-  import { ActiveLife } from '../../scripts/life';
-  import tiles from '../../data/tiles.json';
+  import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
+  import { pattern } from '../../scripts/defence/plot';
+  import { decodeMosaic, mosaicPainter, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { step as ecaStep, seedRow } from '../../scripts/eca';
+  import { stepLife, ActiveLife } from '../../scripts/life';
+  import { room, wire, COLS, ROWS } from '../../scripts/defence/room';
+  import { lattice, makeRng, build } from '../../scripts/net';
+  import { type Rule, step, randomState, density } from '../../scripts/llna';
+  import { stepClamped } from '../../scripts/consensus';
+  import { toyNet, startSeed } from '../../scripts/defence/toy';
+  import mosaicData from '../../data/defence/mosaic.json';
+  import sync from '../../data/defence/sync.json';
+  import classify from '../../data/defence/classify.json';
+  import clamp from '../../data/defence/clamp.json';
 
-  // ── I3: the still life, then one flipped cell ──
+  // ── I1: one small animation per block of the talk, in one canvas, square cells throughout ──
+  type Act = { rate: number; reset(): void; advance(): void; paint(st: Stage): void };
+  /** A grid of W × H square cells centred in the canvas; `on(x, y)` says which are filled. */
+  function cells(st: Stage, W: number, H: number, on: (x: number, y: number) => boolean, gap = 0) {
+    const { ctx, t } = st, c = Math.min(st.w / W, st.h / H), x0 = (st.w - W * c) / 2, y0 = (st.h - H * c) / 2;
+    ctx.fillStyle = t.panel; ctx.fillRect(x0, y0, W * c, H * c); ctx.fillStyle = t.ink;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) ctx.fillRect(x0 + x * c, y0 + y * c, c - gap, c - gap);
+  }
+
+  // 1. rule 90 from one cell, a row per tick, then a pause and again
+  const R90 = (() => {
+    const W = 81, H = 41; let rows: Uint8Array[] = [], hold = 0;
+    return {
+      rate: 10,
+      reset() { rows = [seedRow(W, 'seed')]; hold = 0; },
+      advance() { if (rows.length < H) rows.push(ecaStep(rows[rows.length - 1], 90)); else if (++hold > 25) this.reset(); },
+      paint(st) { cells(st, W, H, (x, y) => !!rows[y]?.[x]); },
+    } satisfies Act;
+  })();
+
+  // 2. the Game of Life: Gosper's glider gun, the gliders swallowed at the far edges
+  const GUN = (() => {
+    const W = 64, H = 36, g0 = new Uint8Array(W * H);
+    const art = ['........................O', '......................O.O', '............OO......OO............OO', '...........O...O....OO............OO', 'OO........O.....O...OO', 'OO........O...O.OO....O.O', '..........O.....O.......O', '...........O...O', '............OO'];
+    art.forEach((line, y) => [...line].forEach((ch, x) => { if (ch === 'O') g0[(y + 2) * W + x + 2] = 1; }));
+    let g = g0.slice(), out = new Uint8Array(W * H), gens = 0;
+    return {
+      rate: 12,
+      reset() { g = g0.slice(); gens = 0; },
+      advance() {
+        stepLife(g, W, H, out); [g, out] = [out, g];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x >= W - 3 || y >= H - 3) g[y * W + x] = 0;
+        if (++gens > 300) this.reset();
+      },
+      paint(st) { cells(st, W, H, (x, y) => !!g[y * W + x], 1); },
+    } satisfies Act;
+  })();
+
+  // 3. the room: the grid of contacts, then a growing share p of the links rewired across the room, and back
+  const ROOM = (() => {
+    const R = room(12836), you = 4 * COLS + 3; let p = 0, to = wire(R, 0), hold = 0;
+    // the room turned on its side: the ten rows run across
+    const X = (i: number) => Math.floor(i / COLS), Y = (i: number) => i % COLS;
+    return {
+      rate: 10,
+      reset() { p = 0; to = wire(R, 0); hold = 0; },
+      advance() { if (p < 0.3) { p = Math.min(0.3, p + 0.006); to = wire(R, p); } else if (++hold > 25) this.reset(); },
+      paint(st) {
+        const { ctx, t } = st, gap = Math.min(st.w / (ROWS + 1), st.h / (COLS + 1)), x0 = (st.w - (ROWS - 1) * gap) / 2, y0 = (st.h - (COLS - 1) * gap) / 2;
+        const px = (i: number) => x0 + X(i) * gap, py = (i: number) => y0 + Y(i) * gap;
+        ctx.lineCap = 'round';
+        for (const mine of [false, true]) {
+          ctx.beginPath();
+          R.links.forEach((l, k) => { if ((l.stay === you || to[k] === you) === mine) { ctx.moveTo(px(l.stay), py(l.stay)); ctx.lineTo(px(to[k]), py(to[k])); } });
+          ctx.strokeStyle = mine ? t.accent : t.muted; ctx.globalAlpha = mine ? 1 : 0.45; ctx.lineWidth = mine ? 4 : 2.5; ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < COLS * ROWS; i++) { ctx.beginPath(); ctx.arc(px(i), py(i), i === you ? 17 : 13, 0, 2 * Math.PI); ctx.fillStyle = i === you ? t.accent : t.ink; ctx.fill(); }
+        ctx.font = `600 34px ${t.mono}`; ctx.fillStyle = t.ink; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+        ctx.fillText(`p = ${p.toFixed(2)}`, st.w - 10, 6);
+      },
+    } satisfies Act;
+  })();
+
+  // 4. the synchroniser φ⁹₂₃,₄₇ on the rewired grid of slide F7: chaos, then the whole grid in step. Never more than
+  // 3 rounds a second, 2 once it flashes in step (the limit for a room)
+  const SYNC = (() => {
+    const side = 30, N = side * side, WIN: Rule = { r: 9, B: 23, S: 47 }, net = lattice(side, 8, 0.2, makeRng(sync.demo.netSeed));
+    let a = new Uint8Array(N), b = new Uint8Array(N), tick = 0, after = -1;
+    const act = {
+      rate: 3,
+      reset() { a = randomState(N, 0.5, makeRng(sync.demo.startSeed)); tick = 0; after = -1; act.rate = 3; },
+      advance() {
+        step(a, net, WIN, b); [a, b] = [b, a]; tick++;
+        const r = density(a);
+        if (after < 0 && (r === 0 || r === 1)) { after = 0; act.rate = 2; }
+        if (after >= 0 && ++after > 12) act.reset();
+      },
+      paint(st: Stage) { cells(st, side, side, (x, y) => !!a[y * side + x], 1.5); },
+    };
+    return act;
+  })();
+
+  // 5. the detective φ⁵₁₄,₁₃ on one network of each kind: the last 50 rounds of 50 people, rolling
+  const DETECT = (() => {
+    const det = classify.examples[1], rule: Rule = { r: det.r, B: det.B, S: det.S, part: 'uni' }, nets = [0, 1, 2].map((c) => toyNet(c, 0)), L = 50;
+    let st0: Uint8Array[] = [], out: Uint8Array[] = [], hist: Uint8Array[][] = [];
+    const names = classify.params.types.map((x) => x.name);
+    return {
+      rate: 8,
+      reset() {
+        st0 = nets.map((net, c) => randomState(net.n, 0.5, makeRng(startSeed(c, 0)))); out = nets.map((net) => new Uint8Array(net.n)); hist = nets.map(() => []);
+        for (let k = 0; k < L; k++) this.advance();
+      },
+      advance() { nets.forEach((net, c) => { hist[c].push(st0[c].slice()); if (hist[c].length > L) hist[c].shift(); step(st0[c], net, rule, out[c]); [st0[c], out[c]] = [out[c], st0[c]]; }); },
+      paint(st) {
+        const { ctx, t } = st, side = Math.min((st.w - 80) / 3, st.h - 60), c = side / L;
+        nets.forEach((net, k) => {
+          const x0 = (st.w - 3 * side - 80) / 2 + k * (side + 40), y0 = 0;
+          pattern(st, net.order, L, L, (j, i) => !!hist[k][j]?.[i], x0, y0, c);
+          ctx.font = `400 28px ${t.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = ['#3e679e', t.danger, t.ink][k];
+          ctx.fillText(names[k], x0 + side / 2, y0 + side + 14);
+        });
+      },
+    } satisfies Act;
+  })();
+
+  // 6. the stubborn person of slide H1 on the toy network: the important one, and the whole room follows
+  const STUB = (() => {
+    const RULE: Rule = { r: 9, B: 464, S: 488 }, n = clamp.deg.length, net = build('ba', n, clamp.edges as [number, number][]);
+    const start = Uint8Array.from(clamp.demo.bits, (ch) => +ch), who = clamp.demo.hi, cl = new Int8Array(n).fill(-1); cl[who] = 0;
+    let a = start.slice(), b = new Uint8Array(n), hold = 0;
+    return {
+      rate: 3,
+      reset() { a = start.slice(); a[who] = 0; hold = 0; },
+      advance() { if (density(a) > 0) { stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; } else if (++hold > 6) this.reset(); },
+      paint(st) {
+        const { ctx, t } = st, s = Math.min(st.w, st.h), bx = { x: (st.w - s) / 2 + 20, y: 20, w: s - 40, h: s - 40 };
+        const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h;
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+        ctx.stroke();
+        for (let i = 0; i < n; i++) {
+          const r = 7 + 1.6 * Math.sqrt(clamp.deg[i]);
+          ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.fillStyle = a[i] ? t.ink : t.panel; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
+          if (i === who) { ctx.beginPath(); ctx.arc(X(i), Y(i), r + 9, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = t.danger; ctx.stroke(); }
+        }
+      },
+    } satisfies Act;
+  })();
+
+  const ACTS: Act[] = [R90, GUN, ROOM, SYNC, DETECT, STUB];
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.i1')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-steps li'));
+    let at = 0;
+    const paint = () => { const st = stage(c); if (st) ACTS[at].paint(st); };
+    const run = ticker(s, ACTS[0].rate, () => { ACTS[at].advance(); run.rate = ACTS[at].rate; }, paint);
+    const show = (b: number) => {
+      at = b; ACTS[at].reset(); run.rate = ACTS[at].rate;
+      items.forEach((li, k) => { li.classList.toggle('now', k === b); li.classList.toggle('done', k < b); });
+      paint(); run.play(true);
+    };
+    show(0);
+    slide(s, { set: show, leave() { run.play(false); } });
+    onSize(c, paint);
+  }
+
+  // ── I3: the slogan's two halves come together over the landscape, then one flipped cell, and thanks ──
+  const m = decodeMosaic(mosaicData as MosaicJson);
+  // the flipped cell: the live cell nearest to a point in the big tiles on the right of the page
+  let flip = -1, best = Infinity;
+  for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) { const i = (y + m.M) * m.PW + x + m.M; if (m.live[i]) { const d = (x - 0.8 * m.W) ** 2 + (y - 0.5 * m.H) ** 2; if (d < best) { best = d; flip = i; } } }
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, view = 216;
-    const base = stillMosaic(tiles, 13, 8, 3, 20261002, 0.5);
-    let art = { ...base, g: base.g.slice() }, life = new ActiveLife(art.W, art.H), gens = 0;
-    // the flipped cell: the live cell nearest to a fixed point in the dense part of the view
-    let flip = -1, best = Infinity;
-    for (let y = 0; y < 122; y++) for (let x = 0; x < view; x++) if (base.g[y * base.W + x]) { const d = (x - 168) ** 2 + (y - 60) ** 2; if (d < best) { best = d; flip = y * base.W + x; } }
-    const reset = () => { art = { ...base, g: base.g.slice() }; life = new ActiveLife(art.W, art.H); gens = 0; };
-    const paint = () => { const st = stage(c); if (st) drawCells(st.ctx, art, 0, 0, st.w / view, st.w, st.h, st.t.ink); };
-    const run = ticker(s, 10, () => { gens++; return life.step(art.g) === 0; }, paint);
+    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448');
+    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0;
+    const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; };
+    const paint = () => { const st = stage(c); if (st) draw(st.ctx, live, 0, 0, st.w, st.h); };
+    const run = ticker(s, 10, () => { gens++; return life.step(live) === 0; }, paint);
     slide(s, {
       set(b: number, how: How) {
-        if (b === 0) { run.play(false); reset(); }
-        else if (how === 'next' || gens === 0) { reset(); art.g[flip] ^= 1; life.touch(flip % art.W, Math.floor(flip / art.W)); run.play(true); }
+        s.classList.toggle('together', b >= 1); s.classList.toggle('thanked', b >= 2);
+        if (b < 2) { run.play(false); reset(); }
+        else if (how === 'next' || gens === 0) { reset(); live[flip] ^= 1; life.touch(flip % m.PW, Math.floor(flip / m.PW)); run.play(true); }
         paint();
       },
       enter() { reset(); },

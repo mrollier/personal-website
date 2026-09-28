@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
 import { stillMosaic } from '../src/scripts/defence/cover.ts';
+import { decodeMosaic } from '../src/scripts/defence/mosaic.ts';
 import { stepLife } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS } from '../src/scripts/defence/room.ts';
@@ -20,7 +21,15 @@ assert.equal(code.version, 2); assert.equal(code.size, 25);
 for (const [x, y] of [[0, 0], [24, 0], [0, 24], [8, 17]]) assert.ok(code.dark(x, y));
 for (const [x, y] of [[7, 7], [17, 7], [7, 17]]) assert.ok(!code.dark(x, y));
 
-// The stand-in cover art is a still life, with and without tiles across the torus edge.
+// The title and closing mosaic (packed with the cover's code) is a still life on its padded torus, and every live cell
+// of the page sits on a tile's ground.
+{
+  const m = decodeMosaic(JSON.parse(readFileSync(new URL('../src/data/defence/mosaic.json', import.meta.url), 'utf8')));
+  assert.equal(m.W * 9, m.H * 16);
+  assert.equal(stepLife(m.live, m.PW, m.PH, new Uint8Array(m.PW * m.PH)), 0, 'the title mosaic is not a still life');
+  for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) if (m.live[(y + m.M) * m.PW + x + m.M]) assert.ok(m.ground[y * m.W + x] > 0, 'a live cell on the field');
+}
+// The still-life art of slide C3 is a still life, with and without tiles across the torus edge.
 const tiles = JSON.parse(readFileSync(new URL('../src/data/tiles.json', import.meta.url), 'utf8'));
 for (const wrap of [false, true]) {
   const art = stillMosaic(tiles, 13, 8, 3, 20261002, 0.5, -0.25, wrap), out = new Uint8Array(art.W * art.H);
@@ -106,20 +115,27 @@ import { pearson } from '../src/scripts/stats.ts';
 }
 
 // ── G and H: the precomputed toy data replays exactly from its seeds ──
-import { toyNet, toyRun, startSeed, TOY } from '../src/scripts/defence/toy.ts';
+import { toyNet, toyFeatures, startSeed, lempelZiv, wordEntropy, TOY } from '../src/scripts/defence/toy.ts';
 import { runFrom } from '../src/scripts/consensus.ts';
 import { buildNet } from '../src/scripts/net.ts';
 {
+  // Lempel–Ziv: Kaspar and Schuster's worked example parses into six phrases; word entropy of runs 2, 1, 3 is log₂ 3
+  const ks = '0001101001000101'.split('').map(Number);
+  assert.equal(Math.round((lempelZiv(ks) * ks.length) / Math.log2(ks.length)), 6);
+  assert.ok(Math.abs(wordEntropy([1, 1, 0, 1, 0, 1, 1, 1, 0]) - Math.log2(3)) < 1e-12);
+  assert.equal(wordEntropy([1, 1, 1]), 0); assert.equal(wordEntropy([0, 0]), 0);
   const classify = JSON.parse(readFileSync(new URL('../src/data/defence/classify.json', import.meta.url), 'utf8'));
   for (const x of classify.examples) {
-    const rule: Rule = { r: TOY.r, B: x.B, S: x.S, part: 'uni' };
-    for (const [c, j] of [[0, 0], [1, 2], [2, 4]]) {
-      const fp = toyRun(toyNet(c, j), rule, startSeed(c, j)).fp;
-      fp.forEach((v, k) => assert.ok(Math.abs(v - x.fps[c * TOY.perType + j][k]) < 1e-4, `classify.json fingerprint ${x.B},${x.S} type ${c} net ${j}`));
+    const rule: Rule = { r: x.r, B: x.B, S: x.S, part: x.part };
+    for (const [c, j] of [[0, 0], [1, 0], [2, 0], [1, 2], [2, 4]]) {
+      const f = toyFeatures(toyNet(c, j), rule, startSeed(c, j));
+      for (const k of ['lz', 'we', 'density'] as const) f[k].forEach((v, b) => assert.ok(Math.abs(v - x[k][c * TOY.perType + j][b]) < 1e-4, `classify.json ${k} ${x.B},${x.S} type ${c} net ${j}`));
     }
   }
-  const [smooth, sweet] = classify.examples;
-  assert.ok(smooth.jbar <= 0.2 && sweet.jbar >= 0.5 && sweet.jbar <= 0.9 && sweet.acc === 1);
+  const [cons, det] = classify.examples;
+  assert.ok(cons.B === 488 && cons.S === 464 && det.jbar >= 0.5 && det.jbar <= 0.9 && det.acc.lz === 1 && det.acc.we === 1 && det.acc.density === 1);
+  // the three networks slide G3 shows reach consensus under the consensus-seeking rule
+  for (const c of [0, 1, 2]) assert.ok(classify.consensusRounds[c * TOY.perType] !== null, `G3 network ${c} reaches consensus`);
   const clamp = JSON.parse(readFileSync(new URL('../src/data/defence/clamp.json', import.meta.url), 'utf8'));
   const net = buildNet(clamp.params.spec, clamp.params.seed, 'none'), rule: Rule = { r: 9, B: 464, S: 488 };
   assert.deepEqual(Array.from(net.deg), clamp.deg);

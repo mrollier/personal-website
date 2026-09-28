@@ -1,6 +1,6 @@
-// The cover art as Game of Life cells. Until the real cover arrives in src/assets/defence/, a still-life mosaic built
-// from the tiles of game-of-life-mosaics (the bank behind the site's background): empty on the left, where the title
-// sits, and denser to the right. Whole tile periods on a torus, so the grid is a still life everywhere, edges included.
+// The still-life art of slide C3 as Game of Life cells: a mosaic of one level built from the tiles of
+// game-of-life-mosaics (the bank behind the site's background), empty on the left, where the text sits, and denser to
+// the right. (The title and closing art is the multi-level mosaic of mosaic.ts.) Whole tile periods on a torus, so the grid is a still life everywhere, edges included.
 import { makeRng } from '../net.ts';
 
 export type Tiles = Record<string, string[]>; // src/data/tiles.json: per level, base64 bit-packed 6L × 6L tiles by population

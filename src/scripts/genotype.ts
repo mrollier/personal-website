@@ -31,23 +31,39 @@ export const bound = (hw: number, k: number) => 2 * (k + 1) * Math.min(hw, 1 - h
 /** ⟨δ^{t+1}⟩ for degree k, Eq. (5.5): two configurations at density ρ that differ in a share δ of the nodes, each node and
  * each defect placed independently; the expected share that differs after one tick. At ρ = ½ the slope at δ = 0 is BS_k. */
 export function derrida(rule: Rule, k: number, rho: number, delta: number): number {
-  if (delta <= 0) return 0;
-  let total = 0;
+  return derridaAt(derridaCoeffs(rule, k, rho), delta);
+}
+
+/** Everything in the Derrida map that does not depend on δ: for each number d of toggled neighbours, the chance of a
+ * different output when the node keeps its state (A) and when it is toggled too (B). Computed once per rule, degree and
+ * density, the curve is then O(k) per point, which keeps a slider over k smooth. */
+export function derridaCoeffs(rule: Rule, k: number, rho: number): { k: number; A: Float64Array; B: Float64Array } {
+  const A = new Float64Array(k + 1), B = new Float64Array(k + 1);
   for (let q = 0; q <= k; q++) {
     const pq = choose(k, q) * rho ** q * (1 - rho) ** (k - q); if (pq === 0) continue;
     for (let d = 0; d <= k; d++) {
-      const pd = choose(k, d) * delta ** d * (1 - delta) ** (k - d); if (pd === 0) continue;
       const lo = Math.max(0, d + q - k), hi = Math.min(d, q), ckd = choose(k, d);
       for (let tau = lo; tau <= hi; tau++) {
         const pt = (choose(q, tau) * choose(k - q, d - tau)) / ckd, q2 = q - 2 * tau + d;
         for (const s of [0, 1]) {
           const ps = s ? rho : 1 - rho; if (ps === 0) continue;
-          const here = phi(s, q, k, rule);
-          // c = 0: the node itself keeps its state; c = 1: it is toggled too
-          total += pq * pd * pt * ps * ((1 - delta) * (here ^ phi(s, q2, k, rule)) + delta * (here ^ phi(s ^ 1, q2, k, rule)));
+          const here = phi(s, q, k, rule), w = pq * pt * ps;
+          A[d] += w * (here ^ phi(s, q2, k, rule)); // the node itself keeps its state
+          B[d] += w * (here ^ phi(s ^ 1, q2, k, rule)); // it is toggled too
         }
       }
     }
+  }
+  return { k, A, B };
+}
+
+export function derridaAt(c: { k: number; A: Float64Array; B: Float64Array }, delta: number): number {
+  if (delta <= 0) return 0;
+  const { k, A, B } = c;
+  let total = 0;
+  for (let d = 0; d <= k; d++) {
+    const pd = choose(k, d) * delta ** d * (1 - delta) ** (k - d); if (pd === 0) continue;
+    total += pd * ((1 - delta) * A[d] + delta * B[d]);
   }
   return total;
 }

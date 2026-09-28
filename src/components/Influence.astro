@@ -61,7 +61,8 @@ const { kind = 'npa' } = Astro.props;
   import { CENTRALITIES, centrality, type Centrality } from '../scripts/centrality';
   import { spearman } from '../scripts/stats';
   import { ruleName } from '../scripts/llna';
-  import { buildNet, latticeLink, type Net } from '../scripts/net';
+  import { latticeLink, type Net } from '../scripts/net';
+  import { buildLive } from '../scripts/settle';
   import { Jobs, Cancelled } from '../scripts/jobs';
   import type { EtaResult } from '../scripts/consensus';
   import { parse, mix, css } from '../scripts/palette';
@@ -75,7 +76,7 @@ const { kind = 'npa' } = Astro.props;
     const kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, cIn = $<HTMLSelectElement>('c');
     const runBtn = $<HTMLButtonElement>('run'), prog = $<HTMLProgressElement>('prog'), status = $<HTMLOutputElement>('status');
     const url = urlState('eta', { kind: el.dataset.kind!, p: '', k: '8', c: 'deg', seed: '1' }), isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
-    const jobs = new Jobs(), N = 120, SEEDS = 10;
+    const jobs = new Jobs(), lay = new Jobs(), N = 120, SEEDS = 10;
     let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'npa', param = fixParam(kind, url.get('p') === '' ? NaN : +url.get('p')), k = fixDegree(kind, +url.get('k'));
     let by: Centrality = CENTRALITIES.some((x) => x.id === url.get('c')) ? (url.get('c') as Centrality) : 'deg', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
     const size = () => (kind === 'lat' ? 11 * 11 : N);
@@ -145,7 +146,7 @@ const { kind = 'npa' } = Astro.props;
       cIn.value = by; runBtn.disabled = !bestRules(kind, k, param).length;
     }
     function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('c', by); url.set('seed', String(seed)); }
-    const rebuild = () => { jobs.cancel(); prog.hidden = true; res = null; scored = 0; cache.clear(); k = fixDegree(kind, k); param = fixParam(kind, param); net = buildNet(specOf(kind, size(), k, param), seed); show(); sync(); paint(); };
+    const rebuild = () => { jobs.cancel(); prog.hidden = true; res = null; scored = 0; cache.clear(); k = fixDegree(kind, k); param = fixParam(kind, param); net = buildLive(specOf(kind, size(), k, param), seed, lay, paint); show(); sync(); paint(); };
     for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = FAM_PARAM[f].def; rebuild(); });
     paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(); });
     paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
@@ -166,7 +167,7 @@ const { kind = 'npa' } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    show(); lazy(c, () => { net = buildNet(specOf(kind, size(), k, param), seed); ready = true; paint(); });
+    show(); lazy(c, () => { net = buildLive(specOf(kind, size(), k, param), seed, lay, paint); ready = true; paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-influence]').forEach(mount);

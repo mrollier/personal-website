@@ -73,6 +73,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
   import { CENTRALITIES, centrality, clustering, pathLength, references, smallWorldIndex, type Centrality, type OmegaPoint } from '../scripts/centrality';
   import { histogram, logSpace } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
+  import { buildLive } from '../scripts/settle';
   import { parse, mix, css } from '../scripts/palette';
   import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, lazy, type Box } from '../scripts/figure';
 
@@ -92,7 +93,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const d = el.dataset, url = urlState('zoo', { kind: d.kind!, p: '0.05', a: '1', k: '8', n: d.n!, c: '', seed: '1', log: '1' });
     const isKind = (s: string): s is Kind => KINDS.includes(s as Kind);
     const isCent = (s: string): s is Centrality => CENTRALITIES.some((x) => x.id === s);
-    const jobs = new Jobs();
+    const jobs = new Jobs(), lay = new Jobs();
 
     let kind: Kind = isKind(url.get('kind')) ? (url.get('kind') as Kind) : 'ws';
     let p = clamp01(+url.get('p'), 0.05), alpha = Math.min(3, Math.max(0, +url.get('a') || 0)), useLog = url.get('log') !== '0';
@@ -113,7 +114,7 @@ const { kind = 'ws', n = 300 } = Astro.props;
 
     function build() {
       fixK(); fixN();
-      net = buildNet(spec(), seed); cache.clear(); picked = -1;
+      net = buildLive(spec(), seed, lay, paint); cache.clear(); picked = -1;
       const C = clustering(net).mean, l = pathLength(net), deg = Array.from(net.deg), maxDeg = Math.max(...deg);
       const hist = histogram(deg, maxDeg + 1, -0.5, maxDeg + 0.5);
       let omega = NaN;
@@ -237,7 +238,9 @@ const { kind = 'ws', n = 300 } = Astro.props;
     const rebuild = () => { jobs.cancel(); prog.hidden = true; build(); show(); sync(); paint(); };
     const rebuildSoon = schedule(rebuild);
     for (const x of KINDS) kindBtns[x].addEventListener('click', () => { if (x === kind) return; kind = x; fixK(); rebuild(); });
-    paramIn.addEventListener('input', () => { if (kind === 'npa') alpha = +paramIn.value; else p = fromSlider(+paramIn.value); pv.value = kind === 'npa' ? alpha.toFixed(1) : p < 0.01 ? p.toExponential(0) : p.toFixed(2); rebuildSoon(); });
+    // p rebuilds while dragging (a ring or a grid redraws at once); α on release, as a grown network is laid out afresh each time
+    paramIn.addEventListener('input', () => { if (kind === 'npa') alpha = +paramIn.value; else p = fromSlider(+paramIn.value); pv.value = kind === 'npa' ? alpha.toFixed(1) : p < 0.01 ? p.toExponential(0) : p.toFixed(2); if (kind !== 'npa') rebuildSoon(); });
+    paramIn.addEventListener('change', () => { if (kind === 'npa') rebuild(); });
     logIn.addEventListener('change', () => { useLog = logIn.checked; show(); sync(); });
     kIn.addEventListener('change', () => { k = +kIn.value; rebuild(); });
     nIn.addEventListener('change', () => { n = kind === 'lat' ? Math.round(+nIn.value) ** 2 : +nIn.value; rebuild(); });

@@ -65,7 +65,7 @@ const { level = 4 } = Astro.props;
 <script>
   import tilesJson from '../data/tiles.json';
   import { loadBank, assemble, testImage, type Grey, type Mosaic, type TileBank } from '../scripts/mosaic';
-  import { stepLife, glider, population } from '../scripts/life';
+  import { ActiveLife, glider, population } from '../scripts/life';
   import { makeRng } from '../scripts/net';
   import { Raster } from '../scripts/raster';
   import { parse } from '../scripts/palette';
@@ -78,16 +78,23 @@ const { level = 4 } = Astro.props;
     const url = urlState('mosaic', { level: el.dataset.level!, g: '', theta: '1', inv: '0', seed: '1' });
     let level = [3, 4, 5].includes(+url.get('level')) ? +url.get('level') : 4, g = Math.round(+url.get('g')) || 0, theta = Math.min(1, Math.max(0.3, +url.get('theta') || 1)), invert = url.get('inv') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
     let bank!: TileBank, img: Grey = testImage(160, 160), mosaic: Mosaic | null = null;
-    let grid = new Uint8Array(0), scratch = new Uint8Array(0), tick = 0, changed = -1, raster: Raster | null = null, box = { x: 0, y: 0, w: 1, h: 1 }, gliders = 0;
+    let grid = new Uint8Array(0), life: ActiveLife | null = null, tick = 0, changed = -1, raster: Raster | null = null, box = { x: 0, y: 0, w: 1, h: 1 }, gliders = 0;
+    // what the raster still has to show: everything (a new grid, a new theme) or the blocks Life changed since the last paint
+    let whole = true, colours = '', dirty = new Uint8Array(0), pop = 0;
     const defaultG = () => Math.max(4, Math.round(576 / (6 * level))); // about 576 cells a side: a face is recognisable and a Life step stays a few milliseconds
 
     function build() {
       bank = loadBank(tilesJson as Record<string, string[]>, level);
       if (!g) g = defaultG(); g = Math.min(40, Math.max(4, g));
       mosaic = assemble(img, g, bank, theta, invert, makeRng(seed));
-      grid = mosaic.grid.slice(); scratch = new Uint8Array(grid.length); raster = new Raster(mosaic.W, mosaic.H); tick = 0; changed = -1; gliders = 0;
+      grid = mosaic.grid.slice(); life = new ActiveLife(mosaic.W, mosaic.H); dirty = new Uint8Array(life.bw * life.bh); raster = new Raster(mosaic.W, mosaic.H); tick = 0; changed = -1; gliders = 0; whole = true; pop = population(grid);
     }
-    const advance = () => { if (!mosaic) return true; changed = stepLife(grid, mosaic.W, mosaic.H, scratch); [grid, scratch] = [scratch, grid]; tick++; return false; };
+    const advance = () => {
+      if (!mosaic || !life) return true;
+      changed = life.step(grid); tick++;
+      for (let h = 0; h < life.hits; h++) dirty[life.hit[h]] = 1;
+      return false;
+    };
 
     function paint() {
       const sz = fit(c); if (!sz || !mosaic || !raster) return;
@@ -95,18 +102,30 @@ const { level = 4 } = Astro.props;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
       const side = Math.min(w - 2 * pad, h - 2 * pad - 16);
       box = { x: (w - side) / 2, y: pad, w: side, h: side };
-      for (let i = 0; i < grid.length; i++) raster.set(i, grid[i] ? ink : bg);
-      raster.flush(); raster.blit(ctx, box);
+      if (colours !== t.ink + t.bg) { colours = t.ink + t.bg; whole = true; }
+      if (whole) { for (let i = 0; i < grid.length; i++) raster.set(i, grid[i] ? ink : bg); raster.flush(); pop = population(grid); dirty.fill(0); whole = false; }
+      else if (life) {
+        const B = ActiveLife.B, W = mosaic.W, H = mosaic.H;
+        let x0 = W, y0 = H, x1 = 0, y1 = 0;
+        for (let b = 0; b < dirty.length; b++) {
+          if (!dirty[b]) continue;
+          dirty[b] = 0;
+          const bx = (b % life.bw) * B, by = Math.floor(b / life.bw) * B, ex = Math.min(W, bx + B), ey = Math.min(H, by + B);
+          for (let y = by; y < ey; y++) for (let x = bx; x < ex; x++) { const i = y * W + x; raster.set(i, grid[i] ? ink : bg); }
+          x0 = Math.min(x0, bx); y0 = Math.min(y0, by); x1 = Math.max(x1, ex); y1 = Math.max(y1, ey);
+        }
+        if (x1 > x0) { raster.flush(x0, y0, x1 - x0, y1 - y0); pop = population(grid); }
+      }
+      raster.blit(ctx, box);
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
       label(ctx, `${mosaic.W} × ${mosaic.H} cells · level ${level} tiles · click anywhere to drop a glider`, box.x, box.y + box.h + 13, t);
-      const pop = population(grid);
       gen.value = `tick ${tick}`;
       status.value = tick === 0 ? `${mosaic.placed} tiles placed, ${mosaic.empty} left empty · ${pop.toLocaleString('en')} live cells · press play: a still life does not move` : changed === 0 ? `tick ${tick}: nothing changed${gliders ? ', the glider is gone and the wreck has settled' : ', still a still life'} · ${pop.toLocaleString('en')} live cells` : `tick ${tick}: ${changed} cells changed · ${pop.toLocaleString('en')} live cells${gliders ? ` · ${gliders} glider${gliders > 1 ? 's' : ''} dropped` : ''}`;
       c.setAttribute('aria-label', status.value);
     }
     function show() { levelIn.value = String(level); gIn.value = String(g); thetaIn.value = String(theta); tv.value = theta.toFixed(2); invBtn.setAttribute('aria-pressed', String(invert)); }
     function sync() { url.set('level', String(level)); url.set('g', String(g)); url.set('theta', String(theta)); url.set('inv', invert ? '1' : '0'); url.set('seed', String(seed)); }
-    const st = stepper(el, { advance, paint, reset: () => { if (mosaic) { grid = mosaic.grid.slice(); tick = 0; changed = -1; gliders = 0; } }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    const st = stepper(el, { advance, paint, reset: () => { if (mosaic) { grid = mosaic.grid.slice(); life?.touchAll(); whole = true; tick = 0; changed = -1; gliders = 0; } }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
     const redo = () => { st.loop.play(false); build(); show(); sync(); paint(); };
 
     function fromImage(source: CanvasImageSource, sw: number, sh: number) {
@@ -141,7 +160,12 @@ const { level = 4 } = Astro.props;
       if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) return;
       const gx = Math.floor(((x - box.x) / box.w) * mosaic.W), gy = Math.floor(((y - box.y) / box.h) * mosaic.H);
       for (let dy = -1; dy < 4; dy++) for (let dx = -1; dx < 4; dx++) grid[((gy + dy + mosaic.H) % mosaic.H) * mosaic.W + ((gx + dx + mosaic.W) % mosaic.W)] = 0;
-      glider(grid, mosaic.W, mosaic.H, gx, gy); gliders++; changed = -1; paint();
+      glider(grid, mosaic.W, mosaic.H, gx, gy); gliders++; changed = -1;
+      if (life) {
+        life.touch(gx - 1, gy - 1); life.touch(gx + 3, gy + 3);
+        for (const [x, y] of [[gx - 1, gy - 1], [gx + 3, gy - 1], [gx - 1, gy + 3], [gx + 3, gy + 3]]) dirty[Math.floor((((y % mosaic.H) + mosaic.H) % mosaic.H) / ActiveLife.B) * life.bw + Math.floor((((x % mosaic.W) + mosaic.W) % mosaic.W) / ActiveLife.B)] = 1;
+      }
+      paint();
       if (!st.loop.playing) st.loop.play(true);
     });
 

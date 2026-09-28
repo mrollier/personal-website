@@ -5,6 +5,7 @@ import { omegaSweep } from './centrality';
 import { successSweep } from './sync';
 import { swapCurve, etaScan } from './consensus';
 import { spectrumJob, benettin } from './lyapunov';
+import { layoutJob } from './net';
 
 const JOBS: Record<string, (params: any) => Generator<{ p: number; partial?: unknown }, unknown>> = {
   'omega-sweep': omegaSweep,
@@ -13,6 +14,7 @@ const JOBS: Record<string, (params: any) => Generator<{ p: number; partial?: unk
   'eta': etaScan,
   'spectrum': spectrumJob,
   'benettin': benettin,
+  'layout': layoutJob,
 };
 
 self.onmessage = (e: MessageEvent<{ id: number; kind: string; params: unknown }>) => {

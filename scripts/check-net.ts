@@ -1,6 +1,6 @@
 // Self-check for the network families in src/scripts/net.ts. Run: npm test
 import assert from 'node:assert/strict';
-import { wattsStrogatz, lattice, latticeLink, nonlinearPA, randomGeometric, buildNet, ringLayout, makeRng, type Net } from '../src/scripts/net.ts';
+import { wattsStrogatz, lattice, latticeLink, nonlinearPA, randomGeometric, buildNet, ringLayout, layoutJob, makeRng, type Net, type NetSpec } from '../src/scripts/net.ts';
 
 const simple = (net: Net) => { // no self-loops, no doubled links, adjacency symmetric
   const seen = new Set<number>();
@@ -50,5 +50,12 @@ const ring = buildNet({ kind: 'ws', n: 40, k: 6, p: 0.1 }, 1);
 assert.ok(Math.abs(ring.xy[0] - 0.96) < 1e-6 && Math.abs(ring.xy[1] - 0.5) < 1e-6);
 const lat = buildNet({ kind: 'lat', side: 6, degree: 4, p: 0 }, 1); assert.equal(lat.n, 36); assert.ok(lat.deg.every((d) => d === 4));
 ringLayout(lat); assert.ok(Math.abs(lat.xy[0] - 0.96) < 1e-6);
+
+// The worker's layout ends where the main thread's does, and shows its progress on the way.
+for (const s of [{ kind: 'npa', n: 120, m: 3, alpha: 1.5 }, { kind: 'er', n: 80, k: 4 }] as NetSpec[]) {
+  const job = layoutJob({ spec: s, seed: 5 }); let r = job.next(), steps = 0;
+  while (!r.done) { steps++; assert.ok(Array.from(r.value.partial).every((v) => v >= 0 && v <= 1)); r = job.next(); }
+  assert.ok(steps >= 20); assert.deepEqual(Array.from(r.value), Array.from(buildNet(s, 5, 'force').xy));
+}
 
 console.log(`net ok · npa α=3 hub ${Math.max(...npa3.deg)} · rgg mean degree ${mean.toFixed(2)}`);

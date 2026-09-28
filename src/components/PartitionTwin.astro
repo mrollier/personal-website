@@ -61,12 +61,14 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
 
 <script>
   import { clampRule, equivalent, step, randomState, ruleName, mirror, type Rule, type Partition } from '../scripts/llna';
-  import { buildNet, makeRng, type Net } from '../scripts/net';
+  import { makeRng, type Net } from '../scripts/net';
+  import { Jobs } from '../scripts/jobs';
+  import { buildLive } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
-    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, lay = new Jobs();
     const palBtn = $<HTMLButtonElement>('pal'), uniBtn = $<HTMLButtonElement>('uni'), bIn = $<HTMLInputElement>('b'), sIn = $<HTMLInputElement>('s'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
     const d = el.dataset, url = urlState('ptwin', { b: d.b!, s: d.s!, part: 'pal', seed: '1' }), r = +d.r!, N = 120;
     let part: Partition = url.get('part') === 'uni' ? 'uni' : 'pal', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
@@ -130,11 +132,11 @@ const { r = 5, b = 6, s = 28 } = Astro.props;
     uniBtn.addEventListener('click', () => { part = 'uni'; st.loop.play(false); start(); show(); sync(); paint(); });
     bIn.addEventListener('change', () => { base = clampRule(r, +bIn.value, base.S); st.loop.play(false); start(); show(); sync(); paint(); });
     sIn.addEventListener('change', () => { base = clampRule(r, base.B, +sIn.value); st.loop.play(false); start(); show(); sync(); paint(); });
-    $('regen').addEventListener('click', () => { seed++; net = buildNet({ kind: 'er', n: N, k: 6 }, seed); st.loop.play(false); start(); sync(); paint(); });
+    $('regen').addEventListener('click', () => { seed++; net = buildLive({ kind: 'er', n: N, k: 6 }, seed, lay, paint); st.loop.play(false); start(); sync(); paint(); });
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    show(); lazy(c, () => { net = buildNet({ kind: 'er', n: N, k: 6 }, seed); start(); ready = true; paint(); });
+    show(); lazy(c, () => { net = buildLive({ kind: 'er', n: N, k: 6 }, seed, lay, paint); start(); ready = true; paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-ptwin]').forEach(mount);

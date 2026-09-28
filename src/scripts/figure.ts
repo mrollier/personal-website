@@ -23,19 +23,29 @@ export function tokens(el: Element): Tokens {
   return { bg: v('--bg'), ink: v('--ink'), muted: v('--muted'), line: v('--line'), panel: v('--panel'), accent: v('--accent'), sun: v('--sun'), danger: v('--danger'), mono: v('--mono') };
 }
 
-/** Repaint when the canvas changes size (a resize wipes the bitmap) and when the theme toggles (no event, so watch the attribute). */
+/** Repaint when the canvas changes size (a resize wipes the bitmap) and when the theme toggles (no event, so watch the attribute).
+ * The paint on appearing (page load, a tab opened) waits its turn in `later`, so a tab of several figures shows them one per frame. */
 export function watch(c: HTMLCanvasElement, repaint: () => void): void {
-  new ResizeObserver(() => { if (c.getBoundingClientRect().width >= 1) repaint(); }).observe(c);
+  let shown = false;
+  new ResizeObserver(() => {
+    if (c.getBoundingClientRect().width < 1) { shown = false; return; }
+    if (shown) repaint(); else { shown = true; later(repaint); }
+  }).observe(c);
   new MutationObserver(repaint).observe(document.documentElement, { attributeFilter: ['data-theme'] });
 }
+
+/** Work that appears with a tab, one piece per animation frame, so the browser paints in between instead of stalling on all of it at once. */
+const queue: (() => void)[] = [];
+function later(f: () => void): void { queue.push(f); if (queue.length === 1) requestAnimationFrame(drain); }
+function drain(): void { try { queue[0](); } finally { queue.shift(); if (queue.length) requestAnimationFrame(drain); } }
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Run `init` once, the first time the canvas has a size. A figure in a hidden tab then costs nothing at page load; it builds
  * its state when its tab is opened, just before `watch` repaints it. */
 export function lazy(c: HTMLCanvasElement, init: () => void): void {
-  if (c.getBoundingClientRect().width >= 1) { init(); return; }
-  const ro = new ResizeObserver(() => { if (c.getBoundingClientRect().width >= 1) { ro.disconnect(); init(); } });
+  if (c.getBoundingClientRect().width >= 1) { later(init); return; }
+  const ro = new ResizeObserver(() => { if (c.getBoundingClientRect().width >= 1) { ro.disconnect(); later(init); } });
   ro.observe(c);
 }
 

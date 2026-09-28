@@ -191,19 +191,37 @@ export type Layout = 'auto' | 'ring' | 'grid' | 'force' | 'none';
 /** Build from a spec and a seed, reproducibly. `auto` draws a ring as a ring, a lattice on its grid, a geometric graph
  * where its points fell, and lays the rest out by force, with fewer iterations past 300 nodes. */
 export function buildNet(spec: NetSpec, seed: number, lay: Layout = 'auto'): Net {
-  const rnd = makeRng(seed);
-  const net =
-    spec.kind === 'ws' ? wattsStrogatz(spec.n, spec.p, rnd, spec.k, true)
+  const rnd = makeRng(seed), net = generate(spec, rnd);
+  if (lay === 'auto') lay = needsForce(spec) ? 'force' : spec.kind === 'ws' ? 'ring' : 'none';
+  if (lay === 'ring') ringLayout(net);
+  else if (lay === 'grid' && net.side) gridLayout(net);
+  else if (lay === 'force') layout(net, rnd, forceIters(net.n));
+  return net;
+}
+
+/** The families without a natural picture, which are laid out by force. */
+export const needsForce = (spec: NetSpec) => spec.kind === 'npa' || spec.kind === 'er' || spec.kind === 'ba';
+const forceIters = (n: number) => (n > 300 ? 120 : 250);
+
+/** buildNet(spec, seed, 'force') as a worker job: the same network, the same random numbers, the same end result, but the
+ * positions are yielded every ten iterations, fitted into the square, so a figure can show the nodes settling. */
+export function* layoutJob(params: { spec: NetSpec; seed: number }): Generator<{ p: number; partial: Float32Array }, Float32Array> {
+  const rnd = makeRng(params.seed), net = generate(params.spec, rnd), iters = forceIters(net.n), st = layoutStart(net, rnd), main = largestComponent(net);
+  for (let it = 0; it < iters; it++) {
+    layoutIter(net, rnd, st, it, iters);
+    if (it % 10 === 0) { const xy = net.xy.slice(); fitSquare(net.n, xy, main); yield { p: it / iters, partial: xy }; }
+  }
+  fitSquare(net.n, net.xy, main);
+  return net.xy;
+}
+
+function generate(spec: NetSpec, rnd: () => number): Net {
+  return spec.kind === 'ws' ? wattsStrogatz(spec.n, spec.p, rnd, spec.k, true)
     : spec.kind === 'lat' ? lattice(spec.side, spec.degree, spec.p, rnd)
     : spec.kind === 'npa' ? nonlinearPA(spec.n, spec.m, spec.alpha, rnd)
     : spec.kind === 'er' ? erdosRenyi(spec.n, spec.k, rnd)
     : spec.kind === 'ba' ? barabasiAlbert(spec.n, spec.m, rnd)
     : randomGeometric(spec.n, spec.k, rnd);
-  if (lay === 'auto') lay = spec.kind === 'ws' ? 'ring' : spec.kind === 'lat' || spec.kind === 'rgg' ? 'none' : 'force';
-  if (lay === 'ring') ringLayout(net);
-  else if (lay === 'grid' && net.side) gridLayout(net);
-  else if (lay === 'force') layout(net, rnd, net.n > 300 ? 120 : 250);
-  return net;
 }
 
 /** For the lattice family n is rounded down to a square, and `degree` picks the neighbourhood. `lay` false skips the layout for a network that is only run, never drawn. */
@@ -217,34 +235,46 @@ export function makeNet(kind: NetKind, n: number, param: number, seed: number, d
 
 /** Fruchterman–Reingold from a circle in node order (so a ring stays a ring), then the linked nodes fitted into the unit square with a margin; an isolated node ends up on the rim. */
 export function layout(net: Net, rnd: () => number, iters = 250): void {
-  const { n, edges, xy } = net;
+  const st = layoutStart(net, rnd);
+  for (let it = 0; it < iters; it++) layoutIter(net, rnd, st, it, iters);
+  fitSquare(net.n, net.xy, largestComponent(net));
+}
+
+type LayoutState = { k: number; dx: Float32Array; dy: Float32Array };
+
+function layoutStart(net: Net, rnd: () => number): LayoutState {
+  const { n, xy } = net;
   for (let i = 0; i < n; i++) {
     const a = (2 * Math.PI * i) / n;
     xy[2 * i] = 0.5 + 0.4 * Math.cos(a) + 0.01 * (rnd() - 0.5); xy[2 * i + 1] = 0.5 + 0.4 * Math.sin(a) + 0.01 * (rnd() - 0.5);
   }
-  const k = Math.sqrt(1 / n), dx = new Float32Array(n), dy = new Float32Array(n);
-  for (let it = 0; it < iters; it++) {
-    const temp = 0.1 * (1 - it / iters) + 0.002;
-    dx.fill(0); dy.fill(0);
-    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-      let ex = xy[2 * i] - xy[2 * j], ey = xy[2 * i + 1] - xy[2 * j + 1];
-      let d2 = ex * ex + ey * ey; if (d2 < 1e-8) { ex = 1e-4 * (rnd() - 0.5); ey = 1e-4 * (rnd() - 0.5); d2 = ex * ex + ey * ey; }
-      const f = (k * k) / d2; // repulsion k²/d along the unit vector
-      dx[i] += ex * f; dy[i] += ey * f; dx[j] -= ex * f; dy[j] -= ey * f;
-    }
-    for (const [i, j] of edges) {
-      const ex = xy[2 * i] - xy[2 * j], ey = xy[2 * i + 1] - xy[2 * j + 1];
-      const d = Math.hypot(ex, ey), f = d / k; // attraction d²/k along the unit vector
-      dx[i] -= ex * f; dy[i] -= ey * f; dx[j] += ex * f; dy[j] += ey * f;
-    }
-    for (let i = 0; i < n; i++) {
-      const d = Math.hypot(dx[i], dy[i]) || 1, s = Math.min(d, temp) / d;
-      xy[2 * i] += dx[i] * s; xy[2 * i + 1] += dy[i] * s;
-    }
+  return { k: Math.sqrt(1 / n), dx: new Float32Array(n), dy: new Float32Array(n) };
+}
+
+function layoutIter(net: Net, rnd: () => number, st: LayoutState, it: number, iters: number): void {
+  const { n, edges, xy } = net, { k, dx, dy } = st;
+  const temp = 0.1 * (1 - it / iters) + 0.002;
+  dx.fill(0); dy.fill(0);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    let ex = xy[2 * i] - xy[2 * j], ey = xy[2 * i + 1] - xy[2 * j + 1];
+    let d2 = ex * ex + ey * ey; if (d2 < 1e-8) { ex = 1e-4 * (rnd() - 0.5); ey = 1e-4 * (rnd() - 0.5); d2 = ex * ex + ey * ey; }
+    const f = (k * k) / d2; // repulsion k²/d along the unit vector
+    dx[i] += ex * f; dy[i] += ey * f; dx[j] -= ex * f; dy[j] -= ey * f;
   }
-  // Fit the largest connected piece into [0.04, 0.96]², keeping the aspect ratio. Small pieces and isolated
-  // nodes get pushed away without limit, so whatever lands outside is set on a circle round the rim instead.
-  const main = largestComponent(net);
+  for (const [i, j] of edges) {
+    const ex = xy[2 * i] - xy[2 * j], ey = xy[2 * i + 1] - xy[2 * j + 1];
+    const d = Math.hypot(ex, ey), f = d / k; // attraction d²/k along the unit vector
+    dx[i] -= ex * f; dy[i] -= ey * f; dx[j] += ex * f; dy[j] += ey * f;
+  }
+  for (let i = 0; i < n; i++) {
+    const d = Math.hypot(dx[i], dy[i]) || 1, s = Math.min(d, temp) / d;
+    xy[2 * i] += dx[i] * s; xy[2 * i + 1] += dy[i] * s;
+  }
+}
+
+/** Fit the largest connected piece into [0.04, 0.96]², keeping the aspect ratio. Small pieces and isolated
+ * nodes get pushed away without limit, so whatever lands outside is set on a circle round the rim instead. */
+function fitSquare(n: number, xy: Float32Array, main: Uint8Array): void {
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (let i = 0; i < n; i++) {
     if (!main[i]) continue;

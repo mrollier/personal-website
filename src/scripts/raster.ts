@@ -36,7 +36,8 @@ export class Raster {
 
   fill(rgb: RGB): void { for (let i = 0; i < this.W * this.H; i++) this.set(i, rgb); }
 
-  flush(): void { this.ctx.putImageData(this.img, 0, 0); }
+  /** Push the written pixels to the bitmap; a rectangle limits the copy to what changed. */
+  flush(x = 0, y = 0, w = this.W, h = this.H): void { this.ctx.putImageData(this.img, 0, 0, x, y, w, h); }
 
   /** Draw scaled into the box, crisp cells unless `smooth`. */
   blit(ctx: CanvasRenderingContext2D, box: Box, smooth = false): void {

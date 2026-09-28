@@ -71,12 +71,14 @@ const rules = allBestRules();
   import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, fixSize, specOf, bestRules, type Fam } from '../scripts/family';
   import { stepClamped, consensusStart } from '../scripts/consensus';
   import { step, density, randomState, ruleName, type Rule } from '../scripts/llna';
-  import { buildNet, makeRng, latticeLink, type Net } from '../scripts/net';
+  import { makeRng, latticeLink, type Net } from '../scripts/net';
+  import { Jobs } from '../scripts/jobs';
+  import { buildLive } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
-    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, lay = new Jobs();
     const famBtns = Object.fromEntries(FAMS.map((f) => [f, $<HTMLButtonElement>(f)])) as Record<Fam, HTMLButtonElement>;
     const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!;
     const kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, nIn = $<HTMLInputElement>('n'), nlabel = el.querySelector<HTMLElement>('[data-nlabel]')!;
@@ -174,7 +176,7 @@ const rules = allBestRules();
     function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('n', String(n)); url.set('rule', `${rule.B},${rule.S}`); url.set('seed', String(seed)); url.set('cs', String(cs)); }
 
     const st = stepper(el, { advance, paint, reset: () => { hist = [hist[0]]; twin = [twin[0]]; rhoA = [rhoA[0]]; rhoB = [rhoB[0]]; }, undo: () => { if (hist.length > 1) { hist.pop(); twin.pop(); rhoA.pop(); rhoB.pop(); } }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
-    const rebuild = (pickRule = false) => { st.loop.play(false); n = fixSize(kind, n, kind === 'npa' ? 250 : 400); k = fixDegree(kind, k); param = fixParam(kind, param); if (pickRule) rule = bestRules(kind, k, param)[0]?.rule ?? rule; net = buildNet(specOf(kind, n, k, param), seed); clampSet = new Int8Array(n).fill(-1); start(); show(); sync(); paint(); };
+    const rebuild = (pickRule = false) => { st.loop.play(false); n = fixSize(kind, n, kind === 'npa' ? 250 : 400); k = fixDegree(kind, k); param = fixParam(kind, param); if (pickRule) rule = bestRules(kind, k, param)[0]?.rule ?? rule; net = buildLive(specOf(kind, n, k, param), seed, lay, paint); clampSet = new Int8Array(n).fill(-1); start(); show(); sync(); paint(); };
     for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = FAM_PARAM[f].def; rebuild(true); });
     paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(true); });
     paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
@@ -204,7 +206,7 @@ const rules = allBestRules();
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    show(); lazy(c, () => { net = buildNet(specOf(kind, n, k, param), seed); start(); ready = true; show(); paint(); });
+    show(); lazy(c, () => { net = buildLive(specOf(kind, n, k, param), seed, lay, paint); start(); ready = true; show(); paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-consensus]').forEach(mount);

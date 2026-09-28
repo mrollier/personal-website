@@ -68,9 +68,10 @@ const { kind = 'ws' } = Astro.props;
 <script>
   import { FAMS, FAM_NAME, FAM_DEGREES, FAM_PARAM, fixDegree, fixParam, fixSize, specOf, type Fam } from '../scripts/family';
   import { networkParitySpectrum, type SpectrumResult } from '../scripts/lyapunov';
-  import { buildNet, stepNet, latticeLink, makeRng, type Net } from '../scripts/net';
+  import { stepNet, latticeLink, makeRng, type Net } from '../scripts/net';
   import { histogram } from '../scripts/stats';
   import { Jobs, Cancelled } from '../scripts/jobs';
+  import { buildLive } from '../scripts/settle';
   import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label, lazy, type Box } from '../scripts/figure';
 
   function mount(el: HTMLElement) {
@@ -80,7 +81,7 @@ const { kind = 'ws' } = Astro.props;
     const paramIn = $<HTMLInputElement>('param'), pv = $<HTMLOutputElement>('pv'), plabel = el.querySelector<HTMLElement>('[data-plabel]')!, kIn = $<HTMLSelectElement>('k'), klabel = el.querySelector<HTMLElement>('[data-klabel]')!, nIn = $<HTMLInputElement>('n');
     const selfBtn = $<HTMLButtonElement>('self'), specBtn = $<HTMLButtonElement>('spectrum'), prog = $<HTMLProgressElement>('prog'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
     const url = urlState('nsp', { kind: el.dataset.kind!, p: '', k: '6', n: '200', self: '0', seed: '1' }), isFam = (s: string): s is Fam => FAMS.includes(s as Fam);
-    const jobs = new Jobs();
+    const jobs = new Jobs(), lay = new Jobs();
     let kind: Fam = isFam(url.get('kind')) ? (url.get('kind') as Fam) : 'ws', param = fixParam(kind, url.get('p') === '' ? (kind === 'npa' ? 1 : 0.1) : +url.get('p')), k = fixDegree(kind, +url.get('k'));
     let n = fixSize(kind, +url.get('n'), 300), self = url.get('self') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
     let net!: Net, a = new Uint8Array(n), b = new Uint8Array(n), dT: number[] = [], tick = 0, spec: SpectrumResult | null = null, ready = false;
@@ -131,7 +132,7 @@ const { kind = 'ws' } = Astro.props;
     }
     function sync() { url.set('kind', kind); url.set('p', String(param)); url.set('k', String(k)); url.set('n', String(n)); url.set('self', self ? '1' : '0'); url.set('seed', String(seed)); }
     const st = stepper(el, { advance, paint, reset: start, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
-    const rebuild = () => { jobs.cancel(); prog.hidden = true; specBtn.disabled = false; spec = null; st.loop.play(false); k = fixDegree(kind, k); param = fixParam(kind, param); n = fixSize(kind, n, 300); net = buildNet(specOf(kind, n, k, param), seed); start(); show(); sync(); paint(); };
+    const rebuild = () => { jobs.cancel(); prog.hidden = true; specBtn.disabled = false; spec = null; st.loop.play(false); k = fixDegree(kind, k); param = fixParam(kind, param); n = fixSize(kind, n, 300); net = buildLive(specOf(kind, n, k, param), seed, lay, paint); start(); show(); sync(); paint(); };
     for (const f of FAMS) famBtns[f].addEventListener('click', () => { if (f === kind) return; kind = f; param = f === 'npa' ? 1 : 0.1; k = f === 'lat' ? 4 : 6; rebuild(); });
     paramIn.addEventListener('change', () => { param = fixParam(kind, +paramIn.value); rebuild(); });
     paramIn.addEventListener('input', () => { pv.value = FAM_PARAM[kind].fmt(fixParam(kind, +paramIn.value)); });
@@ -150,7 +151,7 @@ const { kind = 'ws' } = Astro.props;
     const full = fullscreen(el, $<HTMLButtonElement>('full'));
     keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    show(); lazy(c, () => { net = buildNet(specOf(kind, n, k, param), seed); start(); ready = true; paint(); });
+    show(); lazy(c, () => { net = buildLive(specOf(kind, n, k, param), seed, lay, paint); start(); ready = true; paint(); });
   }
 
   document.querySelectorAll<HTMLElement>('[data-netspectrum]').forEach(mount);

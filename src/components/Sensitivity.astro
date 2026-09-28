@@ -64,7 +64,7 @@ const { r = 9, b = 72, s = 12, k = 8 } = Astro.props;
 
 <script>
   import { PRESETS, clampRule, presetOf, phi, hammingWeight, equivalent, ruleName, type Rule } from '../scripts/llna';
-  import { sensitivity, bound, derrida } from '../scripts/genotype';
+  import { sensitivity, bound, derridaCoeffs, derridaAt } from '../scripts/genotype';
   import { draw, hit, type Geom } from '../scripts/diagram';
   import { buildNet, type NetSpec } from '../scripts/net';
   import { fit, tokens, watch, fullscreen, urlState, keys, schedule, label, type Box } from '../scripts/figure';
@@ -92,6 +92,23 @@ const { r = 9, b = 72, s = 12, k = 8 } = Astro.props;
       let p = pk.get(fam);
       if (!p) { const net = buildNet(FAMILIES[fam], 1, 'none'); p = new Float64Array(KMAX + 1); for (let i = 0; i < net.n; i++) p[Math.min(KMAX, net.deg[i])] += 1 / net.n; pk.set(fam, p); }
       return p;
+    }
+
+    // Per rule, the bars for every degree; per rule, degree and density, the Derrida curve. A drag over k or ρ then only redraws.
+    let perK: { key: string; hw: Float64Array; bs: Float64Array } | null = null, curve: { key: string; ys: number[]; slope: number } | null = null;
+    const ruleKey = () => `${rule.r}/${rule.B}/${rule.S}`;
+    function perDegree() {
+      if (perK?.key === ruleKey()) return perK;
+      const hw = new Float64Array(KMAX + 1), bs = new Float64Array(KMAX + 1);
+      for (let kk = 1; kk <= KMAX; kk++) { hw[kk] = hammingWeight(rule, kk); bs[kk] = sensitivity(rule, kk).BS; }
+      return (perK = { key: ruleKey(), hw, bs });
+    }
+    function derridaCurve() {
+      const key = `${ruleKey()}/${k}/${rho}`;
+      if (curve?.key === key) return curve;
+      const co = derridaCoeffs(rule, k, rho), n = 60, ys: number[] = [];
+      for (let i = 0; i <= n; i++) ys.push(derridaAt(co, i / n));
+      return (curve = { key, ys, slope: derridaAt(co, 1e-5) / 1e-5 });
     }
 
     function paint() {
@@ -130,12 +147,11 @@ const { r = 9, b = 72, s = 12, k = 8 } = Astro.props;
       const X = (v: number) => b.x + v * b.w, Y = (v: number) => b.y + (1 - v) * b.h;
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
       ctx.setLineDash([3, 4]); ctx.strokeStyle = t.muted; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(1)); ctx.stroke(); ctx.setLineDash([]);
-      const n = 60, ys: number[] = [];
-      for (let i = 0; i <= n; i++) ys.push(derrida(rule, k, rho, i / n));
+      const { ys, slope } = derridaCurve(), n = ys.length - 1;
       ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath();
       ys.forEach((v, i) => (i ? ctx.lineTo(X(i / n), Y(v)) : ctx.moveTo(X(i / n), Y(v))));
       ctx.stroke();
-      const slope = derrida(rule, k, rho, 1e-5) / 1e-5, end = Math.min(1, 1 / Math.max(slope, 1e-9));
+      const end = Math.min(1, 1 / Math.max(slope, 1e-9));
       ctx.setLineDash([2, 3]); ctx.strokeStyle = t.accent; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(end), Y(Math.min(1, slope * end))); ctx.stroke(); ctx.setLineDash([]);
       label(ctx, 'share differing now δ', X(0.5), b.y + b.h + 14, t, { align: 'center' });
       ctx.save(); ctx.translate(b.x - 10, Y(0.5)); ctx.rotate(-Math.PI / 2); label(ctx, 'expected share differing next', 0, 0, t, { align: 'center' }); ctx.restore();
@@ -145,14 +161,14 @@ const { r = 9, b = 72, s = 12, k = 8 } = Astro.props;
     }
 
     function bars(t: ReturnType<typeof tokens>, b: Box) {
-      const p = degrees(), bw = b.w / KMAX, top = 1.05;
+      const p = degrees(), pd = perDegree(), bw = b.w / KMAX, top = 1.05;
       let hwN = 0, bsN = 0, pmax = 0;
-      for (let kk = 1; kk <= KMAX; kk++) { const hw = hammingWeight(rule, kk), bs = sensitivity(rule, kk).BS / (kk + 1); hwN += p[kk] * hw; bsN += p[kk] * sensitivity(rule, kk).BS; pmax = Math.max(pmax, p[kk]); }
+      for (let kk = 1; kk <= KMAX; kk++) { hwN += p[kk] * pd.hw[kk]; bsN += p[kk] * pd.bs[kk]; pmax = Math.max(pmax, p[kk]); }
       const Y = (v: number) => b.y + b.h - (v / top) * b.h;
       ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.x, Y(0) + 0.5); ctx.lineTo(b.x + b.w, Y(0) + 0.5); ctx.stroke();
       ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(b.x, Y(0.5) + 0.5); ctx.lineTo(b.x + b.w, Y(0.5) + 0.5); ctx.stroke(); ctx.setLineDash([]);
       for (let kk = 1; kk <= KMAX; kk++) {
-        const x = b.x + (kk - 1) * bw, hw = hammingWeight(rule, kk), bs = sensitivity(rule, kk).BS / (kk + 1);
+        const x = b.x + (kk - 1) * bw, hw = pd.hw[kk], bs = pd.bs[kk] / (kk + 1);
         ctx.fillStyle = t.ink; ctx.fillRect(x + 1, Y(hw), bw * 0.45 - 1, Y(0) - Y(hw));
         ctx.fillStyle = t.accent; ctx.fillRect(x + bw * 0.5, Y(bs), bw * 0.45 - 1, Y(0) - Y(bs));
         if (kk === k) { ctx.strokeStyle = t.danger; ctx.strokeRect(x + 0.5, b.y + 0.5, bw - 1, b.h - 1); }

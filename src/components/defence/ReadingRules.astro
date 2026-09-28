@@ -1,0 +1,242 @@
+---
+// F1–F4: from neighbours in a row to contacts anywhere in the room, the Game of Life as a rule on shares, and the two
+// numbers that read a rule before it runs: the Hamming weight (with the mean-field curve) and the Boolean sensitivity
+// (with the Derrida curve and a twin run where one person differs).
+import Slide from './Slide.astro';
+import Seats from './Seats.astro';
+import Phi from './Phi.astro';
+const B = 8, S = 12, r = 9;
+const cells = Array.from({ length: r }, (_, i) => ({ b: (B >> i) & 1, s: (S >> i) & 1 }));
+const cw = 1160 / r;
+---
+<Slide label="Now imagine" builds={4} class="f1">
+  <div class="row grow f1-row">
+    <Seats you={[3, 4]} label="The room: one person, their neighbours, then contacts anywhere" />
+    <div class="col f1-side">
+      <h2>Now imagine…</h2>
+      <p class="lede f1-cap" data-b="1">What you just did: your two neighbours.</p>
+      <p class="lede f1-cap" data-b="2"><span class="accent">8 random people</span> anywhere in the room: a <b>network</b>.</p>
+      <p class="lede f1-cap" data-b="3">A <b>network automaton</b>: the same rule for all, but anyone can be your neighbour.</p>
+      <p class="lede f1-cap" data-b="4">But now some people have <b data-min>3</b> contacts and some have <b data-max>12</b>. “Exactly three neighbours” no longer makes sense.</p>
+    </div>
+  </div>
+</Slide>
+
+<Slide label="Count the share, not the number" builds={1} class="f2">
+  <h2>Count the share, not the number</h2>
+  <p class="lede"><b class="mono">ρ</b> = the share of your contacts with a hand up</p>
+  <div class="f2-diagram">
+    <p class="f2-name">The Game of Life as a Life-like network automaton, <Phi b={8} s={12} /></p>
+    <svg viewBox="0 0 1500 420" aria-label="The rule diagram of the Game of Life: nine intervals of the share, born in one, survive in two">
+      <text x="300" y="80" text-anchor="end" class="rl">hand down now:</text>
+      <text x="300" y="118" text-anchor="end" class="rs">raise it here</text>
+      <text x="300" y="220" text-anchor="end" class="rl">hand up now:</text>
+      <text x="300" y="258" text-anchor="end" class="rs">keep it up here</text>
+      {cells.map((c, i) => (
+        <>
+          <rect x={330 + i * cw + 3} y="30" width={cw - 6} height="120" class={c.b ? 'born' : 'off'} />
+          <rect x={330 + i * cw + 3} y="170" width={cw - 6} height="120" class={c.s ? 'keep' : 'off'} />
+        </>
+      ))}
+      <line x1="330" y1="316" x2={330 + r * cw} y2="316" class="ax" />
+      {Array.from({ length: r + 1 }, (_, i) => <line x1={330 + i * cw} y1="306" x2={330 + i * cw} y2="326" class="ax" />)}
+      <text x="330" y="370" text-anchor="middle" class="tk">0</text>
+      <text x={330 + 4.5 * cw} y="370" text-anchor="middle" class="tk">½</text>
+      <text x={330 + r * cw} y="370" text-anchor="middle" class="tk">1</text>
+      <text x={330 + 4.5 * cw} y="412" text-anchor="middle" class="rs">share of contacts with a hand up, in nine intervals</text>
+    </svg>
+  </div>
+  <p class="lede" data-b="1">One rule = at which shares you raise your hand (if it’s down) and keep it (if it’s up). With 9 intervals: 2<sup>18</sup> = 262,144 rules.</p>
+</Slide>
+
+<Slide label="Reading the rule: generosity" builds={3} class="f3">
+  <div class="row grow f34-row">
+    <div class="col f34-side">
+      <h2>Reading the rule,&nbsp;1</h2>
+      <p><b>Hamming weight</b>: the share of all situations in which the rule says <i>hand up</i>.</p>
+      <p class="muted">If a share ρ of the room has hands up, and contacts were random, what share has hands up next round?</p>
+      <p class="accent" data-b="2">Approximation: it ignores who is next to whom.</p>
+      <p data-b="3">Crossings with the diagonal: where the room settles, in this approximation.</p>
+    </div>
+    <canvas class="plot" aria-label="Mean-field curve of the Game of Life for eight contacts, against the diagonal"></canvas>
+  </div>
+  <p class="cite">Game of Life, <Phi b={8} s={12} />, 8 contacts · drag across the plot to move ρ</p>
+</Slide>
+
+<Slide label="Reading the rule: sensitivity" builds={2} class="f4">
+  <h2>Reading the rule, 2</h2>
+  <p class="f4-lede">Two copies of this room, identical except one person. After one round, how many people differ?</p>
+  <div class="row f4-row">
+    <canvas class="plot" aria-label="Derrida curve of the Game of Life: differences next round against differences now"></canvas>
+    <figure class="twin" data-b="1">
+      <canvas aria-label="Two copies of a network running the same rule; red marks the people who differ"></canvas>
+      <figcaption><span class="danger">red</span>: who differs · <span data-diff>1</span></figcaption>
+    </figure>
+  </div>
+  <p class="f4-sum" data-b="2">The genotype predicts the phenotype, partly: Hamming weight ↔ final share (R ≈ 0.7), Boolean sensitivity ↔ spread of differences (R ≈ 0.55). Useful, not a substitute for simulation.</p>
+  <p class="cite">Correlations over 528 rules on 900-node grids, thesis Ch. 5 · twin run: illustration on a rewired 30 × 30 grid</p>
+</Slide>
+
+<style>
+  .f1-row { gap: calc(80 * var(--u)); align-items: stretch; }
+  .f1-row :global(.seats) { height: calc(930 * var(--u)); width: auto; flex: none; margin-top: calc(-30 * var(--u)); }
+  .f1-side { justify-content: center; gap: calc(34 * var(--u)); }
+
+  .f2-diagram { display: flex; flex-direction: column; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); }
+  .f2-name { font-size: calc(34 * var(--u)); color: var(--muted); }
+  .f2-diagram svg { width: calc(1500 * var(--u)); }
+  :global(.f2) rect.born { fill: var(--accent); }
+  :global(.f2) rect.keep { fill: var(--ink); }
+  :global(.f2) rect.off { fill: var(--panel); stroke: var(--line); stroke-width: 2; }
+  :global(.f2) .rl { font-family: var(--sans); font-size: 36px; font-weight: 600; fill: var(--ink); }
+  :global(.f2) .rs { font-family: var(--sans); font-size: 30px; fill: var(--muted); }
+  :global(.f2) .tk { font-family: var(--mono); font-size: 32px; fill: var(--muted); }
+  :global(.f2) .ax { stroke: var(--muted); stroke-width: 3; }
+
+  .f34-row { gap: calc(50 * var(--u)); align-items: center; }
+  .f34-side { width: calc(640 * var(--u)); flex: none; gap: calc(30 * var(--u)); }
+  :global(.f3) .plot { width: calc(1040 * var(--u)); height: calc(860 * var(--u)); flex: none; touch-action: none; cursor: ew-resize; }
+
+  .f4-lede { max-width: calc(1600 * var(--u)); font-size: calc(42 * var(--u)); }
+  .f4-row { gap: calc(60 * var(--u)); align-items: flex-start; }
+  :global(.f4) .plot { width: calc(980 * var(--u)); height: calc(540 * var(--u)); flex: none; }
+  .twin { margin: 0; display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
+  .twin canvas { width: calc(490 * var(--u)); height: calc(490 * var(--u)); }
+  .twin figcaption { font-size: calc(32 * var(--u)); }
+  .f4-sum { font-size: calc(34 * var(--u)); max-width: calc(1700 * var(--u)); margin-bottom: calc(24 * var(--u)); }
+</style>
+
+<script>
+  import { slide, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
+  import { axes, curve, dot, line, label, px, py, type Plot } from '../../scripts/defence/plot';
+  import { makeRng, lattice } from '../../scripts/net';
+  import { type Rule, meanField, hammingWeight, step, randomState } from '../../scripts/llna';
+  import { sensitivity, derridaCoeffs, derridaAt } from '../../scripts/genotype';
+
+  const LIFE: Rule = { r: 9, B: 8, S: 12 }, K = 8;
+  const f2 = (x: number) => (Math.abs(x - 0.5) < 1e-9 ? '½' : String(x));
+
+  // ── F1: the room, then contacts anywhere ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f1')) {
+    const svg = s.querySelector<SVGSVGElement>('svg.seats')!, links = svg.querySelector('[data-links]')!, over = svg.querySelector('[data-over]')!;
+    const seats = Array.from(svg.querySelectorAll<SVGUseElement>('use.seat'));
+    const N = 80, you = 4 * 8 + 3, centre = (i: number) => [(i % 8) * 110 + 55, 96 + Math.floor(i / 8) * 128 + 64];
+    // A random network with 8 contacts on average. Seed 2593 is the first in which "you" has exactly 8, the fewest 3
+    // and the most 12, as the slide says (npm test checks it).
+    const edges: [number, number][] = [], deg: number[] = new Array(N).fill(0), rnd = makeRng(2593);
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (rnd() < 8 / (N - 1)) { edges.push([i, j]); deg[i]++; deg[j]++; }
+    const lo = deg.indexOf(Math.min(...deg)), hi = deg.indexOf(Math.max(...deg));
+    const ns = 'http://www.w3.org/2000/svg';
+    const draw = (b: number) => {
+      links.replaceChildren(); over.replaceChildren();
+      for (const u of seats) u.classList.remove('you', 'near', 'dim');
+      if (b >= 1) seats[you].classList.add('you');
+      if (b === 1) { seats[you - 1].classList.add('near'); seats[you + 1].classList.add('near'); }
+      if (b >= 2) {
+        // the web first, faint, then your own contacts on top
+        const add = (i: number, j: number, faint: boolean) => {
+          const [x1, y1] = centre(i), [x2, y2] = centre(j), l = document.createElementNS(ns, 'line');
+          l.setAttribute('x1', String(x1)); l.setAttribute('y1', String(y1)); l.setAttribute('x2', String(x2)); l.setAttribute('y2', String(y2));
+          if (faint) l.classList.add('faint');
+          links.append(l);
+        };
+        if (b >= 3) for (const [i, j] of edges) if (i !== you && j !== you) add(i, j, true);
+        for (const [i, j] of edges) if (i === you || j === you) { add(i, j, false); if (b === 2) seats[i === you ? j : i].classList.add('near'); }
+      }
+      if (b >= 4) for (const [i, n] of [[lo, deg[lo]], [hi, deg[hi]]]) {
+        const [x, y] = centre(i), c = document.createElementNS(ns, 'circle'), tx = document.createElementNS(ns, 'text');
+        c.setAttribute('cx', String(x)); c.setAttribute('cy', String(y)); c.setAttribute('r', '62'); c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'var(--danger)'); c.setAttribute('stroke-width', '6');
+        tx.setAttribute('x', String(x + (x > 440 ? -78 : 78))); tx.setAttribute('y', String(y + 16)); tx.setAttribute('text-anchor', x > 440 ? 'end' : 'start'); tx.setAttribute('font-size', '46'); tx.setAttribute('font-weight', '700'); tx.setAttribute('fill', 'var(--danger)'); tx.setAttribute('font-family', 'var(--sans)');
+        tx.textContent = String(n); over.append(c, tx);
+      }
+    };
+    s.querySelector('[data-min]')!.textContent = String(deg[lo]); s.querySelector('[data-max]')!.textContent = String(deg[hi]);
+    slide(s, { set: (b) => draw(b) });
+    draw(0);
+  }
+
+  // ── F3: the mean-field curve, a draggable ρ, a cobweb and the crossings ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f3')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
+    let at = 0, rho = 0.5;
+    const f = (x: number) => meanField(LIFE, K, x), hw = hammingWeight(LIFE, K);
+    const crossings: number[] = [0];
+    for (let i = 1, prev = f(0.001) - 0.001; i < 1000; i++) { const x = i / 1000, d = f(x) - x; if (Math.sign(d) !== Math.sign(prev)) crossings.push(x - 0.0005); prev = d; }
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { t } = st, p: Plot = { x: 150, y: 30, w: st.w - 190, h: st.h - 160, x0: 0, x1: 1, y0: 0, y1: 1 };
+      const ticks: [number, string][] = [[0, '0'], [0.5, '½'], [1, '1']];
+      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'share with a hand up now, ρ', yname: 'share next round' });
+      curve(st, p, (x) => x, t.muted, 2, [10, 10]);
+      curve(st, p, f, t.accent, 6);
+      // the reader's ρ
+      line(st, px(p, rho), py(p, 0), px(p, rho), py(p, f(rho)), t.line, 3);
+      dot(st, px(p, rho), py(p, f(rho)), 11, t.accent);
+      label(st, `ρ = ${rho.toFixed(2)} → ${f(rho).toFixed(2)}`, px(p, rho) + 18, py(p, f(rho)) - 30, { size: 30, mono: true, bg: true });
+      if (at >= 1) {
+        dot(st, px(p, 0.5), py(p, hw), 14, t.danger);
+        line(st, px(p, 0), py(p, hw), px(p, 0.5), py(p, hw), t.danger, 3, [6, 8]);
+        label(st, `Hamming weight = ${hw.toFixed(2)}`, px(p, 0.5) + 24, py(p, hw) + 34, { color: t.danger, size: 34, weight: 600, bg: true });
+      }
+      if (at >= 2) {
+        let x = 0.5;
+        st.ctx.strokeStyle = t.danger; st.ctx.lineWidth = 3; st.ctx.beginPath(); st.ctx.moveTo(px(p, x), py(p, 0));
+        for (let k = 0; k < 3; k++) { const y = f(x); st.ctx.lineTo(px(p, x), py(p, y)); st.ctx.lineTo(px(p, y), py(p, y)); x = y; }
+        st.ctx.stroke();
+      }
+      if (at >= 3) for (const x of crossings) { dot(st, px(p, x), py(p, x), 12, t.bg, t.ink); label(st, x.toFixed(2), px(p, x) + 4, py(p, x) - 30, { size: 28, mono: true, bg: true }); }
+    }
+    let drag = false;
+    const move = (e: PointerEvent) => { const st = stage(c); if (!st) return; const q = pointer(c, e); rho = Math.min(1, Math.max(0, (q.x - 150) / (st.w - 190))); paint(); };
+    c.addEventListener('pointerdown', (e) => { drag = true; c.setPointerCapture(e.pointerId); move(e); });
+    c.addEventListener('pointermove', (e) => { if (drag) move(e); });
+    c.addEventListener('pointerup', () => { drag = false; });
+    slide(s, { set(b) { at = b; paint(); }, enter() { rho = 0.5; } });
+    onSize(c, paint);
+  }
+
+  // ── F4: the Derrida curve with its slope at the origin, and a twin run ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f4')) {
+    const [plot, grid] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
+    const bs = sensitivity(LIFE, K).BS, dc = derridaCoeffs(LIFE, K, 0.5), top = 0.6;
+    function paintPlot() {
+      const st = stage(plot); if (!st) return;
+      const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 180, h: st.h - 150, x0: 0, x1: top, y0: 0, y1: top };
+      axes(st, p, { xticks: [[0, '0'], [0.2, '0.2'], [0.4, '0.4'], [0.6, '0.6']], yticks: [[0, '0'], [0.2, '0.2'], [0.4, '0.4'], [0.6, '0.6']], xname: 'share that differs now', yname: 'differs next round' });
+      curve(st, p, (x) => x, t.muted, 2, [10, 10]);
+      curve(st, p, (x) => derridaAt(dc, x), t.accent, 6);
+      const x1 = top / bs; // the tangent at the origin, up to the top of the box
+      line(st, px(p, 0), py(p, 0), px(p, x1), py(p, top), t.danger, 4);
+      label(st, `slope at 0: ${bs.toFixed(2)}`, px(p, x1) + 16, py(p, top) + 22, { color: t.danger, size: 32, weight: 600, bg: true });
+      label(st, '= Boolean sensitivity', px(p, x1) + 16, py(p, top) + 62, { color: t.danger, size: 30, bg: true });
+      label(st, 'above 1: differences grow', px(p, 0.3), py(p, 0.1), { color: t.muted, size: 26 });
+      label(st, 'below 1: they die out', px(p, 0.3), py(p, 0.05), { color: t.muted, size: 26 });
+    }
+    // twin run: Life as a network automaton on a lightly rewired 30 × 30 grid, one person flipped in copy b
+    const side = 30, N = side * side, net = lattice(side, 8, 0.05, makeRng(55)), flip = 15 * side + 15;
+    let a = new Uint8Array(N), b = new Uint8Array(N), a2 = new Uint8Array(N), b2 = new Uint8Array(N), ticks = 0;
+    const out = s.querySelector<HTMLElement>('[data-diff]')!;
+    const reset = () => { a = randomState(N, 0.5, makeRng(5)); b = a.slice(); b[flip] ^= 1; ticks = 0; };
+    const diff = () => { let d = 0; for (let i = 0; i < N; i++) d += a[i] ^ b[i]; return d; };
+    function paintGrid() {
+      const st = stage(grid); if (!st) return;
+      const { ctx, t } = st, cell = st.w / side;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, st.w, st.h);
+      for (let i = 0; i < N; i++) {
+        const x = (i % side) * cell, y = Math.floor(i / side) * cell;
+        if (a[i] !== b[i]) { ctx.fillStyle = t.danger; ctx.fillRect(x, y, cell - 1, cell - 1); }
+        else if (a[i]) { ctx.fillStyle = t.ink; ctx.fillRect(x, y, cell - 1, cell - 1); }
+      }
+      out.textContent = `${diff()} of ${N} after ${ticks} round${ticks === 1 ? '' : 's'}`;
+    }
+    const run = ticker(s, 4, () => { step(a, net, LIFE, a2); step(b, net, LIFE, b2); [a, a2] = [a2, a]; [b, b2] = [b2, b]; ticks++; if (ticks >= 150) return true; }, paintGrid);
+    reset();
+    slide(s, {
+      set(k: number, how: How) { if (k >= 1 && !run.playing && (how === 'next' || ticks === 0)) { if (how === 'next') reset(); run.play(true); } if (k === 0) { run.play(false); reset(); } paintGrid(); },
+      enter() { reset(); },
+      leave() { run.play(false); },
+    });
+    onSize(plot, paintPlot); onSize(grid, paintGrid);
+  }
+</script>

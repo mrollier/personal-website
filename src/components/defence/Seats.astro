@@ -15,6 +15,7 @@ const mark = (s: { c: number; r: number }) => (!you || s.r !== you[1] ? '' : s.c
   <text class="lbl" x={(cols * gx) / 2} y="78" text-anchor="middle">screen</text>
   <g data-links></g>
   {seats.map((s) => <use href="#hand-down" class:list={['seat', 'down', mark(s)]} data-i={s.r * cols + s.c} x={s.c * gx + 13} y={top + s.r * gy + 8} width="84" height="109" />)}
+  <g data-over></g>
 </svg>
 
 <style>

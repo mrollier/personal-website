@@ -1,0 +1,256 @@
+---
+// F5–F8: the synchronisation task, 262,144 rules narrowed to 27 by the genotype alone, the trade-off between
+// sensitivity and mean-field speed among the 27, the winner at work on a rewired grid, and the flip that turns a
+// synchroniser into a consensus-seeker.
+import Slide from './Slide.astro';
+import Phi from './Phi.astro';
+---
+<Slide label="A needle in a haystack" builds={4} class="f5">
+  <div class="row grow f5-row">
+    <canvas class="rules" aria-label="Every one of the 262,144 rules as one pixel: born set down, survive set across"></canvas>
+    <div class="col f5-side">
+      <h2>A needle in a haystack</h2>
+      <p class="lede">Everyone flashes in step: all hands up, all down, all up, … starting from a random room.</p>
+      <ol class="steps">
+        <li data-b="1"><b>262,144</b> rules, one pixel each</li>
+        <li data-b="2"><b class="accent">512</b> look the same with colours swapped, as the task does</li>
+        <li data-b="3"><b class="danger">27</b> push the room away from half-half while flipping it: <span class="muted">computed in a fraction of a second, no simulation</span></li>
+        <li data-b="4">Simulated: <b>22</b> never synchronised once. One stands out: <Phi b={23} s={47} /></li>
+      </ol>
+    </div>
+  </div>
+  <p class="cite">The global synchronisation task: R. Das, J. P. Crutchfield, M. Mitchell, J. E. Hanson, 1995</p>
+</Slide>
+
+<Slide label="The trade-off" builds={2} class="f6">
+  <h2>The trade-off</h2>
+  <div class="row grow f6-row">
+    <canvas class="scatter" aria-label="The 27 candidates: Boolean sensitivity against the steepness of the mean-field curve"></canvas>
+    <div class="col f6-side">
+      <canvas class="inset" aria-label="Mean-field and Derrida curves of the winning rule"></canvas>
+      <p class="lede" data-b="1">Ideally both high. In practice: a trade-off. The winner chose sensitivity.</p>
+      <p class="small" data-b="2">27 rules, one resolution, one degree: an observation, not a law.</p>
+    </div>
+  </div>
+</Slide>
+
+<Slide label="Watch it work" builds={3} class="f7">
+  <div class="row grow f7-row">
+    <canvas class="grid" aria-label="The winning rule on a rewired 30 by 30 grid"></canvas>
+    <div class="col f7-side">
+      <h2>Watch it work</h2>
+      <canvas class="trace" aria-label="Share of hands up, round by round"></canvas>
+      <div class="trials" data-b="2">
+        <p><span data-won>0</span> of 20 fresh networks synchronised</p>
+        <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}</div>
+      </div>
+      <p class="panel" data-b="3">In the thesis, on rewired rings of 1000 people with 8 contacts each: about 80% at p = 0.2, up to 94% near p ≈ 0.3, 39% when fully random, and never with 6 contacts. On rewired grids: over 95% for 0.02 ≤ p ≤ 0.4.</p>
+    </div>
+  </div>
+  <p class="cite"><Phi b={23} s={47} /> on a 30 × 30 grid, 8 contacts, 20% of links rewired, half the hands up at the start</p>
+  <p class="illus">illustration — computed on toy networks, not a thesis figure</p>
+</Slide>
+
+<Slide label="Flip it: consensus" builds={1} class="f8">
+  <div class="row grow f8-row">
+    <canvas class="flip" aria-label="The mean-field curve of the synchroniser flipping into that of a consensus-seeker"></canvas>
+    <div class="col f8-side">
+      <h2>Flip it: consensus</h2>
+      <p class="lede">Turn every answer around: the room no longer flashes, it freezes, all up or all down. <b>Consensus-seeking rules.</b></p>
+      <p class="f8-names"><Phi b={23} s={47} /> → <Phi b={488} s={464} /></p>
+      <p data-b="1">Same sensitivity: the Derrida curve is unchanged. 106 candidates at this resolution; the best one per network type becomes our probe.</p>
+    </div>
+  </div>
+</Slide>
+
+<style>
+  .f5-row { gap: calc(60 * var(--u)); align-items: center; }
+  .rules { width: calc(860 * var(--u)); height: calc(900 * var(--u)); flex: none; }
+  .f5-side { gap: calc(30 * var(--u)); }
+  .steps { gap: calc(22 * var(--u)); font-size: calc(36 * var(--u)); }
+
+  .f6-row { gap: calc(50 * var(--u)); align-items: flex-start; }
+  .scatter { width: calc(1060 * var(--u)); height: calc(820 * var(--u)); flex: none; }
+  .f6-side { gap: calc(30 * var(--u)); }
+  .inset { width: calc(620 * var(--u)); height: calc(330 * var(--u)); }
+
+  .f7-row { gap: calc(60 * var(--u)); align-items: center; }
+  :global(.f7) .grid { width: calc(820 * var(--u)); height: calc(820 * var(--u)); flex: none; }
+  .f7-side { gap: calc(24 * var(--u)); flex: 1; }
+  .trace { width: 100%; height: calc(260 * var(--u)); }
+  .trials p { font-size: calc(34 * var(--u)); }
+  .dots { display: flex; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); }
+  .dots i { width: calc(34 * var(--u)); height: calc(34 * var(--u)); border-radius: 50%; border: calc(3 * var(--u)) solid var(--line); background: var(--bg); }
+  .dots i.ok { background: var(--accent); border-color: var(--accent); }
+  .dots i.no { background: var(--panel); border-color: var(--muted); }
+  .dots i.run { border-color: var(--accent); }
+  .panel { font-size: calc(30 * var(--u)); background: var(--panel); padding: calc(18 * var(--u)) calc(22 * var(--u)); line-height: 1.3; }
+
+  .f8-row { gap: calc(60 * var(--u)); align-items: center; }
+  .flip { width: calc(900 * var(--u)); height: calc(820 * var(--u)); flex: none; }
+  .f8-side { gap: calc(34 * var(--u)); }
+  .f8-names { font-size: calc(56 * var(--u)); }
+</style>
+
+<script>
+  import { slide, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { axes, curve, dot, label, px, py, type Plot } from '../../scripts/defence/plot';
+  import { makeRng, lattice } from '../../scripts/net';
+  import { type Rule, meanField, step, randomState, density, mirror } from '../../scripts/llna';
+  import { derridaCoeffs, derridaAt } from '../../scripts/genotype';
+  import { Raster } from '../../scripts/raster';
+  import { parse, mix } from '../../scripts/palette';
+  import sync from '../../data/defence/sync.json';
+
+  const WIN: Rule = { r: 9, B: 23, S: 47 }, K = 8;
+  const cands = sync.candidates as { B: number; S: number; bs8: number; slope: number }[];
+
+  // ── F5: the rule space, one pixel per rule ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f5')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!, ras = new Raster(512, 512);
+    let at = 0;
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { ctx, t } = st, side = Math.min(st.w - 60, st.h - 80), x0 = 60, y0 = 60;
+      ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(x0 - 1, y0 - 1, side + 2, side + 2);
+      label(st, 'survive set σ →', x0, y0 - 30, { size: 28, color: t.muted, mono: true });
+      ctx.save(); ctx.translate(x0 - 22, y0); ctx.rotate(Math.PI / 2); label(st, 'born set β →', 0, 0, { size: 28, color: t.muted, mono: true }); ctx.restore();
+      if (at < 1) return;
+      const faint = mix(parse(t.panel), parse(t.muted), at >= 2 ? 0.28 : 0.55);
+      ras.fill(faint); ras.flush(); ras.blit(ctx, { x: x0, y: y0, w: side, h: side }, true);
+      const k = side / 512, at2 = (B: number, S: number) => [x0 + (S + 0.5) * k, y0 + (B + 0.5) * k];
+      if (at >= 2) for (let B = 0; B < 512; B++) { const [x, y] = at2(B, 511 & ~mirror(B, 9)); dot(st, x, y, 3.2, t.accent); }
+      if (at >= 3) for (const r of cands) { const [x, y] = at2(r.B, r.S); dot(st, x, y, 9, 'rgba(0,0,0,0)', t.danger); }
+      if (at >= 4) { const [x, y] = at2(23, 47); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); label(st, 'φ⁹₂₃,₄₇', x + 26, y + 4, { size: 34, weight: 700, bg: true }); }
+    }
+    slide(s, { set(b) { at = b; paint(); } });
+    onSize(c, paint);
+  }
+
+  // ── F6: sensitivity against mean-field steepness, and the winner's two curves ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f6')) {
+    const [sc, inset] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
+    function paint() {
+      const st = stage(sc); if (!st) return;
+      const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 190, h: st.h - 150, x0: 0.9, x1: 2.6, y0: 0.5, y1: 7.5 };
+      axes(st, p, { xticks: [[1, '1'], [1.5, '1.5'], [2, '2'], [2.5, '2.5']], yticks: [[1, '1'], [3, '3'], [5, '5'], [7, '7']], xname: 'leaves half-half fast: |mean-field slope at ½|', yname: 'Boolean sensitivity, 8 contacts' });
+      for (const r of cands) dot(st, px(p, Math.abs(r.slope)), py(p, r.bs8), 10, t.muted);
+      const mark = (B: number, S: number, text: string, color: string, dx: number, dy: number) => {
+        const r = cands.find((c) => c.B === B && c.S === S)!, x = px(p, Math.abs(r.slope)), y = py(p, r.bs8);
+        dot(st, x, y, 15, color); label(st, text, x + dx, y + dy, { size: 32, weight: 600, color, bg: true });
+      };
+      mark(23, 47, 'φ⁹₂₃,₄₇ · the winner', t.danger, 26, -34);
+      mark(79, 27, 'φ⁹₇₉,₂₇ · runner-up', t.accent, 26, 30);
+    }
+    function paintInset() {
+      const st = stage(inset); if (!st) return;
+      const { t } = st, w = (st.w - 60) / 2, dc = derridaCoeffs(WIN, K, 0.5);
+      const a: Plot = { x: 20, y: 40, w: w - 30, h: st.h - 90, x0: 0, x1: 1, y0: 0, y1: 1 }, b: Plot = { ...a, x: 60 + w, x1: 0.5, y1: 0.5 };
+      for (const p of [a, b]) { st.ctx.strokeStyle = t.line; st.ctx.lineWidth = 2; st.ctx.strokeRect(p.x, p.y, p.w, p.h); curve(st, p, (x) => x, t.muted, 2, [8, 8]); }
+      curve(st, a, (x) => meanField(WIN, K, x), t.accent, 4);
+      curve(st, b, (x) => derridaAt(dc, x), t.danger, 4);
+      label(st, 'mean field', a.x, 18, { size: 26, color: t.accent });
+      label(st, 'Derrida', b.x, 18, { size: 26, color: t.danger });
+      label(st, 'φ⁹₂₃,₄₇', st.w - 4, st.h - 20, { size: 26, align: 'right', color: t.muted });
+    }
+    onSize(sc, paint); onSize(inset, paintInset);
+  }
+
+  // ── F7: the winner on a rewired grid, then twenty fresh networks ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f7')) {
+    const [grid, trace] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
+    const side = 30, N = side * side, p = 0.2, demo = sync.demo;
+    const net = lattice(side, 8, p, makeRng(demo.netSeed));
+    let a = new Uint8Array(N), b = new Uint8Array(N), rho: number[] = [], synced = -1;
+    const reset = () => { a = randomState(N, 0.5, makeRng(demo.startSeed)); rho = [density(a)]; synced = -1; };
+    /** The verdict of llna.ts, one round at a time: the first homogeneous round T decides, by the two rounds after it. */
+    const judge = (h: number[], limit: number): { done: boolean; ok: boolean; T: number } => {
+      let T = -1; for (let t = 0; t < h.length; t++) if (h[t] === 0 || h[t] === 1) { T = t; break; }
+      if (T < 0) return { done: h.length > limit, ok: false, T };
+      if (h.length < T + 3) return { done: false, ok: false, T };
+      return { done: true, ok: h[T + 1] === 1 - h[T] && h[T + 2] === h[T], T };
+    };
+    function paintGrid() {
+      const st = stage(grid); if (!st) return;
+      const { ctx, t } = st, cell = st.w / side;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, st.w, st.h); ctx.fillStyle = t.ink;
+      for (let i = 0; i < N; i++) if (a[i]) ctx.fillRect((i % side) * cell, Math.floor(i / side) * cell, cell - 1.5, cell - 1.5);
+    }
+    function paintTrace() {
+      const st = stage(trace); if (!st) return;
+      const { t } = st, T = Math.max(60, rho.length), q: Plot = { x: 150, y: 10, w: st.w - 170, h: st.h - 100, x0: 0, x1: T, y0: 0, y1: 1 };
+      axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'round', yname: 'hands up' });
+      curve(st, { ...q, x1: T }, () => 0.5, t.line, 2, [6, 8]);
+      st.ctx.strokeStyle = t.accent; st.ctx.lineWidth = 3; st.ctx.beginPath();
+      rho.forEach((v, i) => { const X = px(q, i), Y = py(q, v); if (i) st.ctx.lineTo(X, Y); else st.ctx.moveTo(X, Y); });
+      st.ctx.stroke();
+      if (synced >= 0) label(st, `in step from round ${synced}`, st.w - 10, 24, { size: 28, align: 'right', color: t.accent, weight: 600, bg: true });
+    }
+    // Big patches flip together, so never more than 3 rounds a second (under the 3-flashes-a-second limit for a room),
+    // and 2 a second once the whole grid flashes in step.
+    const run = ticker(s, 3, () => {
+      step(a, net, WIN, b); [a, b] = [b, a]; rho.push(density(a));
+      if (synced < 0) { const v = judge(rho, 2 * N); if (v.done && v.ok) { synced = v.T; run.rate = 2; } }
+      if (rho.length > 400) return true;
+    }, () => { paintGrid(); paintTrace(); });
+    // twenty trials, a slice of rounds per frame so no frame waits
+    const dots = Array.from(s.querySelectorAll<HTMLElement>('[data-dots] i')), won = s.querySelector<HTMLElement>('[data-won]')!;
+    let job = 0;
+    function trials() {
+      cancelAnimationFrame(job);
+      dots.forEach((d) => d.className = ''); won.textContent = '0';
+      let i = 0, wins = 0, x = new Uint8Array(N), y = new Uint8Array(N), hist: number[] = [], tnet = lattice(side, 8, p, makeRng(sync.trials[0].netSeed));
+      const begin = () => { const tr = sync.trials[i]; tnet = lattice(side, 8, p, makeRng(tr.netSeed)); x = randomState(N, 0.5, makeRng(tr.startSeed)); hist = [density(x)]; dots[i].className = 'run'; };
+      begin();
+      const frame = () => {
+        const t0 = performance.now();
+        while (performance.now() - t0 < 4 && i < 20) {
+          step(x, tnet, WIN, y); [x, y] = [y, x]; hist.push(density(x));
+          const v = judge(hist, 2 * N);
+          if (v.done) { dots[i].className = v.ok ? 'ok' : 'no'; if (v.ok) wins++; won.textContent = String(wins); i++; if (i < 20) begin(); }
+        }
+        if (i < 20) job = requestAnimationFrame(frame);
+      };
+      job = requestAnimationFrame(frame);
+    }
+    reset();
+    slide(s, {
+      set(k: number, how: How) {
+        if (k === 0) { run.play(false); reset(); }
+        if (k >= 1 && how === 'next' && k === 1) { reset(); run.rate = 3; run.play(true); }
+        if (k >= 2 && how === 'next' && k === 2) trials();
+        if (how === 'jump' && k >= 1) { run.rate = 3; run.play(true); if (k >= 2) trials(); }
+        paintGrid(); paintTrace();
+      },
+      enter() { reset(); cancelAnimationFrame(job); dots.forEach((d) => d.className = ''); won.textContent = '0'; },
+      leave() { run.play(false); cancelAnimationFrame(job); },
+    });
+    onSize(grid, paintGrid); onSize(trace, paintTrace);
+  }
+
+  // ── F8: the synchroniser's mean-field curve turns over into the consensus-seeker's ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f8')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
+    let u = 0, raf = 0;
+    const f = (x: number) => meanField(WIN, K, x);
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { t } = st, p: Plot = { x: 150, y: 30, w: st.w - 190, h: st.h - 160, x0: 0, x1: 1, y0: 0, y1: 1 };
+      const ticks: [number, string][] = [[0, '0'], [0.5, '½'], [1, '1']];
+      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'share with a hand up now', yname: 'share next round' });
+      curve(st, p, (x) => x, t.muted, 2, [10, 10]);
+      if (u > 0) curve(st, p, f, t.line, 3);
+      const e = u * u * (3 - 2 * u);
+      curve(st, p, (x) => (1 - e) * f(x) + e * (1 - f(x)), e > 0.5 ? t.danger : t.accent, 6);
+      label(st, e > 0.5 ? 'freezes: consensus' : 'flips: synchronisation', px(p, 0.04), py(p, 0.95), { size: 32, weight: 600, color: e > 0.5 ? t.danger : t.accent, bg: true });
+    }
+    const animate = () => {
+      cancelAnimationFrame(raf); u = 0; const t0 = performance.now() + 700;
+      const go = (now: number) => { u = Math.min(1, Math.max(0, (now - t0) / 1400)); paint(); if (u < 1) raf = requestAnimationFrame(go); };
+      raf = requestAnimationFrame(go);
+    };
+    slide(s, { enter: animate, leave() { cancelAnimationFrame(raf); } });
+    onSize(c, () => { if (!raf) animate(); else paint(); });
+  }
+</script>

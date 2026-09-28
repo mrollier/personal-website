@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
 import { stillMosaic } from '../src/scripts/defence/cover.ts';
 import { stepLife } from '../src/scripts/life.ts';
+import { makeRng } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
 assert.deepEqual(reedSolomon([32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17], 10), [196, 35, 39, 119, 235, 215, 231, 226, 93, 23]);
@@ -23,4 +24,51 @@ for (const wrap of [false, true]) {
   assert.ok(art.g.some((v) => v === 1));
   assert.equal(stepLife(art.g, art.W, art.H, out), 0, `mosaic with wrap=${wrap} is not a still life`);
 }
+// F1: the room's random network (seed 2593, 80 seats, 8 contacts on average) gives the seat in row 5, column 4 exactly
+// 8 contacts, and the slide's 'some have 3, some have 12'.
+{
+  const N = 80, d = new Array(N).fill(0), rnd = makeRng(2593);
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (rnd() < 8 / (N - 1)) { d[i]++; d[j]++; }
+  assert.equal(d[35], 8); assert.equal(Math.min(...d), 3); assert.equal(Math.max(...d), 12);
+}
 console.log('defence checks passed');
+
+// ── §6 of the brief: the genotype anchors, recomputed from the thesis definitions (Ch. 5 §5.3, Ch. 6, Ch. 9) ──
+import { sensitivity, selfEquivalentRules, candidates, jaggedness, derrida } from '../src/scripts/genotype.ts';
+import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsTowardsHomogeneous, trial } from '../src/scripts/llna.ts';
+import { lattice } from '../src/scripts/net.ts';
+import { pearson } from '../src/scripts/stats.ts';
+{
+  const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
+  const near = (a: number, b: number, tol: number, what: string) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
+  const slope = (rule: Rule) => { const h = 1e-6; return (meanField(rule, 8, 0.5 + h) - meanField(rule, 8, 0.5 - h)) / (2 * h); };
+  const hl = R9(72, 12); // HighLife
+  near(hammingWeight(hl, 4), 0.25, 5e-4, 'HighLife HW4'); near(hammingWeight(hl, 12), 0.368, 5e-4, 'HighLife HW12');
+  near(sensitivity(hl, 4).BS, 2.5, 5e-3, 'HighLife BS4'); near(sensitivity(hl, 12).BS, 4.1, 5e-3, 'HighLife BS12');
+  assert.equal(selfEquivalentRules(9).length, 512);
+  const c27 = candidates(9, [8], 'sync'), has = (B: number, S: number) => c27.some((r) => r.B === B && r.S === S);
+  assert.equal(c27.length, 27); assert.ok(has(23, 47) && has(79, 27) && !has(511, 0));
+  const alt = selfEquivalentRules(9).filter((r) => flipsTowardsHomogeneous(r, 8));
+  assert.deepEqual(alt.map((r) => `${r.B},${r.S}`).sort(), c27.map((r) => `${r.B},${r.S}`).sort());
+  const win = R9(23, 47), bs = sensitivity(win, 8).BS;
+  near(bs, 6.398, 5e-4, 'BS8 of 23,47'); near(slope(win), -1.148, 5e-4, 'slope of 23,47');
+  near(derrida(win, 8, 0.5, 1e-6) / 1e-6, bs, 1e-3, 'Derrida slope at 0 = BS8');
+  near(pearson(c27.map((r) => Math.abs(slope(r))), c27.map((r) => sensitivity(r, 8).BS)), -0.48, 5e-3, 'Pearson over the 27');
+  const cons = complement(win); assert.deepEqual([cons.B, cons.S], [488, 464]); near(sensitivity(cons, 8).BS, bs, 1e-12, 'complement keeps BS8');
+  const probe = R9(464, 488);
+  near(sensitivity(probe, 8).BS, 6.398, 5e-4, 'BS8 of 464,488'); near(slope(probe), 1.477, 5e-4, 'slope of 464,488');
+  assert.ok(selfEquivalent(probe) && selfEquivalent(R9(488, 464)));
+  near(jaggedness(R9(170, 340)).Jbar, 0.94, 5e-3, 'Jbar 170,340'); near(jaggedness(R9(503, 120)).Jbar, 0.25, 1e-9, 'Jbar 503,120'); near(jaggedness(win).Jbar, 0.375, 1e-9, 'Jbar 23,47');
+  const top = c27.reduce((a, r) => (sensitivity(r, 8).BS > sensitivity(a, 8).BS ? r : a));
+  assert.deepEqual([top.B, top.S], [175, 21]); near(sensitivity(top, 8).BS, 6.96, 5e-3, 'highest BS8 among the 27');
+  // the precomputed file agrees with a fresh computation
+  const sync = JSON.parse(readFileSync(new URL('../src/data/defence/sync.json', import.meta.url), 'utf8'));
+  assert.equal(sync.candidates.length, 27);
+  for (const c of sync.candidates) { const r = R9(c.B, c.S); assert.ok(has(c.B, c.S)); near(c.bs8, sensitivity(r, 8).BS, 6e-4, 'sync.json bs8'); near(c.slope, slope(r), 6e-4, 'sync.json slope'); }
+  assert.ok(sync.summary.trialsSynchronised >= 17);
+  // and the stored runs are what the browser will replay: the demo and all twenty trials, rebuilt from their seeds
+  const replay = (netSeed: number, startSeed: number) => trial('fssp', lattice(30, 8, 0.2, makeRng(netSeed)), win, 0.5, makeRng(startSeed), 1800);
+  const d = replay(sync.demo.netSeed, sync.demo.startSeed); assert.ok(d.ok); assert.equal(d.tick, sync.demo.tick);
+  for (const t of sync.trials) { const v = replay(t.netSeed, t.startSeed); assert.equal(v.ok, t.ok); assert.equal(v.tick, t.tick); }
+  console.log('genotype anchors of the brief hold');
+}

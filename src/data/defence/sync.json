@@ -1,0 +1,345 @@
+{
+ "about": "Synchronisation candidates at r = 9, k = 8 (self-equivalent, mean-field flips away from ½) and a demo of φ⁹₂₃,₄₇ on a rewired 30 × 30 grid; illustration, not a thesis figure.",
+ "params": {
+  "r": 9,
+  "k": 8,
+  "rule": {
+   "B": 23,
+   "S": 47
+  },
+  "net": {
+   "kind": "lat",
+   "side": 30,
+   "degree": 8,
+   "p": 0.2
+  },
+  "rho0": 0.5,
+  "limit": 1800,
+  "trialSeeds": "netSeed 101–120, startSeed 9101–9120",
+  "demoSearch": "first netSeed s ≥ 1 with startSeed 7000 + s that synchronises within 60 ticks"
+ },
+ "summary": {
+  "candidates": 27,
+  "pearsonAbsSlopeBs8": -0.478,
+  "trialsSynchronised": 19,
+  "trials": 20
+ },
+ "candidates": [
+  {
+   "B": 15,
+   "S": 31,
+   "bs8": 2.461,
+   "slope": -1.914,
+   "jbar": 0.125
+  },
+  {
+   "B": 23,
+   "S": 47,
+   "bs8": 6.398,
+   "slope": -1.148,
+   "jbar": 0.375
+  },
+  {
+   "B": 31,
+   "S": 15,
+   "bs8": 2.461,
+   "slope": -2.461,
+   "jbar": 0.125
+  },
+  {
+   "B": 47,
+   "S": 23,
+   "bs8": 6.398,
+   "slope": -1.477,
+   "jbar": 0.375
+  },
+  {
+   "B": 63,
+   "S": 7,
+   "bs8": 2.023,
+   "slope": -2.023,
+   "jbar": 0.125
+  },
+  {
+   "B": 79,
+   "S": 27,
+   "bs8": 4.43,
+   "slope": -1.258,
+   "jbar": 0.375
+  },
+  {
+   "B": 95,
+   "S": 11,
+   "bs8": 4.43,
+   "slope": -1.805,
+   "jbar": 0.375
+  },
+  {
+   "B": 127,
+   "S": 3,
+   "bs8": 1.367,
+   "slope": -1.367,
+   "jbar": 0.125
+  },
+  {
+   "B": 143,
+   "S": 29,
+   "bs8": 3.023,
+   "slope": -1.602,
+   "jbar": 0.375
+  },
+  {
+   "B": 159,
+   "S": 13,
+   "bs8": 3.023,
+   "slope": -2.148,
+   "jbar": 0.375
+  },
+  {
+   "B": 175,
+   "S": 21,
+   "bs8": 6.961,
+   "slope": -1.164,
+   "jbar": 0.625
+  },
+  {
+   "B": 191,
+   "S": 5,
+   "bs8": 2.586,
+   "slope": -1.711,
+   "jbar": 0.375
+  },
+  {
+   "B": 223,
+   "S": 9,
+   "bs8": 4.117,
+   "slope": -1.492,
+   "jbar": 0.375
+  },
+  {
+   "B": 255,
+   "S": 1,
+   "bs8": 1.055,
+   "slope": -1.055,
+   "jbar": 0.125
+  },
+  {
+   "B": 271,
+   "S": 30,
+   "bs8": 2.531,
+   "slope": -1.859,
+   "jbar": 0.25
+  },
+  {
+   "B": 279,
+   "S": 46,
+   "bs8": 6.469,
+   "slope": -1.094,
+   "jbar": 0.5
+  },
+  {
+   "B": 287,
+   "S": 14,
+   "bs8": 2.531,
+   "slope": -2.406,
+   "jbar": 0.25
+  },
+  {
+   "B": 303,
+   "S": 22,
+   "bs8": 6.469,
+   "slope": -1.422,
+   "jbar": 0.5
+  },
+  {
+   "B": 319,
+   "S": 6,
+   "bs8": 2.094,
+   "slope": -1.969,
+   "jbar": 0.25
+  },
+  {
+   "B": 335,
+   "S": 26,
+   "bs8": 4.5,
+   "slope": -1.203,
+   "jbar": 0.5
+  },
+  {
+   "B": 351,
+   "S": 10,
+   "bs8": 4.5,
+   "slope": -1.75,
+   "jbar": 0.5
+  },
+  {
+   "B": 383,
+   "S": 2,
+   "bs8": 1.438,
+   "slope": -1.312,
+   "jbar": 0.25
+  },
+  {
+   "B": 399,
+   "S": 28,
+   "bs8": 2.969,
+   "slope": -1.547,
+   "jbar": 0.25
+  },
+  {
+   "B": 415,
+   "S": 12,
+   "bs8": 2.969,
+   "slope": -2.094,
+   "jbar": 0.25
+  },
+  {
+   "B": 431,
+   "S": 20,
+   "bs8": 6.906,
+   "slope": -1.109,
+   "jbar": 0.5
+  },
+  {
+   "B": 447,
+   "S": 4,
+   "bs8": 2.531,
+   "slope": -1.656,
+   "jbar": 0.25
+  },
+  {
+   "B": 479,
+   "S": 8,
+   "bs8": 4.063,
+   "slope": -1.437,
+   "jbar": 0.25
+  }
+ ],
+ "demo": {
+  "netSeed": 1,
+  "startSeed": 7001,
+  "tick": 31
+ },
+ "trials": [
+  {
+   "netSeed": 101,
+   "startSeed": 9101,
+   "ok": true,
+   "tick": 53
+  },
+  {
+   "netSeed": 102,
+   "startSeed": 9102,
+   "ok": true,
+   "tick": 31
+  },
+  {
+   "netSeed": 103,
+   "startSeed": 9103,
+   "ok": false,
+   "tick": 1800
+  },
+  {
+   "netSeed": 104,
+   "startSeed": 9104,
+   "ok": true,
+   "tick": 45
+  },
+  {
+   "netSeed": 105,
+   "startSeed": 9105,
+   "ok": true,
+   "tick": 41
+  },
+  {
+   "netSeed": 106,
+   "startSeed": 9106,
+   "ok": true,
+   "tick": 28
+  },
+  {
+   "netSeed": 107,
+   "startSeed": 9107,
+   "ok": true,
+   "tick": 37
+  },
+  {
+   "netSeed": 108,
+   "startSeed": 9108,
+   "ok": true,
+   "tick": 31
+  },
+  {
+   "netSeed": 109,
+   "startSeed": 9109,
+   "ok": true,
+   "tick": 26
+  },
+  {
+   "netSeed": 110,
+   "startSeed": 9110,
+   "ok": true,
+   "tick": 31
+  },
+  {
+   "netSeed": 111,
+   "startSeed": 9111,
+   "ok": true,
+   "tick": 36
+  },
+  {
+   "netSeed": 112,
+   "startSeed": 9112,
+   "ok": true,
+   "tick": 39
+  },
+  {
+   "netSeed": 113,
+   "startSeed": 9113,
+   "ok": true,
+   "tick": 32
+  },
+  {
+   "netSeed": 114,
+   "startSeed": 9114,
+   "ok": true,
+   "tick": 50
+  },
+  {
+   "netSeed": 115,
+   "startSeed": 9115,
+   "ok": true,
+   "tick": 32
+  },
+  {
+   "netSeed": 116,
+   "startSeed": 9116,
+   "ok": true,
+   "tick": 34
+  },
+  {
+   "netSeed": 117,
+   "startSeed": 9117,
+   "ok": true,
+   "tick": 32
+  },
+  {
+   "netSeed": 118,
+   "startSeed": 9118,
+   "ok": true,
+   "tick": 31
+  },
+  {
+   "netSeed": 119,
+   "startSeed": 9119,
+   "ok": true,
+   "tick": 39
+  },
+  {
+   "netSeed": 120,
+   "startSeed": 9120,
+   "ok": true,
+   "tick": 26
+  }
+ ]
+}

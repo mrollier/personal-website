@@ -9,6 +9,7 @@ import BeACell from './BeACell.astro';
 import Automata from './Automata.astro';
 import Question from './Question.astro';
 import ThesisMap from './ThesisMap.astro';
+import Genotype from './Genotype.astro';
 import Hud from './Hud.astro';
 type Props = { mode: 'page' | 'present' };
 const { mode } = Astro.props;
@@ -20,6 +21,7 @@ const blocks = [
   { id: 'automata', name: 'Cellular automata', until: '8:30', C: Automata, intro: 'From one rule to all 256 rules of a row of cells, then to the Game of Life and the still lifes the cover is made of.' },
   { id: 'question', name: 'The question', until: '11:30', C: Question, intro: 'The same recipe gives order, chaos and something in between, in automata and in nature. How much of the behaviour does the rule give away?' },
   { id: 'map', name: 'The thesis map', until: '13:00', C: ThesisMap, intro: 'The four parts of the thesis and the papers behind them.' },
+  { id: 'genotype', name: 'Reading the rule', until: '21:30', C: Genotype, intro: 'From two neighbours in a row to contacts anywhere in a network, the Game of Life as a rule on shares, the two numbers that read a rule before it runs, and how they pick 27 synchronisers out of 262,144 rules without a single simulation.' },
 ];
 ---
 {page ? (

@@ -99,13 +99,11 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       <label data-for="sca">chance of φ <input name="p" type="range" min="0" max="1" step="0.05" value="0.5" /> <output name="pv">0.50</output></label>
       <label data-for="nuca">ψ on <select name="alloc"><option value="half">the right half</option><option value="one">one cell</option><option value="random">a random half</option><option value="alt">every other cell</option></select></label>
       <label data-for="enca">rule <select name="preset">{PRESETS.map((q) => <option value={q.name}>{q.name} {q.code}</option>)}<option value="">your own</option></select></label>
-      <div class="counts" data-for="enca" role="group" aria-label="A dead cell is born with this many living neighbours">
+      <div class="bs" data-for="enca" role="group" aria-label="Born with and survives with this many living neighbours">
         <span>born with</span>
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-b={k} aria-pressed="false">{k}</button>)}
-      </div>
-      <div class="counts" data-for="enca" role="group" aria-label="A living cell survives with this many living neighbours">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-b={k} aria-pressed="false" aria-label={`born with ${k}`}>{k}</button>)}
         <span>survives with</span>
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-s={k} aria-pressed="false">{k}</button>)}
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => <button type="button" data-s={k} aria-pressed="false" aria-label={`survives with ${k}`}>{k}</button>)}
       </div>
       <div class="counts" data-for="msca" role="group" aria-label="Next state for each total of the three cells">
         <span>next state for a total of</span>
@@ -159,6 +157,11 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
   .counts button { min-width: 2em; padding: 0.1em 0.4em; }
   .counts button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+  /* born and survive as two rows of one grid, so each count sits above its partner */
+  .bs { display: grid; grid-template-columns: auto repeat(9, 2.1em); gap: 0.3rem; align-items: center; justify-content: start; flex-basis: 100%; }
+  .bs span { margin-right: 0.3rem; }
+  .bs button { padding: 0.1em 0; }
+  .bs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   canvas.draw { cursor: crosshair; touch-action: none; }
   .counts [data-total] { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 2.2em; }
   .counts [data-total] small { font-size: 0.7em; color: var(--muted); }
@@ -168,7 +171,10 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
   .fig [hidden] { display: none !important; } /* a label or a group of knobs that is not this family's */
   .status { display: block; min-height: 1.4em; color: var(--ink); }
   .lut { min-width: 0; }
-  @media (max-width: 520px) { .rel { display: none; } .band { stroke-width: 30; } }
+  @media (max-width: 520px) {
+    .rel { display: none; } .band { stroke-width: 30; }
+    .bs { grid-template-columns: repeat(9, 1fr); } .bs span { grid-column: 1 / -1; }
+  }
 </style>
 
 <script>
@@ -263,12 +269,15 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       return autostop && tick === T - 1;
     }
     const st = stepper(el, { advance, paint, reset, play: $<HTMLButtonElement>('play'), speed });
-    /** A fresh run that plays by itself (all at once for reduced motion); a blank drawing waits for you instead. */
-    function start() {
+    /** Back to the start. Playing stays playing and paused stays paused; only when the panel first opens does a run play by
+     * itself, until the picture is full (all at once for reduced motion). A blank drawing always waits for you. */
+    function start(first = false) {
       if (!N) { startNext = true; return; } // the canvas has just appeared; its first paint sizes it and comes back here
-      st.loop.play(false); reset(); autostop = true;
-      if (grid2d() && init2 === 'draw' && !g.some((v) => v)) { paint(); return; }
-      if (reducedMotion()) { while (!advance()); paint(); } else { paint(); st.loop.play(true); }
+      const playing = first || st.loop.playing;
+      st.loop.play(false); reset();
+      if (first) autostop = true;
+      if (!playing || (grid2d() && init2 === 'draw' && !g.some((v) => v))) { paint(); return; }
+      if (first && reducedMotion()) { while (!advance()); paint(); } else { paint(); st.loop.play(true); }
     }
 
     function paint() {
@@ -278,7 +287,7 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
       if (ns !== s || nN !== N || nT !== T || nW !== W || nH !== H) { // a new size: rows are replayed to the same tick, the grid keeps what fits
         const old = { g, W, H };
         s = ns; N = nN; T = nT; W = nW; H = nH;
-        if (startNext) { startNext = false; start(); return; }
+        if (startNext) { startNext = false; start(true); return; }
         const k = tick; reset();
         if (grid2d()) { for (let y = 0; y < Math.min(H, old.H); y++) for (let x = 0; x < Math.min(W, old.W); x++) g[y * W + x] = old.g[y * old.W + x]; tick = k; }
         else for (let i = 0; i < k; i++) advance();
@@ -359,7 +368,7 @@ const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', 
 
     function choose(f: F) {
       const first = !fam; fam = f; show(); sync();
-      start();
+      start(first);
       if (first) requestAnimationFrame(() => { const b = panel.getBoundingClientRect(); if (b.top > innerHeight * 0.75) panel.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }); });
     }
     for (const nd of nodes) {

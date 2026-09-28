@@ -1,57 +1,30 @@
 ---
 // B1–B4: the room plays rule 90 with its hands, then sees what it computed.
 import Slide from './Slide.astro';
-import Seats from './Seats.astro';
-const panels = [
-  { l: 1, r: 1, out: 0, when: 'both up', then: 'hand down' },
-  { l: 1, r: 0, out: 1, when: 'exactly one up', then: 'hand up' },
-  { l: 0, r: 0, out: 0, when: 'none up', then: 'hand down' },
-];
-const who = (up: number) => (up ? '#hand-up' : '#hand-down');
-const cls = (up: number) => (up ? 'up' : 'down');
+import RulePanels from './RulePanels.astro';
 ---
 <Slide label="Be a cell: the rule" builds={1}>
-  <div class="row b1-top">
-    <div class="col grow">
-      <h2>Be a cell</h2>
-      <p class="lede">Pick the two people sitting closest to you, left and right. Keep them all game. Ignore your own hand.</p>
-    </div>
-    <Seats class="b1-seats" you={[3, 4]} />
-  </div>
-  <div class="panels">
-    {panels.map((p) => (
-      <figure class="panel">
-        <svg viewBox="0 0 460 350" aria-hidden="true">
-          <use href={who(p.l)} class={cls(p.l)} x="20" y="0" width="100" height="130" />
-          <use href="#hand-down" class="ghost" x="180" y="0" width="100" height="130" />
-          <use href={who(p.r)} class={cls(p.r)} x="340" y="0" width="100" height="130" />
-          <text x="70" y="160" text-anchor="middle">left</text>
-          <text x="230" y="160" text-anchor="middle" class="q">you</text>
-          <text x="390" y="160" text-anchor="middle">right</text>
-          <path d="M230 176 V212 M216 198 L230 214 L244 198" class="arrow" />
-          <use href={who(p.out)} class={`${cls(p.out)} you`} x="180" y="220" width="100" height="130" />
-        </svg>
-        <figcaption>{p.when}<br />→ <b>your {p.then}</b></figcaption>
-      </figure>
-    ))}
-  </div>
+  <h2>Be a cell</h2>
+  <p class="lede">Pick the two people sitting closest to you, left and right. Keep them all game. Ignore your own hand.</p>
+  <RulePanels />
   <p class="steps" data-b="1"><b>Look</b> → <b>Decide</b> → <b>3 · 2 · 1</b> → <b>Switch</b><span>decide first, move only on “switch”</span></p>
 </Slide>
 
 <Slide label="Be a cell: the start">
   <div class="col center grow">
     <svg class="b2-hand" viewBox="0 0 100 130" aria-hidden="true"><use href="#hand-up" class="up" width="100" height="130" /></svg>
-    <p class="big">Hand up if you were born in an <b>odd</b> month</p>
-    <p class="months mono">Jan · Mar · May · Jul · Sep · Nov</p>
+    <p class="big">Hands up if you were born in the <b>first six months</b> of the year</p>
+    <p class="months mono">Jan · Feb · Mar · Apr · May · Jun</p>
   </div>
 </Slide>
 
 <Slide label="Be a cell: the rounds" builds={12} class="rounds">
-  <div class="col center grow">
+  <div class="col center grow r-top">
     <p class="r-label mono" data-round>Practice 1</p>
     <p class="r-count mono" data-count aria-live="polite"></p>
     <p class="r-note" data-note></p>
   </div>
+  <RulePanels width={330} />
 </Slide>
 
 <Slide label="What you just did" builds={3} class="r90">
@@ -67,17 +40,6 @@ const cls = (up: number) => (up ? 'up' : 'down');
 </Slide>
 
 <style>
-  .b1-top { align-items: flex-start; }
-  .b1-top :global(.b1-seats) { width: calc(200 * var(--u)); flex: none; margin-top: calc(-44 * var(--u)); }
-  .panels { display: flex; gap: calc(60 * var(--u)); justify-content: flex-start; margin-top: calc(-20 * var(--u)); }
-  .panel { margin: 0; width: calc(480 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
-  .panel svg { width: 100%; }
-  .panel text { font-family: var(--mono); font-size: 26px; fill: var(--muted); }
-  .panel text.q { fill: var(--accent); }
-  .panel .ghost { fill: none; stroke: var(--line); stroke-dasharray: 6 6; }
-  .panel .you.down { stroke: var(--accent); }
-  .panel .arrow { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
-  .panel figcaption { font-size: calc(38 * var(--u)); text-align: center; }
   .steps { font-size: calc(44 * var(--u)); text-align: center; font-family: var(--mono); }
   .steps span { display: block; font-family: var(--sans); font-size: calc(32 * var(--u)); color: var(--muted); margin-top: calc(8 * var(--u)); }
 
@@ -85,9 +47,10 @@ const cls = (up: number) => (up ? 'up' : 'down');
   .months { font-size: calc(64 * var(--u)); color: var(--accent); }
 
   .r-label { font-size: calc(72 * var(--u)); font-weight: 600; }
-  .r-count { font-size: calc(300 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
+  .r-top { gap: calc(12 * var(--u)); }
+  .r-count { font-size: calc(280 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
   .r-count.sw { color: var(--accent); font-size: calc(220 * var(--u)); }
-  .r-note { font-size: calc(40 * var(--u)); color: var(--muted); min-height: 2.6em; max-width: calc(1300 * var(--u)); text-align: center; }
+  .r-note { font-size: calc(40 * var(--u)); color: var(--muted); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; }
 
   .r90-row { align-items: center; gap: calc(56 * var(--u)); }
   .r90-canvas { width: calc(1160 * var(--u)); height: calc(660 * var(--u)); flex: none; }
@@ -104,7 +67,7 @@ const cls = (up: number) => (up ? 'up' : 'down');
   for (const s of document.querySelectorAll<HTMLElement>('.slide.rounds')) {
     const round = s.querySelector<HTMLElement>('[data-round]')!, count = s.querySelector<HTMLElement>('[data-count]')!, note = s.querySelector<HTMLElement>('[data-note]')!;
     const names = ['Practice 1', 'Practice 2', ...Array.from({ length: 10 }, (_, i) => `Round ${i + 1}`), 'That’s ten rounds'];
-    const notes = ['Look at your two neighbours. Decide. Wait for “switch”.', '', 'Back to the start: hand up if you were born in an odd month.', ...Array(9).fill(''), 'Keep your hand where it is, and look around.'];
+    const notes = ['Look at your two neighbours. Decide. Wait for “switch”.', '', 'Back to the start: hands up if you were born in the first six months of the year.', ...Array(9).fill(''), 'Keep your hand where it is, and look around.'];
     let animate = true, timer = 0, left = 0, target = 0;
     const show = (b: number) => { round.textContent = names[b]; note.textContent = notes[b]; count.textContent = ''; count.classList.remove('sw'); };
     const stopCount = () => { clearTimeout(timer); timer = 0; };

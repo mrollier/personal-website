@@ -1,6 +1,6 @@
 ---
-// E1: the four parts of the thesis with their papers; what is skipped tonight is greyed. The groundwater paper
-// comes in as a separate tag: accepted, but not part of the thesis.
+// E1: the four parts of the thesis with their papers, what is skipped tonight greyed (said out loud, not written), and
+// the cover appendix with its still-life paper. The groundwater paper waits for the end (I2): it is not in the thesis.
 import Slide from './Slide.astro';
 type Paper = { title: string; where: string; skip?: boolean };
 const parts: { n: string; name: string; what: string; skip?: string; papers: Paper[] }[] = [
@@ -8,10 +8,10 @@ const parts: { n: string; name: string; what: string; skip?: string; papers: Pap
     papers: [{ title: 'A comprehensive taxonomy of cellular automata', where: 'CNSNS 2025' }] },
   { n: 'II', name: 'Rules and their metrics', what: 'What a rule tells you before you run it',
     papers: [
-      { title: 'Exact Lyapunov spectra of affine cellular automata and the parity rule on networks', where: 'under review, Chaos, Solitons & Fractals · too technical for tonight', skip: true },
+      { title: 'Exact Lyapunov spectra of affine cellular automata and the parity rule on networks', where: 'under review, Chaos, Solitons & Fractals', skip: true },
       { title: 'Essential metrics for Life on graphs', where: 'Physica D 2025' },
     ] },
-  { n: 'III', name: 'Machine-learning perspectives', what: 'skipped tonight: cellular automata inside neural networks, and neural networks that classify them', skip: 'all',
+  { n: 'III', name: 'Machine-learning perspectives', what: 'Cellular automata inside neural networks, and neural networks that classify them', skip: 'all',
     papers: [
       { title: 'Efficient simulation of non-uniform cellular automata with a convolutional neural network', where: 'ACRI 2024' },
       { title: 'Convolutional neural networks for automated cellular automaton classification', where: 'book chapter, Springer 2025' },
@@ -19,11 +19,11 @@ const parts: { n: string; name: string; what: string; skip?: string; papers: Pap
   { n: 'IV', name: 'Applications in network science', what: 'Rules as instruments',
     papers: [
       { title: 'Shape irregularity of Life-like network automaton rules as an indicator of classification performance', where: 'under review, Information Sciences · first author L. C. de Oliveira' },
-      { title: 'Impact analysis', where: 'unpublished, work in progress' },
+      { title: 'Dynamical node importance from consensus-seeking Life-like network automata', where: 'unpublished, work in progress' },
     ] },
 ];
 ---
-<Slide label="The thesis in one slide" builds={1} class="e1">
+<Slide label="The thesis in one slide" class="e1">
   <h2>The thesis in one slide</h2>
   <div class="parts">
     {parts.map((p) => (
@@ -37,11 +37,14 @@ const parts: { n: string; name: string; what: string; skip?: string; papers: Pap
       </section>
     ))}
   </div>
-  <p class="extra" data-b="1"><span class="title">The MACCA-GW groundwater flow model</span><span class="where">ACRI 2026 proceedings, accepted · not part of the thesis</span></p>
+  <div class="appx">
+    <p class="n mono">Appendix: the cover</p>
+    <p class="tag"><span class="title">Exhaustive enumeration of symmetric still-lifes</span><span class="where">in preparation, Natural Computing</span></p>
+  </div>
 </Slide>
 
 <style>
-  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(28 * var(--u)); height: calc(720 * var(--u)); }
+  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(28 * var(--u)); flex: 1; min-height: 0; }
   .part { border: calc(2 * var(--u)) solid var(--line); padding: calc(24 * var(--u)); display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
   .part.skip { color: var(--muted); border-style: dashed; }
   .part .n { font-size: calc(28 * var(--u)); color: var(--accent); }
@@ -49,9 +52,11 @@ const parts: { n: string; name: string; what: string; skip?: string; papers: Pap
   .part h3 { font-size: calc(40 * var(--u)); }
   .what { font-size: calc(30 * var(--u)); color: var(--muted); }
   .part ul { list-style: none; padding: 0; margin-top: auto; gap: calc(16 * var(--u)); }
-  .part li, .extra { background: var(--panel); padding: calc(12 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
+  .part li, .tag { background: var(--panel); padding: calc(12 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
   .part li.skip, .part.skip li { opacity: 0.55; }
-  .title { font-size: calc(25 * var(--u)); line-height: 1.2; }
+  .title { font-size: calc(22 * var(--u)); line-height: 1.2; }
   .where { font-family: var(--mono); font-size: calc(20 * var(--u)); color: var(--muted); }
-  .extra { position: absolute; right: calc(96 * var(--u)); bottom: calc(40 * var(--u)); width: calc(700 * var(--u)); border: calc(2 * var(--u)) dashed var(--line); }
+  .appx { display: flex; align-items: center; gap: calc(24 * var(--u)); }
+  .appx .n { font-size: calc(28 * var(--u)); color: var(--accent); }
+  .tag { margin: 0; flex-direction: row; align-items: baseline; gap: calc(20 * var(--u)); }
 </style>

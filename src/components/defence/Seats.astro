@@ -32,5 +32,6 @@ const mark = (s: { c: number; r: number }) => (!you || s.r !== you[1] ? '' : s.c
   .seat.near.up { fill: var(--accent); }
   .seat.stubborn { fill: var(--danger); stroke: var(--danger); opacity: 1; }
   .seats :global(line) { stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
-  .seats :global(line.faint) { stroke: var(--muted); stroke-width: 1.2; opacity: 0.35; }
+  .seats :global(line.faint) { stroke: var(--muted); stroke-width: 2; opacity: 0.45; }
+  .seats :global(text) { paint-order: stroke; stroke: var(--bg); stroke-width: 12px; stroke-linejoin: round; }
 </style>

@@ -166,6 +166,9 @@ export function mountDeck(deck: HTMLElement): void {
   const refocus = () => { if (presenting) deck.focus({ preventScroll: true }); };
   deck.addEventListener('pointerup', refocus);
   deck.addEventListener('change', refocus);
+  // No pointer on the projector unless it moves.
+  let idle = 0;
+  addEventListener('pointermove', () => { deck.classList.remove('idle'); clearTimeout(idle); if (presenting) idle = window.setTimeout(() => deck.classList.add('idle'), 2500); });
   addEventListener('beforeunload', (e) => { if (presenting) { e.preventDefault(); e.returnValue = ''; } });
 
   deck.querySelector('[data-exit]')?.addEventListener('click', stop);

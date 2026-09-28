@@ -5,6 +5,9 @@ import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
 import { stillMosaic } from '../src/scripts/defence/cover.ts';
 import { stepLife } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
+import { room, wire, degrees, SEATS } from '../src/scripts/defence/room.ts';
+import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
+import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
 assert.deepEqual(reedSolomon([32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17], 10), [196, 35, 39, 119, 235, 215, 231, 226, 93, 23]);
@@ -24,12 +27,41 @@ for (const wrap of [false, true]) {
   assert.ok(art.g.some((v) => v === 1));
   assert.equal(stepLife(art.g, art.W, art.H, out), 0, `mosaic with wrap=${wrap} is not a still life`);
 }
-// F1: the room's random network (seed 2593, 80 seats, 8 contacts on average) gives the seat in row 5, column 4 exactly
-// 8 contacts, and the slide's 'some have 3, some have 12'.
+// F1: the room. At p = 0 everyone is linked to the people around them (3 in a corner, 5 at a wall, 8 inside); the seat
+// in row 5, column 4 keeps 8 contacts at every p (seed 12836); rewiring never doubles a link or loops a seat, keeps the number
+// of links, and is monotone: a link rewired at p sits at the same seat at every larger p.
 {
-  const N = 80, d = new Array(N).fill(0), rnd = makeRng(2593);
-  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (rnd() < 8 / (N - 1)) { d[i]++; d[j]++; }
-  assert.equal(d[35], 8); assert.equal(Math.min(...d), 3); assert.equal(Math.max(...d), 12);
+  const R = room(12836), home = wire(R, 0), key = (i: number, j: number) => (i < j ? i * SEATS + j : j * SEATS + i);
+  assert.equal(R.links.length, 268);
+  const d0 = degrees(R, home);
+  assert.deepEqual([d0[0], d0[3], d0[35], d0[79]], [3, 5, 8, 3]);
+  let prev = home;
+  for (let q = 0; q <= 100; q++) {
+    const to = wire(R, q / 100), pairs = new Set(R.links.map((l, k) => key(l.stay, to[k])));
+    assert.equal(pairs.size, R.links.length, `a doubled link at p = ${q / 100}`);
+    assert.ok(R.links.every((l, k) => l.stay !== to[k]));
+    assert.equal(degrees(R, to)[35], 8, `you at p = ${q / 100}`);
+    R.links.forEach((l, k) => { if (prev[k] !== l.home) assert.equal(to[k], prev[k], `link ${k} moved again at p = ${q / 100}`); });
+    prev = to;
+  }
+  assert.ok(prev.filter((t, k) => t !== R.links[k].home).length > 260);
+}
+// D2: the brain network lies inside its outline and keeps firing, in avalanches, without ever saturating.
+{
+  const net = brain(260, 28, 6, 12, makeRng(3)), poly = outline();
+  assert.ok(net.n > 200);
+  let s = new Uint8Array(net.n), o = new Uint8Array(net.n), zeros = 0, most = 0;
+  const rnd = makeRng(9);
+  for (let t = 0; t < 1000; t++) { const f = fire(net, s, o, 0.25, 3, 0.003, rnd) / net.n; [s, o] = [o, s]; if (t >= 40) { zeros += f === 0 ? 1 : 0; most = Math.max(most, f); } }
+  assert.ok(zeros < 10 && most < 0.3, `brain: ${zeros} silent rounds, at most ${most} firing`);
+  assert.ok(poly.length === 160);
+}
+// D2: a bird near the pointer flies away from it.
+{
+  const f = flock(1, 800, 600, makeRng(1));
+  f.x[0] = 400; f.y[0] = 300; f.vx[0] = 2; f.vy[0] = 0;
+  stepFlock(f, { x: 440, y: 300 });
+  assert.ok(f.vx[0] < 2, 'the bird does not turn away from the pointer');
 }
 console.log('defence checks passed');
 

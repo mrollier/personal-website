@@ -32,10 +32,10 @@ const chain = [
   </div>
 </Slide>
 
-<Slide label="Beyond this thesis" class="i2">
+<Slide label="Beyond this thesis" builds={1} class="i2">
   <h2>Beyond this thesis</h2>
   <ol class="beyond">
-    <li><b>Space and time at BionamiX.</b> The cellular-automaton paradigm models spatial processes, such as groundwater (MACCA-GW, ACRI 2026 proceedings) and wildfire spread. They need the extensions reviewed in the taxonomy: non-uniform rules, more states, larger neighbourhoods.</li>
+    <li><b>Space and time at BionamiX.</b> The cellular-automaton paradigm models spatial processes, such as groundwater and wildfire spread. They need the extensions reviewed in the taxonomy: non-uniform rules, more states, larger neighbourhoods.<span class="pub" data-b="1"><span class="title">The MACCA-GW groundwater flow model</span><span class="where">ACRI 2026 proceedings, accepted</span></span></li>
     <li><b>Discrete dynamics and deep learning.</b> Modest work: cellular automata can be hosted <i>exactly</i> inside neural networks, and neural networks can classify their patterns. One lesson: a network scored 98% at classifying behaviour, but one row of the picture already contains the whole rule, with more than 99% probability. High accuracy is not understanding.</li>
     <li><b>Next: mechanistic interpretability.</b> Reading the rules inside artificial neural networks: the same gap between rule and behaviour.</li>
   </ol>
@@ -63,6 +63,9 @@ const chain = [
   .ph { align-items: flex-start; }
   .nm { font-size: calc(31 * var(--u)); font-weight: 600; background: var(--panel); padding: calc(20 * var(--u)) calc(10 * var(--u)); min-height: 4.2em; display: flex; align-items: center; justify-content: center; }
 
+  .pub { display: flex; align-items: baseline; gap: calc(20 * var(--u)); width: fit-content; margin-top: calc(14 * var(--u)); background: var(--panel); padding: calc(12 * var(--u)) calc(18 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); }
+  .pub .title { font-size: calc(30 * var(--u)); }
+  .pub .where { font-family: var(--mono); font-size: calc(24 * var(--u)); color: var(--muted); }
   .beyond { font-size: calc(36 * var(--u)); gap: calc(34 * var(--u)); max-width: calc(1600 * var(--u)); margin-top: calc(10 * var(--u)); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }

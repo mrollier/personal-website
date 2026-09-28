@@ -1,0 +1,44 @@
+---
+// Rule 90 as the room plays it: your two neighbours' hands, and what yours does next. Large on the rule slide, and
+// small on the rounds slide, so nobody has to remember the rule during a countdown. `width` is one panel's width in
+// design pixels.
+type Props = { width?: number };
+const { width = 480 } = Astro.props;
+const panels = [
+  { l: 1, r: 1, out: 0, when: 'both up', then: 'hand down' },
+  { l: 1, r: 0, out: 1, when: 'exactly one up', then: 'hand up' },
+  { l: 0, r: 0, out: 0, when: 'none up', then: 'hand down' },
+];
+const who = (up: number) => (up ? '#hand-up' : '#hand-down');
+const cls = (up: number) => (up ? 'up' : 'down');
+---
+<div class="panels" style={`--pw: ${width}`}>
+  {panels.map((p) => (
+    <figure class="panel">
+      <svg viewBox="0 0 460 350" aria-hidden="true">
+        <use href={who(p.l)} class={cls(p.l)} x="20" y="0" width="100" height="130" />
+        <use href="#hand-down" class="ghost" x="180" y="0" width="100" height="130" />
+        <use href={who(p.r)} class={cls(p.r)} x="340" y="0" width="100" height="130" />
+        <text x="70" y="160" text-anchor="middle">left</text>
+        <text x="230" y="160" text-anchor="middle" class="q">you</text>
+        <text x="390" y="160" text-anchor="middle">right</text>
+        <path d="M230 176 V212 M216 198 L230 214 L244 198" class="arrow" />
+        <use href={who(p.out)} class={`${cls(p.out)} you`} x="180" y="220" width="100" height="130" />
+      </svg>
+      <figcaption>{p.when}<br />→ <b>your {p.then}</b></figcaption>
+    </figure>
+  ))}
+</div>
+
+<style>
+  .panels { display: flex; gap: calc(var(--pw) * 0.125 * var(--u)); justify-content: center; }
+  .panel { margin: 0; width: calc(var(--pw) * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(var(--pw) * 0.02 * var(--u)); }
+  .panel svg { width: 100%; }
+  .panel text { font-family: var(--mono); font-size: 26px; fill: var(--muted); }
+  .panel text.q { fill: var(--accent); }
+  .panel .ghost { fill: none; stroke: var(--line); stroke-dasharray: 6 6; }
+  .panel .you.down { stroke: var(--accent); }
+  .panel .you.up { fill: var(--accent); stroke: var(--accent); }
+  .panel .arrow { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .panel figcaption { font-size: calc(var(--pw) * 0.08 * var(--u)); text-align: center; line-height: 1.25; }
+</style>

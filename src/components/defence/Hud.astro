@@ -12,17 +12,18 @@ const { exit = true } = Astro.props;
 <div class="blank" data-blank hidden></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <!-- a person with the hand up, and one with the arm down; 100 × 130 -->
+    <!-- a person with a hand raised, open palm, and the same person with both hands down; 100 × 130, the body in
+         the same place in both so a seat can switch between them -->
     <symbol id="hand-up" viewBox="0 0 100 130">
-      <circle cx="44" cy="30" r="15" />
-      <path d="M20 128 V86 Q20 60 44 60 Q68 60 68 86 V128 Z" />
-      <path d="M64 76 L84 20" stroke-width="12" stroke-linecap="round" fill="none" />
-      <circle cx="86" cy="14" r="9" />
+      <circle cx="42" cy="40" r="17" />
+      <path d="M8 128 C8 96 20 74 42 74 C64 74 76 96 76 128 Z" />
+      <path d="M65 93 C80 85 84.5 70 84.5 46" stroke-width="12.5" stroke-linecap="round" fill="none" />
+      <path d="M77 42 L75.5 21 M81.5 40 L81 12 M86.5 40 L87 10.5 M91 42 L93 17.5 M76 46 Q72 39 67.5 34" stroke-width="5.8" stroke-linecap="round" fill="none" />
+      <path d="M74.5 37 Q84 33 94 37 L92.5 49 Q84.5 55 76.5 49 Z" stroke-width="1" stroke-linejoin="round" />
     </symbol>
     <symbol id="hand-down" viewBox="0 0 100 130">
-      <circle cx="44" cy="30" r="15" stroke-width="3" />
-      <path d="M20 128 V86 Q20 60 44 60 Q68 60 68 86 V128 Z" stroke-width="3" />
-      <path d="M71 78 L76 122" stroke-width="3" fill="none" stroke-linecap="round" />
+      <circle cx="42" cy="40" r="17" stroke-width="3" />
+      <path d="M8 128 C8 96 20 74 42 74 C64 74 76 96 76 128 Z" stroke-width="3" />
     </symbol>
   </defs>
 </svg>

@@ -42,12 +42,20 @@
 .slide canvas { display: block; }
 .slide sub, .slide sup { font-size: 0.62em; line-height: 0; }
 
+/* Controls on a slide, a button or a slider, sized with the slide. */
+.slide .ctl {
+  font: 600 calc(28 * var(--u)) / 1 var(--mono); color: var(--ink); background: var(--panel);
+  border: calc(2 * var(--u)) solid var(--line); padding: calc(10 * var(--u)) calc(22 * var(--u)); cursor: pointer; touch-action: manipulation;
+}
+.slide .ctl:hover { border-color: var(--accent); }
+.slide input[type="range"].ctl { padding: 0; background: none; border: 0; accent-color: var(--accent); height: calc(44 * var(--u)); }
+
 /* Credits bottom left, the illustration label bottom right. */
 .slide .cite, .slide .illus {
   position: absolute; bottom: calc(22 * var(--u)); font-size: calc(22 * var(--u)); color: var(--muted); line-height: 1.25; max-width: 60%;
 }
 .slide .cite { left: calc(96 * var(--u)); }
-.slide .illus { right: calc(96 * var(--u)); text-align: right; font-style: italic; max-width: 45%; }
+.slide .illus { right: calc(150 * var(--u)); text-align: right; font-style: italic; max-width: 45%; } /* clear of the slide counter */
 
 /* Builds: appear from their step on, and vanish from theirs. */
 .slide [data-b] { transition: opacity 0.35s ease; }
@@ -64,7 +72,7 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; margin-top: 0.4rem;
   font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
 }
-.cardbar > span { margin-right: auto; }
+.cardbar > span { margin-right: auto; font-size: 1rem; font-weight: 600; color: var(--ink); }
 .cardbar button {
   font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
   padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
@@ -85,12 +93,15 @@ html.deck-on { overflow: hidden; }
 
 .hud { display: none; }
 .deck.presenting .hud {
-  display: flex; gap: 0.8rem; align-items: center; position: fixed; right: 0.9rem; bottom: 0.5rem; z-index: 3;
-  font-family: var(--mono); font-size: 0.8rem; color: var(--muted); opacity: 0.7;
+  display: flex; gap: 0.8em; align-items: center; position: fixed; right: 0.7em; bottom: 0.35em; z-index: 3;
+  font-family: var(--mono); font-size: clamp(1rem, 2.3vh, 1.7rem); color: var(--muted); opacity: 0.85;
+  background: rgba(250, 250, 247, 0.85); padding: 0 0.3em; border-radius: 0.25em;
 }
 .hud button { font: inherit; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 0 0.2rem; }
 .hud button:hover { color: var(--ink); }
 .hud [data-clock] { color: var(--ink); }
+/* the pointer disappears after a few still seconds while presenting, and comes back when it moves */
+.deck.presenting.idle, .deck.presenting.idle * { cursor: none !important; }
 .blank { position: fixed; inset: 0; background: #000; z-index: 5; cursor: none; }
 .gate {
   position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; background: rgba(250, 250, 247, 0.92);

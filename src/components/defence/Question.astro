@@ -1,17 +1,21 @@
 ---
-// D1–D3: one recipe gives order, something complex and chaos-looking noise; nature does it too; the rule is the
-// genotype, the behaviour the phenotype, and the thesis measures how much one says about the other.
+// D1–D3: one recipe gives order, something complex and chaotic-looking noise; nature does it too (a flock, a brain); the
+// rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
 const three = [
   { id: 'vote', label: 'order' },
   { id: 'life', label: 'complex?' },
   { id: 'parity', label: 'chaotic-looking' },
 ];
-const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
+const RULE = 54;
+const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (RULE >> n) & 1 }));
 ---
-<Slide label="One recipe, three outcomes" builds={1} class="d1">
+<Slide label="One recipe, three outcomes" class="d1">
   <h2>One recipe, three outcomes</h2>
-  <p class="small">The same random start. Only the rule differs.</p>
+  <div class="d1-sub">
+    <p class="small">The same random start. Only the rule differs.</p>
+    <button type="button" class="ctl" data-reseed title="a new random start (r)">new start</button>
+  </div>
   <div class="three">
     {three.map((g) => (
       <figure>
@@ -20,22 +24,26 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       </figure>
     ))}
   </div>
-  <p class="lede" data-b="1">“Complex” has no agreed definition. “The edge of order and chaos” is an intuition, not a law.</p>
 </Slide>
 
 <Slide label="Nature does this too" builds={1} class="d2">
-  <div class="row grow d2-row">
-    <div class="col d2-side">
-      <h2>Nature does this too</h2>
+  <h2>Nature does this too</h2>
+  <div class="d2-row">
+    <figure>
       <p class="lede">Each bird: align, stay close, don’t collide <span class="accent">→ a flock</span></p>
-      <p class="lede" data-b="1">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought and behaviour</span></p>
-    </div>
-    <canvas class="boids" aria-label="A flock of birds, each following three local rules"></canvas>
+      <canvas class="boids" aria-label="A flock of birds, each following three local rules; the pointer scares them"></canvas>
+    </figure>
+    <figure data-b="1">
+      <p class="lede">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought and behaviour</span></p>
+      <canvas class="brain" aria-label="A network of neurons in the shape of a brain, firing"></canvas>
+    </figure>
   </div>
   <p class="cite">Flock after C. Reynolds, 1987</p>
+  <p class="illus" data-b="1">illustration: a neuron fires when its inputs fired, then rests</p>
 </Slide>
 
 <Slide label="Genotype and phenotype" builds={2} class="d3">
+  <div class="d3-body">
   <div class="gp">
     <div class="col center">
       <h3>Genotype: the rule</h3>
@@ -45,31 +53,37 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
           <div class="case"><div class="three-bits">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div><i class:list={['one', c.out && 'on']} /></div>
         ))}
       </div>
+      <p class="mono rule">rule {RULE}</p>
     </div>
     <div class="arrows" aria-hidden="true">⇄</div>
     <div class="col center">
       <h3>Phenotype: the behaviour</h3>
       <p>global, rich<br />what the whole does</p>
-      <canvas class="sier" aria-label="Rule 90 from one live cell: a Sierpiński triangle"></canvas>
+      <canvas class="pheno" aria-label={`Rule ${RULE} from a random row, time running downward`}></canvas>
     </div>
   </div>
-  <p class="q" data-b="1">The rule doesn’t tell you the behaviour. But it tells you more than nothing, and the behaviour tells you something about the rule and the network. <b>This thesis measures how much.</b></p>
-  <p class="q2 accent" data-b="2">…and puts it to use in network science.</p>
+  <p class="q" data-b="1">We want to narrow the gap</p>
+  <p class="q accent" data-b="2">…and put this knowledge to use</p>
+  </div>
   <p class="cite">Genotype and phenotype, after S. A. Kauffman, 1990</p>
 </Slide>
 
 <style>
+  .d1-sub { display: flex; align-items: center; gap: calc(30 * var(--u)); }
   .three { display: flex; justify-content: space-between; }
   .three figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(12 * var(--u)); }
-  .three canvas { width: calc(540 * var(--u)); height: calc(540 * var(--u)); }
+  .three canvas { width: calc(560 * var(--u)); height: calc(560 * var(--u)); }
   .three figcaption { font-family: var(--mono); font-size: calc(42 * var(--u)); }
 
-  .d2-row { align-items: center; gap: calc(60 * var(--u)); }
-  .d2-side { width: calc(620 * var(--u)); flex: none; gap: calc(50 * var(--u)); }
-  .boids { width: calc(1060 * var(--u)); height: calc(820 * var(--u)); flex: none; background: var(--panel); }
+  .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
+  .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
+  .d2-row .lede { min-height: 2.5em; font-size: calc(42 * var(--u)); }
+  .d2-row canvas { width: calc(832 * var(--u)); height: calc(660 * var(--u)); background: var(--panel); }
+  .boids { touch-action: none; }
 
-  .gp { display: flex; justify-content: center; align-items: flex-start; gap: calc(50 * var(--u)); margin-top: calc(20 * var(--u)); }
-  .gp > .col { width: calc(720 * var(--u)); gap: calc(22 * var(--u)); }
+  .d3-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: calc(28 * var(--u)); padding-bottom: calc(40 * var(--u)); }
+  .gp { display: flex; justify-content: center; align-items: flex-start; gap: calc(50 * var(--u)); }
+  .gp > .col { width: calc(720 * var(--u)); gap: calc(20 * var(--u)); }
   .gp h3 { font-size: calc(50 * var(--u)); }
   .gp p { color: var(--muted); }
   .arrows { font-size: calc(120 * var(--u)); color: var(--accent); align-self: center; line-height: 1; }
@@ -78,19 +92,22 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   .three-bits { display: flex; gap: calc(2 * var(--u)); }
   .case i { display: block; width: calc(26 * var(--u)); height: calc(26 * var(--u)); background: var(--panel); border: calc(1.5 * var(--u)) solid var(--line); }
   .case i.on { background: var(--ink); border-color: var(--ink); }
-  .sier { width: calc(560 * var(--u)); height: calc(283 * var(--u)); }
-  .q { font-size: calc(48 * var(--u)); line-height: 1.25; text-align: center; margin-top: calc(50 * var(--u)); }
-  .q2 { font-size: calc(46 * var(--u)); text-align: center; }
+  .gp p.rule { font-size: calc(32 * var(--u)); color: var(--ink); }
+  .pheno { width: calc(640 * var(--u)); height: calc(320 * var(--u)); }
+  .q { font-family: var(--mono); font-weight: 600; font-size: calc(76 * var(--u)); letter-spacing: -0.02em; line-height: 1.15; text-align: center; }
+  .q + .q { margin-top: calc(-6 * var(--u)); }
+  .gp + .q { margin-top: calc(40 * var(--u)); }
 </style>
 
 <script>
   import { slide } from '../../scripts/defence/deck';
-  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
   import { stepLife, randomLife } from '../../scripts/life';
   import { stepGrid } from '../../scripts/grid';
   import { makeRng } from '../../scripts/net';
   import { evolve, seedRow } from '../../scripts/eca';
   import { flock, stepFlock } from '../../scripts/defence/boids';
+  import { brain, fire, outline, FOLDS, BOX } from '../../scripts/defence/brain';
   import { Raster } from '../../scripts/raster';
   import { parse } from '../../scripts/palette';
 
@@ -105,9 +122,10 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     return out;
   }
 
-  // ── D1: three grids from one start ──
+  // ── D1: three grids from one start; "new start" (or r) draws another ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d1')) {
-    const N = 108, start = randomLife(N, N, 0.5, makeRng(1984));
+    const N = 108;
+    let start = randomLife(N, N, 0.5, makeRng(1984));
     const rules: Record<string, (g: Uint8Array) => Uint8Array> = {
       vote: (g) => vote(g, N, N),
       life: (g) => { const o = new Uint8Array(N * N); stepLife(g, N, N, o); return o; },
@@ -124,16 +142,22 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       }
     };
     const run = ticker(s, 4, () => { for (const x of grids) x.g = x.f(x.g); }, paint);
-    slide(s, { enter() { reset(); run.play(true); }, leave() { run.play(false); } });
+    const reseed = () => { start = randomLife(N, N, 0.5, makeRng((Math.random() * 4294967296) >>> 0)); reset(); paint(); run.play(true); };
+    s.querySelector('[data-reseed]')!.addEventListener('click', reseed);
+    slide(s, {
+      enter() { start = randomLife(N, N, 0.5, makeRng(1984)); reset(); run.play(true); },
+      leave() { run.play(false); },
+      key(k) { if (k !== 'r' && k !== 'R') return false; reseed(); return true; },
+    });
     for (const x of grids) onSize(x.c, () => { paint(); if (!run.playing) run.play(true); });
   }
 
-  // ── D2: a flock ──
+  // ── D2: a flock that scatters from the pointer, and a brain whose neurons fire ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d2')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
-    const W = 1060, H = 820;
-    let f = flock(150, W, H, makeRng(1987));
-    const paint = () => {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.boids')!, b = s.querySelector<HTMLCanvasElement>('canvas.brain')!;
+    const W = 832, H = 660, BIRDS = 100;
+    let f = flock(BIRDS, W, H, makeRng(1987)), avoid: { x: number; y: number } | null = null;
+    const paintFlock = () => {
       const st = stage(c); if (!st) return;
       const { ctx, t } = st, k = st.w / W;
       ctx.fillStyle = t.ink;
@@ -146,19 +170,66 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
         ctx.fill();
       }
     };
-    const run = ticker(s, 50, () => stepFlock(f), paint);
-    slide(s, { enter() { f = flock(150, W, H, makeRng(1987)); run.play(true); }, leave() { run.play(false); } });
-    onSize(c, () => { paint(); if (!run.playing) run.play(true); });
+    const birds = ticker(s, 50, () => stepFlock(f, avoid), paintFlock);
+    const at = (e: PointerEvent) => { avoid = pointer(c, e); }; // the canvas is W design pixels wide: flock coordinates
+    c.addEventListener('pointermove', at);
+    c.addEventListener('pointerdown', at);
+    c.addEventListener('pointerleave', () => { avoid = null; });
+
+    // the brain: 0 resting, 1 firing, 2–3 recovering; `glow` fades each neuron after it fired
+    const net = brain(260, 28, 6, 12, makeRng(3)), poly = outline(), REST = 3;
+    let st0 = new Uint8Array(net.n), st1 = new Uint8Array(net.n), rnd = makeRng(9);
+    const glow = new Float32Array(net.n);
+    const warm = () => { st0.fill(0); glow.fill(0); rnd = makeRng(9); for (let t = 0; t < 40; t++) { fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; } };
+    const paintBrain = () => {
+      const st = stage(b); if (!st) return;
+      const { ctx, t } = st, k = Math.min(st.w / BOX.w, st.h / BOX.h) * 0.96, ox = (st.w - BOX.w * k) / 2, oy = (st.h - BOX.h * k) / 2;
+      const X = (i: number) => ox + net.xy[2 * i] * k, Y = (i: number) => oy + net.xy[2 * i + 1] * k;
+      ctx.lineJoin = 'round';
+      ctx.beginPath(); poly.forEach(([x, y], i) => (i ? ctx.lineTo(ox + x * k, oy + y * k) : ctx.moveTo(ox + x * k, oy + y * k))); ctx.closePath();
+      ctx.fillStyle = t.bg; ctx.fill(); ctx.strokeStyle = t.line; ctx.lineWidth = 5; ctx.stroke();
+      ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const fold of FOLDS) { ctx.beginPath(); fold.forEach(([x, y], i) => (i ? ctx.lineTo(ox + x * k, oy + y * k) : ctx.moveTo(ox + x * k, oy + y * k))); ctx.stroke(); }
+      ctx.lineWidth = 1.2; ctx.strokeStyle = t.line; ctx.beginPath();
+      for (const [i, j] of net.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke();
+      // a signal along each link out of a neuron that just fired
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.55; ctx.beginPath();
+      for (const [i, j] of net.edges) if ((st0[i] === 1 && st0[j] === 2) || (st0[j] === 1 && st0[i] === 2)) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      for (let i = 0; i < net.n; i++) {
+        const g = glow[i];
+        if (g > 0.02) { ctx.globalAlpha = 0.25 * g; ctx.fillStyle = t.accent; ctx.beginPath(); ctx.arc(X(i), Y(i), 17, 0, 7); ctx.fill(); }
+        ctx.globalAlpha = 1; ctx.fillStyle = g > 0.02 ? t.accent : t.muted;
+        ctx.beginPath(); ctx.arc(X(i), Y(i), 4.5 + 3.5 * g, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    // firing at six rounds a second; the glow decays every frame in between
+    let last = 0;
+    const neurons = ticker(s, 60, () => {
+      const now = performance.now();
+      for (let i = 0; i < net.n; i++) glow[i] *= 0.9;
+      if (now - last >= 160) { last = now; fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; for (let i = 0; i < net.n; i++) if (st0[i] === 1) glow[i] = 1; }
+    }, paintBrain);
+    slide(s, {
+      set(k) { neurons.play(k >= 1); if (k >= 1) paintBrain(); },
+      enter() { f = flock(BIRDS, W, H, makeRng(1987)); avoid = null; warm(); birds.play(true); },
+      leave() { birds.play(false); neurons.play(false); },
+    });
+    warm();
+    onSize(c, () => { paintFlock(); if (!birds.playing) birds.play(true); });
+    onSize(b, () => { paintBrain(); if (+(s.dataset.at ?? 0) >= 1 && !neurons.playing) neurons.play(true); });
   }
 
-  // ── D3: a small Sierpiński triangle as the phenotype ──
-  for (const c of document.querySelectorAll<HTMLCanvasElement>('.slide.d3 canvas.sier')) {
-    const rows = evolve(seedRow(63, 'seed'), 90, 31);
+  // ── D3: rule 54 from a random row as the phenotype ──
+  for (const c of document.querySelectorAll<HTMLCanvasElement>('.slide.d3 canvas.pheno')) {
+    const W = 100, T = 50, rows = evolve(seedRow(W, 'random', makeRng(54)), 54, T - 1);
     onSize(c, () => {
       const st = stage(c); if (!st) return;
-      const cell = Math.min(st.w / 63, st.h / 32);
+      const cell = Math.min(st.w / W, st.h / T);
       st.ctx.fillStyle = st.t.ink;
-      rows.forEach((r, y) => r.forEach((v, x) => { if (v) st.ctx.fillRect(x * cell, y * cell, cell - 0.6, cell - 0.6); }));
+      rows.forEach((r, y) => r.forEach((v, x) => { if (v) st.ctx.fillRect(x * cell, y * cell, cell - 0.8, cell - 0.8); }));
     });
   }
 </script>

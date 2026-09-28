@@ -60,7 +60,7 @@ export function loop(el: HTMLElement, tick: (t: number, dt: number) => void): Lo
     if (visible) { const dt = Math.min(0.1, (now - last) / 1000); t += dt; tick(t, dt); }
     last = now; raf = requestAnimationFrame(frame);
   };
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(el);
+  new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; }).observe(el); // the latest entry: a batch can hold a stale one first
   const api: Loop = {
     get playing() { return playing; },
     play(on = !playing) {

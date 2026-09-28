@@ -1,57 +1,129 @@
 ---
-// One row of cells and every knob of Ch. 2: the rule, its boundary condition, a synchrony rate, a second
-// rule drawn with a probability, a frozen allocation of columns to that second rule plus a clamped cell,
-// a wider neighbourhood, and a three-state totalistic variant. Self-contained with src/scripts/variants.ts,
-// wolfram.ts, eca.ts, raster.ts, palette.ts and figure.ts, and EcaTable.astro for the eight-case table.
-// Props are the defaults; the URL query under `fam.` overrides them.
+// The five families of Ch. 2 around the elementary automaton, drawn as in the thesis figure: the arrows from the
+// centre say what each family changes, the arrows round the rim the identities between them. A click on a circle
+// opens that family's text (a named slot per family: eca, aca, sca, msca, enca, nuca) and a run from one live
+// cell with square cells and only the knob that family adds. Self-contained with src/scripts/variants.ts,
+// wolfram.ts, raster.ts, palette.ts, figure.ts and EcaTable.astro. The URL query under `fam.` keeps the choice.
 import EcaTable from './EcaTable.astro';
-import { BOUNDARIES } from '../scripts/variants';
-type Props = { rule?: number; n?: number };
-const { rule = 110, n = 160 } = Astro.props;
+type Props = { rule?: number };
+const { rule = 90 } = Astro.props;
+
+type Fam = { id: string; short: string; name: string[]; angle: number; spoke: [string, string] };
+const FAMS: Fam[] = [
+  { id: 'nuca', short: 'νCA', name: ['non-uniform'], angle: -90, spoke: ['more rules', ''] },
+  { id: 'msca', short: 'MSCA', name: ['multi-state'], angle: -18, spoke: ['more states', ''] },
+  { id: 'enca', short: 'ENCA', name: ['extended', 'neighbourhood'], angle: 54, spoke: ['larger', 'neighbourhood'] },
+  { id: 'aca', short: 'ACA', name: ['asynchronous'], angle: 126, spoke: ['asynchronous', 'update'] },
+  { id: 'sca', short: 'SCA', name: ['stochastic'], angle: 198, spoke: ['non-deterministic', 'update'] },
+];
+const RIM: [string, string, string, string][] = [
+  ['nuca', 'msca', 'mapping onto', 'product states'],
+  ['msca', 'enca', 'more time steps', 'or fewer cells'],
+  ['enca', 'aca', 'network wiring', 'or ±1 dimension'],
+  ['aca', 'sca', 'probabilistic', 'update sequence'],
+  ['sca', 'nuca', 'probabilistic', 'rule allocation'],
+];
+const CX = 320, CY = 305, R = 240, R0 = 52, GAP = R0 + 5;
+const at = (id: string) => { const f = FAMS.find((x) => x.id === id)!, a = (f.angle * Math.PI) / 180; return [CX + R * Math.cos(a), CY + R * Math.sin(a)]; };
+const f1 = (v: number) => v.toFixed(1);
+/** An arrow between two circle centres, shortened to the rims, with a label on each side that reads upright. */
+function edge(a: number[], b: number[], above: string, below: string, outward = false) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+  const x1 = a[0] + ux * GAP, y1 = a[1] + uy * GAP, x2 = b[0] - ux * GAP, y2 = b[1] - uy * GAP, mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  let ang = (Math.atan2(dy, dx) * 180) / Math.PI; if (ang > 90 || ang < -90) ang += 180;
+  // "above" the text line points along (sin, −cos); round the rim the first label goes on the outside
+  const r = (ang * Math.PI) / 180, up = Math.sin(r) * (mx - CX) - Math.cos(r) * (my - CY) > 0;
+  const [top, bottom] = outward && !up ? [below, above] : [above, below];
+  return { d: `M${f1(x1)},${f1(y1)} L${f1(x2)},${f1(y2)}`, t: `translate(${f1(mx)},${f1(my)}) rotate(${f1(ang)})`, top, bottom };
+}
+const spokes = FAMS.map((f) => edge([CX, CY], at(f.id), f.spoke[0], f.spoke[1]));
+const rims = RIM.map(([a, b, o, i]) => edge(at(a), at(b), o, i, true));
+const band = `M${FAMS.map((f) => at(f.id).map(f1).join(',')).join(' L')} Z ` + FAMS.map((f) => `M${CX},${CY} L${at(f.id).map(f1).join(',')}`).join(' ');
+const nodes = [{ id: 'eca', short: 'ECA', name: ['elementary'], x: CX, y: CY }, ...FAMS.map((f) => { const [x, y] = at(f.id); return { id: f.id, short: f.short, name: f.name, x, y }; })];
+const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', sca: 'Stochastic', msca: 'Multi-state', enca: 'Extended neighbourhood', nuca: 'Non-uniform' };
 ---
-<figure class="fig" id="fam" data-families data-rule={rule} data-n={n} tabindex="-1">
-  <canvas role="img" aria-label={`Rule ${rule} on a row of ${n} cells, tick 0`}></canvas>
-  <div class="controls" role="group" aria-label="Rule">
-    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
-    <button name="random" type="button">random rule</button>
-    <label>radius <select name="radius"><option value="1">1</option><option value="2">2</option></select></label>
-    <label>states <select name="states"><option value="2">2</option><option value="3">3, totalistic</option></select></label>
-    <label>cells <input name="n" type="number" min="8" max="400" value={n} inputmode="numeric" /></label>
-    <button name="init" type="button" aria-pressed="true">random start</button>
+<figure class="fig" id="fam" data-families data-rule={rule} tabindex="-1">
+  <svg class="wheel" viewBox="0 0 640 590" role="group" aria-label="The elementary cellular automaton in the middle, five families around it; choose one">
+    <defs>
+      <marker id="fam-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" /></marker>
+    </defs>
+    <path class="band" d={band} />
+    {spokes.map((e) => <path class="arrow" d={e.d} marker-end="url(#fam-tip)" />)}
+    {rims.map((e) => <path class="arrow" d={e.d} marker-start="url(#fam-tip)" marker-end="url(#fam-tip)" />)}
+    {[...spokes, ...rims].map((e) => (
+      <g class="rel" transform={e.t} aria-hidden="true"><text y="-8">{e.top}</text>{e.bottom && <text y="19">{e.bottom}</text>}</g>
+    ))}
+    {nodes.map((n) => (
+      <g class="node" data-f={n.id} role="button" tabindex="0" aria-pressed="false" aria-label={`${TITLE[n.id]} (${n.short})`}>
+        <circle cx={f1(n.x)} cy={f1(n.y)} r={R0} />
+        <text class="short" x={f1(n.x)} y={f1(n.y - (n.name.length > 1 ? 8 : 3))}>{n.short}</text>
+        {n.name.map((line, i) => <text class="name" x={f1(n.x)} y={f1(n.y + 15 + 13 * i - (n.name.length > 1 ? 5 : 0))}>{line}</text>)}
+      </g>
+    ))}
+  </svg>
+  <p class="hint" data-hint>Click a circle to see what that family does to a single live cell.</p>
+
+  <div class="panel" data-panel hidden>
+    <h3 data-title></h3>
+    <div data-text="eca" hidden><slot name="eca" /></div>
+    <div data-text="aca" hidden><slot name="aca" /></div>
+    <div data-text="sca" hidden><slot name="sca" /></div>
+    <div data-text="msca" hidden><slot name="msca" /></div>
+    <div data-text="enca" hidden><slot name="enca" /></div>
+    <div data-text="nuca" hidden><slot name="nuca" /></div>
+    <canvas role="img" aria-label="A row of cells, time running down"></canvas>
+    <div class="controls" role="group" aria-label="Run">
+      <button name="play" type="button" aria-pressed="false">play</button>
+      <button name="step" type="button">step</button>
+      <button name="again" type="button">start again</button>
+      <output name="gen">tick 0</output>
+    </div>
+    <div class="controls" role="group" aria-label="The knob this family adds">
+      <label data-for="eca aca sca nuca"><span data-rulelabel>rule</span> <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+      <label data-for="aca">each cell updates with probability <input name="alpha" type="range" min="0.05" max="1" step="0.05" value="0.8" /> <output name="av">0.80</output></label>
+      <label data-for="sca nuca">second rule ψ <input name="psi" type="number" min="0" max="255" value="150" inputmode="numeric" /></label>
+      <label data-for="sca">chance of φ <input name="p" type="range" min="0" max="1" step="0.05" value="0.5" /> <output name="pv">0.50</output></label>
+      <label data-for="nuca">ψ on <select name="alloc"><option value="half">the right half</option><option value="one">one cell</option><option value="random">a random half</option><option value="alt">every other cell</option></select></label>
+      <div class="counts" data-for="enca" role="group" aria-label="Alive next when this many of the five cells are alive">
+        <span>alive next when this many of the five are alive:</span>
+        {[0, 1, 2, 3, 4, 5].map((k) => <button type="button" data-count={k} aria-pressed="false">{k}</button>)}
+      </div>
+      <div class="counts" data-for="msca" role="group" aria-label="Next state for each total of the three cells">
+        <span>next state for a total of</span>
+        {[0, 1, 2, 3, 4, 5, 6].map((s) => <button type="button" data-total={s} data-v="0" title={`total ${s}: click to cycle 0, 1, 2`}><small>{s}</small><b>0</b></button>)}
+      </div>
+      <button name="random" type="button" data-for="enca msca">random rule</button>
+    </div>
+    <div class="lut" data-for="eca"><EcaTable rule={rule} interactive /></div>
+    <output name="status" class="status" aria-live="polite"></output>
   </div>
-  <div class="controls" role="group" aria-label="Family">
-    <label>boundary <select name="bc">{BOUNDARIES.map((b) => <option value={b.id}>{b.name}</option>)}</select></label>
-    <button name="edge" type="button" hidden>edge cells: 0</button>
-    <label data-pdist hidden>weight <input name="pdist" type="range" min="0" max="1" step="0.05" value="0.5" /> <output name="pdv">50%</output></label>
-    <label>synchrony α <input name="alpha" type="range" min="0" max="1" step="0.01" value="1" /> <output name="av">100%</output></label>
-    <label>second rule ψ <input name="psi" type="number" min="0" max="255" value="204" inputmode="numeric" /></label>
-    <label>P(φ) <input name="p" type="range" min="0" max="1" step="0.01" value="1" /> <output name="pv">100%</output></label>
-    <label>share on ψ <input name="nu" type="range" min="0" max="1" step="0.01" value="0" /> <output name="nv">0%</output></label>
-    <button name="realloc" type="button">reallocate</button>
-    <button name="clamp" type="button" aria-pressed="false">clamp the middle cell</button>
-  </div>
-  <div class="controls" role="group" aria-label="Run">
-    <button name="step" type="button">step</button>
-    <button name="play" type="button" aria-pressed="false">play</button>
-    <label>speed <input name="speed" type="range" min="0" max="80" value="40" /></label>
-    <button name="reset" type="button">reset</button>
-    <output name="gen">tick 0</output>
-    <button name="full" type="button" aria-pressed="false">fullscreen</button>
-  </div>
-  <output name="status" class="status" aria-live="polite"></output>
-  <div class="lut"><EcaTable rule={rule} interactive /></div>
 </figure>
 
 <style>
   .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
   .fig:focus { outline: none; }
-  canvas {
-    display: block; width: 100%; height: clamp(300px, 50vh, 560px);
-    background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation; cursor: pointer;
-  }
+  .wheel { display: block; width: 100%; max-width: 600px; margin: 0 auto; height: auto; overflow: visible; }
+  .band { fill: none; stroke: var(--line); stroke-width: 46; stroke-linejoin: round; stroke-linecap: round; opacity: 0.5; }
+  .arrow { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+  marker path { fill: var(--ink); }
+  .rel text { font-family: var(--sans); font-size: 15px; fill: var(--ink); text-anchor: middle; }
+  .node { cursor: pointer; outline: none; }
+  .node circle { fill: var(--bg); stroke: var(--ink); stroke-width: 2; transition: fill 0.15s; }
+  .node text { text-anchor: middle; fill: var(--ink); pointer-events: none; }
+  .node .short { font-family: var(--sans); font-weight: 700; font-size: 21px; }
+  .node .name { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+  .node:hover circle, .node:focus-visible circle { stroke: var(--accent); stroke-width: 3.5; }
+  .node[aria-pressed="true"] circle { fill: var(--ink); }
+  .node[aria-pressed="true"] text { fill: var(--bg); }
+  .hint { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); text-align: center; margin: 0; }
+  .panel { display: flex; flex-direction: column; gap: 0.6rem; }
+  .panel[hidden] { display: none; }
+  .panel h3 { margin: 0.4rem 0 0; }
+  .panel [data-text] :global(p) { margin: 0.4rem 0; }
+  canvas { display: block; width: 100%; height: clamp(220px, 40vh, 420px); background: var(--panel); border: 1px solid var(--line); }
   .controls, .status {
     font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
-    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
   }
   .controls label { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
   .controls button, .controls select {
@@ -59,155 +131,197 @@ const { rule = 110, n = 160 } = Astro.props;
     padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
   }
   .controls button:hover, .controls select:hover { border-color: var(--accent); }
-  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  .controls input[type="number"] {
-    font: inherit; width: 5.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em;
-  }
-  .controls input[type="range"] { flex: 1 1 5rem; max-width: 9rem; accent-color: var(--accent); margin: 0; }
-  output { min-width: 2em; }
-  [name="gen"] { min-width: 7em; }
+  .controls button[name="play"][aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  [name="gen"] { min-width: 6em; }
+  .controls input[type="number"] { font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls input[type="range"] { width: 8rem; accent-color: var(--accent); margin: 0; }
+  .counts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+  .counts span { margin-right: 0.2rem; }
+  .counts button { min-width: 2em; padding: 0.1em 0.4em; }
+  .counts button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .counts [data-total] { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 2.2em; }
+  .counts [data-total] small { font-size: 0.7em; color: var(--muted); }
+  .counts [data-total][data-v="1"] { background: color-mix(in srgb, var(--accent) 45%, var(--bg)); }
+  .counts [data-total][data-v="2"] { background: var(--ink); color: var(--bg); }
+  .counts [data-total][data-v="2"] small { color: var(--bg); }
+  .fig [hidden] { display: none !important; } /* a label or a group of knobs that is not this family's */
   .status { display: block; min-height: 1.4em; color: var(--ink); }
   .lut { min-width: 0; }
-  .fig:is(:fullscreen, .full) {
-    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: hidden;
-    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
-  }
-  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 0; height: auto; border: 0; background: var(--bg); }
-  .fig:is(:fullscreen, .full) .lut { display: none; }
-  .fig::backdrop { background: var(--bg); }
+  @media (max-width: 520px) { .rel { display: none; } .band { stroke-width: 30; } }
 </style>
 
 <script>
-  import { seedRow } from '../scripts/eca';
-  import { tableOf, ruleOf, equivalents, lambda, totalisticTable } from '../scripts/wolfram';
-  import { BOUNDARIES, defaults, stepVariant, allocate, nonUniformity, familySize, IDENTITY, type Boundary, type Config } from '../scripts/variants';
+  import { stepVariant, defaults, allocate, IDENTITY, type Config } from '../scripts/variants';
+  import { tableOf, ruleOf, equivalents, lambda, totalisticTable, totalisticCode } from '../scripts/wolfram';
   import { makeRng } from '../scripts/net';
   import { Raster } from '../scripts/raster';
   import { parse, mix, type RGB } from '../scripts/palette';
-  import { fit, tokens, watch, stepper, fullscreen, urlState, keys, label } from '../scripts/figure';
+  import { fit, tokens, watch, stepper, urlState, reducedMotion } from '../scripts/figure';
 
-  document.querySelectorAll<HTMLElement>('[data-families]').forEach(mount);
+  type F = 'eca' | 'aca' | 'sca' | 'msca' | 'enca' | 'nuca';
+  const FS: F[] = ['eca', 'aca', 'sca', 'msca', 'enca', 'nuca'];
+  const TITLE: Record<F, string> = { eca: 'Elementary', aca: 'Asynchronous', sca: 'Stochastic', msca: 'Multi-state', enca: 'Extended neighbourhood', nuca: 'Non-uniform' };
 
   function mount(el: HTMLElement) {
     const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
-    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!;
-    const ruleIn = $<HTMLInputElement>('rule'), radiusIn = $<HTMLSelectElement>('radius'), statesIn = $<HTMLSelectElement>('states'), nIn = $<HTMLInputElement>('n'), initBtn = $<HTMLButtonElement>('init');
-    const bcIn = $<HTMLSelectElement>('bc'), edgeBtn = $<HTMLButtonElement>('edge'), pdistIn = $<HTMLInputElement>('pdist'), pdv = $<HTMLOutputElement>('pdv'), pdistBox = el.querySelector<HTMLElement>('[data-pdist]')!;
-    const alphaIn = $<HTMLInputElement>('alpha'), av = $<HTMLOutputElement>('av'), psiIn = $<HTMLInputElement>('psi'), pIn = $<HTMLInputElement>('p'), pv = $<HTMLOutputElement>('pv');
-    const nuIn = $<HTMLInputElement>('nu'), nv = $<HTMLOutputElement>('nv'), clampBtn = $<HTMLButtonElement>('clamp'), gen = $<HTMLOutputElement>('gen'), status = $<HTMLOutputElement>('status');
-    const lut = el.querySelector<HTMLElement>('.lut')!, bits = Array.from(lut.querySelectorAll<HTMLButtonElement>('[data-bit]'));
-    const d = el.dataset, url = urlState('fam', { rule: d.rule!, psi: String(IDENTITY), r: '1', k: '2', n: d.n!, init: 'random', bc: 'periodic', edge: '0', pd: '0.5', alpha: '1', p: '1', nu: '0', clamp: '0', seed: '1' });
-    const T = 128;
-    const isBc = (s: string): s is Boundary => BOUNDARIES.some((b) => b.id === s);
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, panel = el.querySelector<HTMLElement>('[data-panel]')!, hint = el.querySelector<HTMLElement>('[data-hint]')!;
+    const nodes = Array.from(el.querySelectorAll<SVGGElement>('.node')), texts = Array.from(el.querySelectorAll<HTMLElement>('[data-text]')), knobs = Array.from(el.querySelectorAll<HTMLElement>('[data-for]'));
+    const ruleIn = $<HTMLInputElement>('rule'), psiIn = $<HTMLInputElement>('psi'), alphaIn = $<HTMLInputElement>('alpha'), av = $<HTMLOutputElement>('av'), pIn = $<HTMLInputElement>('p'), pv = $<HTMLOutputElement>('pv');
+    const allocIn = $<HTMLSelectElement>('alloc'), status = $<HTMLOutputElement>('status'), title = el.querySelector<HTMLElement>('[data-title]')!, ruleLabel = el.querySelector<HTMLElement>('[data-rulelabel]')!;
+    const countBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-count]')), totalBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-total]')), bits = Array.from(el.querySelectorAll<HTMLButtonElement>('.lut [data-bit]'));
+    const url = urlState('fam', { f: '', rule: el.dataset.rule!, psi: '150', alpha: '0.8', p: '0.5', alloc: 'half', count: String(0b011010), code: '1599', seed: '1' });
 
-    // State, the URL first.
-    let radius: 1 | 2 = url.get('r') === '2' ? 2 : 1, states: 2 | 3 = url.get('k') === '3' ? 3 : 2;
-    let rule = +url.get('rule') || 0, psi = +url.get('psi') || 0;
-    let n = Math.min(400, Math.max(8, Math.round(+url.get('n')) || 160));
-    let init: 'seed' | 'random' = url.get('init') === 'seed' ? 'seed' : 'random';
-    let bc: Boundary = isBc(url.get('bc')) ? (url.get('bc') as Boundary) : 'periodic';
-    let edge = url.get('edge') === '1' ? 1 : 0, pDist = clamp01(+url.get('pd'), 0.5), alpha = clamp01(+url.get('alpha'), 1), p = clamp01(+url.get('p'), 1), nu = clamp01(+url.get('nu'), 0);
-    let clamped = url.get('clamp') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
-    let mask = new Uint8Array(n), rows: Uint8Array[] = [], rnd = makeRng(seed), raster = new Raster(n, T);
+    const byte = (v: string, def: number) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x <= 255 ? x : def; };
+    const unit = (v: string, def: number) => { const x = +v; return Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : def; };
+    let fam: F | '' = (FS as string[]).includes(url.get('f')) ? (url.get('f') as F) : '';
+    let rule = byte(url.get('rule'), 90), psi = byte(url.get('psi'), 150), alpha = Math.max(0.05, unit(url.get('alpha'), 0.8)), p = unit(url.get('p'), 0.5);
+    let alloc = ['half', 'one', 'random', 'alt'].includes(url.get('alloc')) ? url.get('alloc') : 'half';
+    let count = Math.round(+url.get('count')) & 63, code = Math.min(2186, Math.max(0, Math.round(+url.get('code')) || 0)), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let N = 0, T = 0, s = 6, rows: Uint8Array[] = [], mask = new Uint8Array(0), tick = 0, raster: Raster | null = null;
+    let cfg: Config | null = null, rnd = makeRng(1), autostop = false, startNext = false;
+    const gen = $<HTMLOutputElement>('gen'), speed = Object.assign(document.createElement('input'), { type: 'range', min: '0', max: '80', value: '54' }); // about 20 ticks a second, no slider to fiddle with
 
-    function clamp01(v: number, def: number) { return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : def; }
-    const maxRule = () => (states === 3 ? 3 ** (2 * (2 * radius + 1) + 1) - 1 : radius === 2 ? 4294967295 : 255);
-    const clampRule = (v: number) => Math.min(maxRule(), Math.max(0, Math.round(v) || 0));
-    const table = (v: number) => (states === 3 ? totalisticTable(v, radius) : tableOf(v, radius));
-    const elementary = () => radius === 1 && states === 2;
-
+    /** Radius two, counting: the 32-entry table of "alive next when the number alive among the five is in the set". */
+    function countTable(): Uint8Array {
+      const t = new Uint8Array(32);
+      for (let n = 0; n < 32; n++) { let k = 0; for (let b = 0; b < 5; b++) k += (n >> b) & 1; t[n] = (count >> k) & 1; }
+      return t;
+    }
     function config(): Config {
-      return { ...defaults(table(rule), table(psi), radius, states), boundary: bc, fixed: edge * (states - 1), inter: Math.floor(n / 3), pDist, alpha, p, mask, clamp: clamped ? n >> 1 : -1 };
+      if (fam === 'msca') return defaults(totalisticTable(code), totalisticTable(0), 1, 3);
+      if (fam === 'enca') return defaults(countTable(), new Uint8Array(32), 2, 2);
+      const cfg = defaults(tableOf(rule), tableOf(fam === 'aca' ? IDENTITY : psi));
+      if (fam === 'aca') cfg.alpha = alpha;
+      if (fam === 'sca') cfg.p = p;
+      if (fam === 'nuca') cfg.mask = mask;
+      return cfg;
     }
+    function allocation(): Uint8Array {
+      const m = new Uint8Array(N);
+      if (alloc === 'half') for (let i = (N >> 1) + 1; i < N; i++) m[i] = 1; // the seed itself stays on φ
+      else if (alloc === 'one') m[(N >> 1) + 6] = 1;
+      else if (alloc === 'alt') for (let i = 1; i < N; i += 2) m[i] = 1;
+      else return allocate(N, 0.5, makeRng(seed * 977 + 3));
+      return m;
+    }
+    /** Back to one live cell in the middle, with the knobs as they are now. */
+    function reset() {
+      if (!fam || !N) return;
+      mask = fam === 'nuca' ? allocation() : new Uint8Array(N);
+      cfg = config(); rnd = makeRng(seed * 131 + 7);
+      const row = new Uint8Array(N); row[N >> 1] = 1;
+      rows = [row]; tick = 0; raster = new Raster(N, T);
+    }
+    /** One tick; a full picture scrolls up. A run that started by itself pauses the first time the picture is full. */
+    function advance(): boolean {
+      if (!cfg) return true;
+      rows.push(stepVariant(rows[rows.length - 1], cfg, rnd)); tick++;
+      if (rows.length > T) rows.shift();
+      return autostop && tick === T - 1;
+    }
+    const st = stepper(el, { advance, paint, reset, play: $<HTMLButtonElement>('play'), speed });
+    /** A fresh run that plays by itself until the picture is full (all at once for reduced motion). */
     function start() {
-      rnd = makeRng(seed * 131 + 7);
-      const row = seedRow(n, init, rnd);
-      if (states === 3 && init === 'random') for (let i = 0; i < n; i++) row[i] = Math.floor(rnd() * 3);
-      rows = [row];
-      for (let t = 0; t < 64; t++) advance(); // open on a picture, not a single row
+      if (!N) { startNext = true; return; } // the canvas has just appeared; its first paint sizes it and comes back here
+      st.loop.play(false); reset(); autostop = true;
+      if (reducedMotion()) { while (!advance()); paint(); } else { paint(); st.loop.play(true); }
     }
-    function realloc() { mask = allocate(n, nu, makeRng(seed * 977 + 3)); }
-    function resize() { mask = new Uint8Array(n); raster = new Raster(n, T); realloc(); start(); }
-    const advance = () => { rows.push(stepVariant(rows[rows.length - 1], config(), rnd)); if (rows.length > T) rows.shift(); };
 
     function paint() {
-      const sz = fit(c); if (!sz) return;
-      const t = tokens(c), { w, h } = sz, ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent);
-      const on: RGB[] = [panel, mix(panel, ink, 0.45), ink], onPsi: RGB[] = [mix(panel, acc, 0.15), mix(panel, acc, 0.55), acc];
-      const top = states === 3 ? 2 : 1;
-      raster.fill(panel);
+      const sz = fit(c); if (!sz || !fam) return;
+      const { w, h } = sz, ns = w >= 600 ? 6 : 4, nN = Math.max(31, (Math.floor((w - 8) / ns) - 1) | 1), nT = Math.max(10, Math.floor((h - 8) / ns));
+      if (ns !== s || nN !== N || nT !== T) { // a new size: the same run replayed to the same tick
+        s = ns; N = nN; T = nT;
+        if (startNext) { startNext = false; start(); return; }
+        const k = tick; reset(); for (let i = 0; i < k; i++) advance();
+      }
+      if (!raster) return;
+      const t = tokens(c), panelC = parse(t.panel), ink = parse(t.ink), acc = parse(t.accent), tint = mix(panelC, acc, 0.22);
+      const three: RGB[] = [panelC, mix(panelC, acc, 0.75), ink];
+      raster.fill(panelC);
       for (let y = 0; y < rows.length; y++) {
         const r = rows[y];
-        for (let x = 0; x < n; x++) raster.set(y * n + x, (mask[x] ? onPsi : on)[top === 1 ? r[x] * 2 : r[x]]);
+        for (let x = 0; x < N; x++) {
+          const v = r[x];
+          if (fam === 'msca') { if (v) raster.set(y * N + x, three[v]); }
+          else if (v) raster.set(y * N + x, ink);
+          else if (mask[x]) raster.set(y * N + x, tint);
+        }
       }
       raster.flush();
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
-      const box = { x: 0, y: 0, w, h };
-      raster.blit(ctx, box);
-      if (clamped) { const cw = w / n, x = (n >> 1) * cw; ctx.strokeStyle = t.danger; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, 0.5, Math.max(1, cw) - 1, h - 1); }
-      if (bc === 'null') { ctx.fillStyle = t.line; const cw = w / n; ctx.fillRect(0, 0, cw * radius, h); ctx.fillRect(w - cw * radius, 0, cw * radius, h); }
-      label(ctx, `tick ${rows.length - 1}${rows.length >= T ? ' · scrolling' : ''}`, w - 6, h - 6, t, { align: 'right' });
-      gen.value = `tick ${rows.length - 1}`;
+      raster.blit(ctx, { x: Math.round((w - N * s) / 2), y: Math.round((h - T * s) / 2), w: N * s, h: T * s });
       readout();
     }
 
     function readout() {
-      const parts: string[] = [];
-      if (elementary()) { const e = equivalents(rule); parts.push(`rule ${rule}`, e.mirror === rule ? 'its own mirror image' : `mirror image ${e.mirror}`, e.complement === rule ? 'its own complement' : `complement ${e.complement}`, `class of rule ${e.rep}`); }
-      else parts.push(states === 3 ? `code ${rule}` : `rule ${rule}`);
-      parts.push(`λ = ${lambda(table(rule)).toFixed(2)}`, `${familySize(radius, states)} rules`);
-      const nuNow = nonUniformity(mask);
-      if (alpha < 1) parts.push(`α = ${alpha.toFixed(2)}`);
-      if (p < 1) parts.push(`ψ = ${psi} with probability ${(1 - p).toFixed(2)}`);
-      if (nuNow > 0) parts.push(`${Math.round(nuNow * 100)}% of cells on ψ = ${psi}, so ν = ${(1 - nuNow).toFixed(2)}`);
-      if (clamped) parts.push('middle cell clamped');
-      status.value = parts.join(' · ');
-      c.setAttribute('aria-label', `${parts[0]} on a row of ${n} cells, ${bc} boundary, tick ${rows.length - 1}`);
+      let text = '';
+      const n1 = Array.from(mask).filter((v) => v).length;
+      if (fam === 'eca') { const e = equivalents(rule); text = `rule ${rule} · ${e.mirror === rule ? 'its own mirror image' : `mirror image ${e.mirror}`} · ${e.complement === rule ? 'its own complement' : `complement ${e.complement}`} · λ = ${lambda(tableOf(rule)).toFixed(2)}`; }
+      else if (fam === 'aca') text = `rule ${rule}, and each tick a cell updates with probability ${alpha.toFixed(2)}, otherwise it waits`;
+      else if (fam === 'sca') text = `each cell, each tick: rule ${rule} with chance ${p.toFixed(2)}, rule ${psi} otherwise`;
+      else if (fam === 'msca') text = `code ${code}, one of 3⁷ = 2187 rules that look at the total`;
+      else if (fam === 'enca') { const ks = [0, 1, 2, 3, 4, 5].filter((k) => (count >> k) & 1); text = `alive next when ${ks.length ? ks.join(', ') : 'never'} of the five are alive · one of 64 counting rules among 2³² ≈ 4.3 billion`; }
+      else if (fam === 'nuca') text = `rule ${rule} on ${N - n1} cells, rule ${psi} on ${n1} (tinted) · ν = ${((N - n1) / N).toFixed(2)}`;
+      status.value = `${text} · ${N} cells`;
+      gen.value = `tick ${tick}`;
+      c.setAttribute('aria-label', `${TITLE[fam as F]}: ${status.value}`);
     }
 
     function show() {
-      ruleIn.max = psiIn.max = String(maxRule()); ruleIn.value = String(rule); psiIn.value = String(psi);
-      radiusIn.value = String(radius); statesIn.value = String(states); nIn.value = String(n);
-      initBtn.setAttribute('aria-pressed', String(init === 'random'));
-      bcIn.value = bc; edgeBtn.hidden = bc !== 'fixed'; edgeBtn.textContent = `edge cells: ${edge * (states - 1)}`; pdistBox.hidden = bc !== 'distributed';
-      pdistIn.value = String(pDist); pdv.value = `${Math.round(pDist * 100)}%`;
-      alphaIn.value = String(alpha); av.value = `${Math.round(alpha * 100)}%`; pIn.value = String(p); pv.value = `${Math.round(p * 100)}%`;
-      nuIn.value = String(nu); nv.value = `${Math.round(nu * 100)}%`; clampBtn.setAttribute('aria-pressed', String(clamped));
-      lut.hidden = !elementary();
-      if (elementary()) { const tb = tableOf(rule); for (const b of bits) { const k = +b.dataset.bit!; b.dataset.on = String(tb[k]); b.setAttribute('aria-pressed', String(tb[k] === 1)); b.textContent = String(tb[k]); } }
+      for (const nd of nodes) nd.setAttribute('aria-pressed', String(nd.dataset.f === fam));
+      panel.hidden = !fam; hint.hidden = !!fam;
+      if (!fam) return;
+      title.textContent = TITLE[fam];
+      for (const d of texts) d.hidden = d.dataset.text !== fam;
+      for (const k of knobs) k.hidden = !k.dataset.for!.split(' ').includes(fam);
+      ruleLabel.textContent = fam === 'eca' || fam === 'aca' ? 'rule' : 'first rule φ';
+      ruleIn.value = String(rule); psiIn.value = String(psi); alphaIn.value = String(alpha); av.value = alpha.toFixed(2); pIn.value = String(p); pv.value = p.toFixed(2); allocIn.value = alloc;
+      for (const b of countBtns) b.setAttribute('aria-pressed', String(((count >> +b.dataset.count!) & 1) === 1));
+      const tt = totalisticTable(code);
+      for (const b of totalBtns) { const v = tt[+b.dataset.total!]; b.dataset.v = String(v); b.querySelector('b')!.textContent = String(v); }
+      const tb = tableOf(rule);
+      for (const b of bits) { const k = +b.dataset.bit!; b.dataset.on = String(tb[k]); b.setAttribute('aria-pressed', String(tb[k] === 1)); b.textContent = String(tb[k]); }
     }
     function sync() {
-      url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('r', String(radius)); url.set('k', String(states)); url.set('n', String(n)); url.set('init', init);
-      url.set('bc', bc); url.set('edge', String(edge)); url.set('pd', String(pDist)); url.set('alpha', String(alpha)); url.set('p', String(p)); url.set('nu', String(nu)); url.set('clamp', clamped ? '1' : '0'); url.set('seed', String(seed));
+      url.set('f', fam); url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('alpha', String(alpha)); url.set('p', String(p));
+      url.set('alloc', alloc); url.set('count', String(count)); url.set('code', String(code)); url.set('seed', String(seed));
     }
-    const apply = (restart = false) => { if (restart) start(); show(); sync(); paint(); };
+    const redo = () => { show(); sync(); start(); };
 
-    const st = stepper(el, { advance, paint, reset: () => start(), undo: () => { if (rows.length > 1) rows.pop(); }, play: $<HTMLButtonElement>('play'), speed: $<HTMLInputElement>('speed') });
+    function choose(f: F) {
+      const first = !fam; fam = f; show(); sync();
+      start();
+      if (first) requestAnimationFrame(() => { const b = panel.getBoundingClientRect(); if (b.top > innerHeight * 0.75) panel.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }); });
+    }
+    for (const nd of nodes) {
+      nd.addEventListener('click', () => choose(nd.dataset.f as F));
+      nd.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(nd.dataset.f as F); } });
+    }
+    ruleIn.addEventListener('change', () => { rule = byte(ruleIn.value, rule); redo(); });
+    psiIn.addEventListener('change', () => { psi = byte(psiIn.value, psi); redo(); });
+    alphaIn.addEventListener('input', () => { alpha = +alphaIn.value; av.value = alpha.toFixed(2); });
+    alphaIn.addEventListener('change', () => redo());
+    pIn.addEventListener('input', () => { p = +pIn.value; pv.value = p.toFixed(2); });
+    pIn.addEventListener('change', () => redo());
+    allocIn.addEventListener('change', () => { alloc = allocIn.value; redo(); });
+    for (const b of countBtns) b.addEventListener('click', () => { count ^= 1 << +b.dataset.count!; redo(); });
+    for (const b of totalBtns) b.addEventListener('click', () => { const tt = totalisticTable(code), k = +b.dataset.total!; tt[k] = (tt[k] + 1) % 3; code = totalisticCode(tt); redo(); });
+    for (const b of bits) b.addEventListener('click', () => { const tb = tableOf(rule); tb[+b.dataset.bit!] ^= 1; rule = ruleOf(tb); redo(); });
+    $('random').addEventListener('click', () => {
+      // an empty neighbourhood stays empty, or the whole row would flash on and off
+      if (fam === 'enca') { do count = Math.floor(Math.random() * 32) << 1; while (!count); }
+      else { const tt = new Uint8Array(7); for (let k = 1; k < 7; k++) tt[k] = Math.floor(Math.random() * 3); code = totalisticCode(tt); }
+      redo();
+    });
+    $('again').addEventListener('click', () => { seed++; redo(); }); // new coins for the random families
     $('step').addEventListener('click', st.step);
-    $('reset').addEventListener('click', st.reset);
+    $('play').addEventListener('click', () => { autostop = false; }); // pressed by hand: keep going, scrolling
 
-    ruleIn.addEventListener('change', () => { rule = clampRule(+ruleIn.value); apply(); });
-    psiIn.addEventListener('change', () => { psi = clampRule(+psiIn.value); apply(); });
-    $('random').addEventListener('click', () => { rule = clampRule(Math.floor(Math.random() * (maxRule() + 1))); apply(); });
-    radiusIn.addEventListener('change', () => { radius = radiusIn.value === '2' ? 2 : 1; rule = clampRule(rule); psi = clampRule(psi); st.loop.play(false); apply(true); });
-    statesIn.addEventListener('change', () => { states = statesIn.value === '3' ? 3 : 2; rule = clampRule(rule); psi = clampRule(psi); st.loop.play(false); apply(true); });
-    nIn.addEventListener('change', () => { n = Math.min(400, Math.max(8, Math.round(+nIn.value) || 160)); st.loop.play(false); resize(); show(); sync(); paint(); });
-    initBtn.addEventListener('click', () => { init = init === 'random' ? 'seed' : 'random'; st.loop.play(false); apply(true); });
-    bcIn.addEventListener('change', () => { if (isBc(bcIn.value)) bc = bcIn.value; apply(); });
-    edgeBtn.addEventListener('click', () => { edge = 1 - edge; apply(); });
-    pdistIn.addEventListener('input', () => { pDist = +pdistIn.value; pdv.value = `${Math.round(pDist * 100)}%`; sync(); });
-    alphaIn.addEventListener('input', () => { alpha = +alphaIn.value; av.value = `${Math.round(alpha * 100)}%`; sync(); readout(); });
-    pIn.addEventListener('input', () => { p = +pIn.value; pv.value = `${Math.round(p * 100)}%`; sync(); readout(); });
-    nuIn.addEventListener('input', () => { nu = +nuIn.value; nv.value = `${Math.round(nu * 100)}%`; realloc(); sync(); paint(); });
-    $('realloc').addEventListener('click', () => { seed++; realloc(); sync(); paint(); });
-    clampBtn.addEventListener('click', () => { clamped = !clamped; apply(); });
-    for (const b of bits) b.addEventListener('click', () => { if (!elementary()) return; const tb = tableOf(rule); tb[+b.dataset.bit!] ^= 1; rule = ruleOf(tb); apply(); });
-    // a click on a column hands that cell to ψ, or takes it back
-    c.addEventListener('click', (e) => { const b = c.getBoundingClientRect(), x = Math.floor(((e.clientX - b.left) / b.width) * n); if (x >= 0 && x < n) { mask[x] ^= 1; nu = nonUniformity(mask); show(); sync(); paint(); } });
-
-    const full = fullscreen(el, $<HTMLButtonElement>('full'));
-    keys(el, { ...st.keymap, f: full.toggle, Escape: () => { if (full.on()) full.toggle(); } });
     watch(c, paint);
-    resize(); show(); paint();
+    startNext = !!fam; // a link that names a family opens it running
+    show();
   }
+
+  document.querySelectorAll<HTMLElement>('[data-families]').forEach(mount);
 </script>

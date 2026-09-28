@@ -165,79 +165,106 @@ const tabs = [
         <div class="measure">
           <h2>Families</h2>
           <p>
-            Here is the whole recipe once more, with the numbers in. A row of cells, each 0 or 1. Every cell
-            looks at itself and its two neighbours, three cells, so eight possible views. A rule says what the
-            cell becomes next for each of the eight, which makes 2<sup>8</sup> = 256 rules, numbered 0 to 255 by
-            reading the eight answers as a binary number. Everyone updates at once, and the row is a ring. That is
-            an <em>elementary</em> cellular automaton, and it is already enough for rule 110 to be a working
-            computer, in principle. Two symmetries cut the 256 down to 88 genuinely different rules: look at a
-            rule in a mirror, or swap the roles of 0 and 1, and you get a rule that draws the same pictures
-            reflected or inverted. The readout under the figure names both relatives.
-          </p>
-          <p>
-            Every research field that uses cellular automata bends one item of that recipe, and my review
-            paper sorted the bends into five families. The figure starts as the plain thing and every control
-            below it is one of the bends, so they can be mixed. Time runs down; once the picture is full it
-            scrolls.
+            The simplest cellular automaton is a row of cells that all follow one rule, all at once, each looking
+            only at its direct neighbours. Every research field that uses cellular automata bends one item of that
+            recipe, and my review paper sorted the bends into five families. The diagram is the one from the
+            thesis: the plain version in the middle, the families around it. The arrows from the centre say what
+            each family changes; the arrows round the rim are the identities that turn one family into another.
           </p>
         </div>
-        <CaFamilies />
+        <CaFamilies>
+          <Fragment slot="eca">
+            <p>
+              A row of cells, each 0 or 1. Every cell looks at itself and its two neighbours, three cells, so
+              eight possible views, and the rule says what the cell becomes next for each of them. Eight yes or no
+              answers make 2<sup>8</sup> = 256 rules, numbered 0 to 255 by reading the answers as a binary number.
+              Everyone updates at once, and the row closes into a ring. Rule 110 is already enough for a working
+              computer, in principle.
+            </p>
+            <p>
+              Two symmetries cut the 256 down to 88 genuinely different rules: a rule seen in a mirror, or with 0
+              and 1 swapped, draws the same pictures reflected or inverted, and the line under the table names both
+              relatives. It also gives λ, Langton's parameter, the share of the eight answers that are 1. That is
+              the simplest example of a <em>genotype</em>, a number read off the rule without running it, and the
+              thesis keeps asking how far such numbers predict the <em>phenotype</em>, the picture the rule
+              actually draws. Click the answers in the table to change the rule, or try 30, 110 and 184.
+            </p>
+          </Fragment>
+          <Fragment slot="aca">
+            <p>
+              Nature has no central clock. Here each cell updates with some probability every tick and otherwise
+              waits, so a probability of 1 is the elementary automaton again. Rule 90 draws neat nested triangles
+              in lockstep; lower the probability and they fray, and at 0.5 little of the pattern is left. Rules
+              that are tidy when synchronous often fall apart like this, a few become tidier, and the update
+              scheme can even change which class a rule belongs to.
+            </p>
+            <p>
+              Round the rim: fix in advance which cells wait, and this becomes a non-uniform automaton whose second
+              rule is 204, the rule that changes nothing. Read time as one more dimension of space, and an
+              asynchronous automaton becomes an ordinary synchronous one in one dimension more.
+            </p>
+          </Fragment>
+          <Fragment slot="sca">
+            <p>
+              Give each cell two rules, φ and ψ, and let it flip a weighted coin every tick to choose between them.
+              With ψ = 204, the rule that leaves a cell as it is, this is exactly the asynchronous family, which is
+              the arrow between the two circles: try it and compare. With two proper rules the rows form a Markov
+              chain, and as the weight of the coin moves, the behaviour can change abruptly, a phase transition.
+              And when all cells switch rules together, two rules that are each chaotic can jointly settle into a
+              periodic pattern. <em>Run again</em> draws new coins.
+            </p>
+          </Fragment>
+          <Fragment slot="msca">
+            <p>
+              More than two states per cell. The rule space explodes: with three states and three cells there are
+              3<sup>27</sup>, about 7.6 trillion, rules. So the figure keeps the rules that only look at the total
+              of the three cells, a number from 0 to 6, and the buttons give the next state for each total:
+              3<sup>7</sup> = 2187 rules. The one it opens with, code 1599, is a famous one: from a single cell it keeps growing
+              irregularly for thousands of ticks before it settles. Click a total to cycle its answer, or ask for
+              a random rule.
+            </p>
+            <p>
+              Round the rim: states and neighbourhood size can be traded against each other, and a non-uniform
+              automaton with two rules is secretly a uniform one with four states, one for every combination of a
+              state and a rule.
+            </p>
+          </Fragment>
+          <Fragment slot="enca">
+            <p>
+              Let each cell see further: two cells on either side instead of one, five in all. If every
+              combination of five cells gets its own answer, there are 2<sup>32</sup>, over four billion, rules,
+              and no table on a page can show them. So the figure keeps the rules that only count: a cell is alive
+              next if the number of living cells among the five is in the set you pick. It opens with 1, 3 or 4.
+            </p>
+            <p>
+              Counting is not a shortcut, it is where the thesis is heading. Push the idea further and the
+              neighbours need not be next door at all, but whatever a cell is wired to. Then the row is a network,
+              the neighbours no longer come in any order, and a sensible rule can only count them. That is a
+              network automaton, the subject of the rest of the thesis; the <a href="#networks">next tab</a> is
+              about the networks.
+            </p>
+            <p>
+              This family is also where the Game of Life lives. Its grid is two-dimensional, and each cell counts
+              its eight neighbours: a dead cell with exactly three living neighbours is born, a living cell with two
+              or three survives, and everything else dies or stays dead. Change those numbers and you get the
+              other Life-like automata. Keep the counting but put the cells on a network, and you get the Life-like
+              network automata that the thesis studies from the <a href="#two-numbers">Two numbers</a> tab
+              onwards. Life itself is on the <a href="#roadmap">first tab</a>, and on the <a href="#cover">cover</a>.
+            </p>
+          </Fragment>
+          <Fragment slot="nuca">
+            <p>
+              Instead of a coin every tick, decide once which cells follow the second rule ψ, and freeze that
+              choice. The tinted columns follow ψ. The share of cells on φ is the degree of non-uniformity ν, and
+              ν = ½ is as mixed as it gets. The extreme case is one cell that does something different, and the
+              most extreme version of that is a cell that never changes at all, a <em>clamped</em> cell. That stuck
+              cell is the seed of the <a href="#impact">Impact</a> tab, where clamping one node tells us how much it
+              matters, and non-uniform rows come back in <a href="#cnn">CA as CNN</a>, where a neural network runs
+              them. Try one cell on ψ = 204 inside rule 90, or rule 30 against rule 90.
+            </p>
+          </Fragment>
+        </CaFamilies>
         <div class="measure">
-          <p>
-            <strong>Edges.</strong> A real simulation has a first and a last cell, and something has to stand in
-            for the neighbour that is not there. The usual answer is to close the row into a ring. The other
-            seven answers in the <em>boundary</em> menu fix the missing neighbour at a constant, copy the edge
-            cell, mirror it, borrow a cell from elsewhere in the row, flip a coin every tick, or leave it
-            undefined and simply stop updating the cells that would need it. The choice looks like a detail and
-            is not: it decides whether information can leak in from the sides.
-          </p>
-          <p>
-            <strong>Asynchronous.</strong> Nature has no central clock. Lower the <em>synchrony</em> α and each
-            cell updates with that probability per tick, otherwise it waits. Rules that were tidy at α = 1 often
-            fall apart at α = 0.9, and a few become tidier.
-          </p>
-          <p>
-            <strong>Stochastic.</strong> Give each cell two rules, φ and a second rule ψ, and let it flip a
-            weighted coin every tick to choose between them: that is <em>P(φ)</em>. With ψ = 204, the rule that
-            leaves every cell as it is, this is exactly the asynchronous case. With two proper rules the row is
-            a Markov chain, and as the weight moves the behaviour can change abruptly, a phase transition. And
-            when all cells switch rules together, two rules that are each chaotic can jointly settle into a
-            periodic pattern.
-          </p>
-          <p>
-            <strong>Non-uniform.</strong> Instead of a coin every tick, decide once which cells follow ψ and
-            freeze that allocation. The <em>share on ψ</em> slider does it at random; a click on a column hands
-            that column over, and the columns on ψ are tinted blue. The thesis calls the share on φ the degree of
-            non-uniformity ν, and ν = ½ is as mixed as it gets. The extreme case is one cell that does something different, and the <em>clamp</em> button makes
-            the middle cell never change at all. That single stuck cell is the seed of the last chapter, where
-            clamping one node tells us how much that node matters.
-          </p>
-          <p>
-            <strong>Extended neighbourhood.</strong> Set the <em>radius</em> to 2 and each cell sees five cells
-            instead of three, which makes 2<sup>32</sup>, over four billion, rules; the table is gone because it
-            no longer fits on a page. Push this further and the neighbourhood need not be the cells next door
-            at all, but whatever a cell is wired to. Then the row is a network, the rule has to treat all
-            neighbours alike because they no longer come in an order, and you have a network automaton, which
-            is what the rest of the thesis is about.
-          </p>
-          <p>
-            <strong>Multi-state.</strong> Set <em>states</em> to 3 and the rule space explodes to 3<sup>27</sup>, so
-            the figure keeps only the rules that look at the neighbourhood total, 3<sup>7</sup> = 2187 of them.
-            Three states drawn in grey, black and blank. A two-rule non-uniform automaton, by the way, is
-            secretly a four-state uniform one, which is one of the identities the review draws between the
-            families.
-          </p>
-          <p>
-            One number in the readout is worth knowing: λ, Langton's parameter, the share of the eight cases
-            that give a 1. It is the simplest example of a <em>genotype</em>, something read off the rule table
-            without running anything, and the thesis keeps asking how far such numbers predict
-            the <em>phenotype</em>, the picture the rule actually draws.
-          </p>
-          <p>
-            Things to try. Rule 30 with the boundary set to fixed and the edge cells at 0, from a single seed,
-            then the same with adiabatic edges. Rule 110 at synchrony 0.95. Rule 90 with ψ = 150 at P(φ) = 0.5.
-            Rule 30 with a third of the columns on ψ = 204. And the random rule button at radius 2, a few times.
-          </p>
           <p class="meta status-line">
             Ch. 2 condenses <a href={link('ca-taxonomy')}>{pub('ca-taxonomy').title}</a>, {pub('ca-taxonomy').venue} ({pub('ca-taxonomy').year}), with Kallil Zielinski, Aisling Daly, Odemir Bruno and Jan Baetens.
           </p>

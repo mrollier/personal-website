@@ -1,0 +1,10 @@
+---
+// One 16:9 slide of the defence deck. `builds` is how many clicker steps it has before the deck moves on; the
+// slide's own script registers what they do (src/scripts/defence/deck.ts). Everything inside is laid out in
+// design pixels of a 1920 × 1080 slide through `--u`, so the card on the page and the projector look the same.
+type Props = { builds?: number; appendix?: boolean; label: string; class?: string; id?: string };
+const { builds = 0, appendix = false, label, class: cls, id } = Astro.props;
+---
+<section class:list={['slide', cls]} id={id} data-slide data-builds={builds} data-appendix={appendix ? '' : undefined} aria-label={label}>
+  <div class="frame"><slot /></div>
+</section>

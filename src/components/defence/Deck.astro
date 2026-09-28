@@ -1,0 +1,108 @@
+---
+// The public PhD defence as one deck. On the page (`mode="page"`) the talk's blocks are hash-routed tabs and every
+// slide is a live card; Present puts the same slides fullscreen, one at a time, driven by a clicker. The standalone
+// route (`mode="present"`) renders the deck alone behind a Start gate, and is what the offline single file is built
+// from. Engine: src/scripts/defence/deck.ts. Everything here lifts out with src/components/defence/ and src/scripts/defence/.
+import './deck.css';
+import Opening from './Opening.astro';
+import BeACell from './BeACell.astro';
+import Automata from './Automata.astro';
+import Question from './Question.astro';
+import ThesisMap from './ThesisMap.astro';
+import Hud from './Hud.astro';
+type Props = { mode: 'page' | 'present' };
+const { mode } = Astro.props;
+const page = mode === 'page';
+// until: when the block should be over, for the rehearsal clock (key t)
+const blocks = [
+  { id: 'opening', name: 'Opening', until: '0:30', C: Opening, intro: 'The title, over the cover of the book.' },
+  { id: 'be-a-cell', name: 'Be a cell', until: '5:30', C: BeACell, intro: 'The room becomes a cellular automaton: everyone follows one rule about their two neighbours, round after round, and it turns out to be rule 90.' },
+  { id: 'automata', name: 'Cellular automata', until: '8:30', C: Automata, intro: 'From one rule to all 256 rules of a row of cells, then to the Game of Life and the still lifes the cover is made of.' },
+  { id: 'question', name: 'The question', until: '11:30', C: Question, intro: 'The same recipe gives order, chaos and something in between, in automata and in nature. How much of the behaviour does the rule give away?' },
+  { id: 'map', name: 'The thesis map', until: '13:00', C: ThesisMap, intro: 'The four parts of the thesis and the papers behind them.' },
+];
+---
+{page ? (
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Parts of the talk">
+      <ul role="tablist" aria-orientation="vertical">
+        {blocks.map((b, i) => <li><a role="tab" id={`tab-${b.id}`} href={`#${b.id}`} aria-controls={b.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}><small>{i ? blocks[i - 1].until : '0:00'}</small>{b.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="deck" id="deck" data-deck tabindex="-1">
+      {blocks.map(({ id, name, until, C, intro }, i) => (
+        <section role="tabpanel" class="block" id={id} aria-labelledby={`tab-${id}`} data-until={until} hidden={i > 0}>
+          <p class="intro">{intro}</p>
+          <C />
+        </section>
+      ))}
+      <Hud />
+    </div>
+  </div>
+) : (
+  <div class="deck" id="deck" data-deck data-standalone tabindex="-1">
+    {blocks.map(({ id, until, C }) => <div class="block" data-block={id} data-until={until}><C /></div>)}
+    <Hud exit={false} />
+    <div class="gate" data-gate>
+      <div>
+        <button type="button">Start</button>
+        <p>fullscreen · or press the clicker to start in this window</p>
+      </div>
+    </div>
+  </div>
+)}
+<script>
+  import { mountDeck } from '../../scripts/defence/deck';
+  document.querySelectorAll<HTMLElement>('[data-deck]').forEach(mountDeck);
+
+  // The hash picks the tab (a tab's id or the id of anything inside one); leaving the deck opens the tab it ended on.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('.tabs [role="tab"]'));
+  if (tabs.length) {
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+    const box = document.querySelector<HTMLElement>('.tabbed')!;
+    const show = (id: string, scroll: boolean) => {
+      let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+      if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+      if (i < 0) i = 0;
+      tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+      if (target) target.scrollIntoView({ block: 'start' });
+      else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+    };
+    const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+    addEventListener('hashchange', fromHash);
+    fromHash();
+    document.querySelector('.tabs [role="tablist"]')!.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+      if (i < 0) return;
+      const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+      if (j < 0) return;
+      e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+    });
+    document.getElementById('deck')!.addEventListener('deck:exit', (e) => {
+      const p = ((e as CustomEvent).detail as HTMLElement).closest<HTMLElement>('[role="tabpanel"]');
+      if (p && p.hidden) history.replaceState(null, '', `#${p.id}`), show(p.id, false);
+    });
+  }
+</script>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs small { display: block; font-family: var(--mono); font-size: 0.7em; color: var(--muted); }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .intro { color: var(--muted); margin: 0 0 1rem; max-width: 68ch; }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs small { display: none; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>

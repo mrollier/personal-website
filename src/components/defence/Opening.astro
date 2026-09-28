@@ -1,0 +1,37 @@
+---
+// A1: the title over the cover art, static.
+import Slide from './Slide.astro';
+---
+<Slide label="Title">
+  <canvas class="art" data-cover-art aria-hidden="true"></canvas>
+  <div class="t">
+    <h1>The rich landscape of iterated simplicity</h1>
+    <p class="sub">cellular automata and network automata</p>
+    <p class="who">Michiel Rollier</p>
+    <p class="when">Public PhD defence · Friday 2 October 2026</p>
+    <p class="fine">Supervisors: Prof. Dr. Ir. Jan M. Baetens · Prof. Dr. Odemir M. Bruno · Dr. Aisling Daly</p>
+    <p class="fine">Joint PhD · Ghent University, Faculty of Bioscience Engineering · University of São Paulo, São Carlos Institute of Physics</p>
+  </div>
+</Slide>
+
+<style>
+  .art { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .t { position: relative; width: calc(1000 * var(--u)); margin-top: calc(150 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  h1 { font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; font-size: calc(84 * var(--u)); margin: 0; }
+  .sub { font-family: var(--mono); font-size: calc(46 * var(--u)); color: var(--muted); margin-bottom: calc(60 * var(--u)); }
+  .who { font-size: calc(52 * var(--u)); font-weight: 600; }
+  .when { font-size: calc(38 * var(--u)); }
+  .fine { font-size: calc(26 * var(--u)); color: var(--muted); max-width: calc(900 * var(--u)); }
+</style>
+
+<script>
+  import { stage, onSize } from '../../scripts/defence/stage';
+  import { stillMosaic, drawCells } from '../../scripts/defence/cover';
+  import tiles from '../../data/tiles.json';
+  // Level-3 tiles, about 9 design pixels a cell so the cells read as cells; the grid is a tile wider and taller than the view.
+  const art = stillMosaic(tiles, 13, 8, 3, 20261002, 0.5), view = 216; // 216 × 122 cells on screen
+  for (const c of document.querySelectorAll<HTMLCanvasElement>('[data-cover-art]')) {
+    const paint = () => { const st = stage(c); if (!st) return; drawCells(st.ctx, art, 0, 0, st.w / view, st.w, st.h, st.t.ink); };
+    onSize(c, paint);
+  }
+</script>

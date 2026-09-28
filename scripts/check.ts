@@ -12,4 +12,5 @@ import './check-cnn.ts';
 import './check-linalg.ts';
 import './check-lyapunov.ts';
 import './check-mosaic.ts';
+import './check-defence.ts';
 console.log('all checks passed');

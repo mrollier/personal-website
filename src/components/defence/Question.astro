@@ -1,0 +1,164 @@
+---
+// D1–D3: one recipe gives order, something complex and chaos-looking noise; nature does it too; the rule is the
+// genotype, the behaviour the phenotype, and the thesis measures how much one says about the other.
+import Slide from './Slide.astro';
+const three = [
+  { id: 'vote', label: 'order' },
+  { id: 'life', label: 'complex?' },
+  { id: 'parity', label: 'chaotic-looking' },
+];
+const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
+---
+<Slide label="One recipe, three outcomes" builds={1} class="d1">
+  <h2>One recipe, three outcomes</h2>
+  <p class="small">The same random start. Only the rule differs.</p>
+  <div class="three">
+    {three.map((g) => (
+      <figure>
+        <canvas data-grid={g.id} aria-label={`a grid of cells: ${g.label}`}></canvas>
+        <figcaption>{g.label}</figcaption>
+      </figure>
+    ))}
+  </div>
+  <p class="lede" data-b="1">“Complex” has no agreed definition. “The edge of order and chaos” is an intuition, not a law.</p>
+</Slide>
+
+<Slide label="Nature does this too" builds={1} class="d2">
+  <div class="row grow d2-row">
+    <div class="col d2-side">
+      <h2>Nature does this too</h2>
+      <p class="lede">Each bird: align, stay close, don’t collide <span class="accent">→ a flock</span></p>
+      <p class="lede" data-b="1">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought and behaviour</span></p>
+    </div>
+    <canvas class="boids" aria-label="A flock of birds, each following three local rules"></canvas>
+  </div>
+  <p class="cite">Flock after C. Reynolds, 1987</p>
+</Slide>
+
+<Slide label="Genotype and phenotype" builds={2} class="d3">
+  <div class="gp">
+    <div class="col center">
+      <h3>Genotype: the rule</h3>
+      <p>local, simple<br />what each cell does</p>
+      <div class="mini">
+        {cases.map((c) => (
+          <div class="case"><div class="three-bits">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div><i class:list={['one', c.out && 'on']} /></div>
+        ))}
+      </div>
+    </div>
+    <div class="arrows" aria-hidden="true">⇄</div>
+    <div class="col center">
+      <h3>Phenotype: the behaviour</h3>
+      <p>global, rich<br />what the whole does</p>
+      <canvas class="sier" aria-label="Rule 90 from one live cell: a Sierpiński triangle"></canvas>
+    </div>
+  </div>
+  <p class="q" data-b="1">The rule doesn’t tell you the behaviour. But it tells you more than nothing, and the behaviour tells you something about the rule and the network. <b>This thesis measures how much.</b></p>
+  <p class="q2 accent" data-b="2">…and puts it to use in network science.</p>
+  <p class="cite">Genotype and phenotype, after S. A. Kauffman, 1990</p>
+</Slide>
+
+<style>
+  .three { display: flex; justify-content: space-between; }
+  .three figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(12 * var(--u)); }
+  .three canvas { width: calc(540 * var(--u)); height: calc(540 * var(--u)); }
+  .three figcaption { font-family: var(--mono); font-size: calc(42 * var(--u)); }
+
+  .d2-row { align-items: center; gap: calc(60 * var(--u)); }
+  .d2-side { width: calc(620 * var(--u)); flex: none; gap: calc(50 * var(--u)); }
+  .boids { width: calc(1060 * var(--u)); height: calc(820 * var(--u)); flex: none; background: var(--panel); }
+
+  .gp { display: flex; justify-content: center; align-items: flex-start; gap: calc(50 * var(--u)); margin-top: calc(20 * var(--u)); }
+  .gp > .col { width: calc(720 * var(--u)); gap: calc(22 * var(--u)); }
+  .gp h3 { font-size: calc(50 * var(--u)); }
+  .gp p { color: var(--muted); }
+  .arrows { font-size: calc(120 * var(--u)); color: var(--accent); align-self: center; line-height: 1; }
+  .mini { display: flex; gap: calc(12 * var(--u)); margin-top: calc(30 * var(--u)); }
+  .case { display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u)); }
+  .three-bits { display: flex; gap: calc(2 * var(--u)); }
+  .case i { display: block; width: calc(26 * var(--u)); height: calc(26 * var(--u)); background: var(--panel); border: calc(1.5 * var(--u)) solid var(--line); }
+  .case i.on { background: var(--ink); border-color: var(--ink); }
+  .sier { width: calc(560 * var(--u)); height: calc(283 * var(--u)); }
+  .q { font-size: calc(48 * var(--u)); line-height: 1.25; text-align: center; margin-top: calc(50 * var(--u)); }
+  .q2 { font-size: calc(46 * var(--u)); text-align: center; }
+</style>
+
+<script>
+  import { slide } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { stepLife, randomLife } from '../../scripts/life';
+  import { stepGrid } from '../../scripts/grid';
+  import { makeRng } from '../../scripts/net';
+  import { evolve, seedRow } from '../../scripts/eca';
+  import { flock, stepFlock } from '../../scripts/defence/boids';
+  import { Raster } from '../../scripts/raster';
+  import { parse } from '../../scripts/palette';
+
+  /** Each cell takes the majority of its 3 × 3 block, itself included: domains that freeze. */
+  function vote(g: Uint8Array, W: number, H: number): Uint8Array {
+    const out = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let s = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += g[((y + dy + H) % H) * W + ((x + dx + W) % W)];
+      out[y * W + x] = s >= 5 ? 1 : 0;
+    }
+    return out;
+  }
+
+  // ── D1: three grids from one start ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.d1')) {
+    const N = 108, start = randomLife(N, N, 0.5, makeRng(1984));
+    const rules: Record<string, (g: Uint8Array) => Uint8Array> = {
+      vote: (g) => vote(g, N, N),
+      life: (g) => { const o = new Uint8Array(N * N); stepLife(g, N, N, o); return o; },
+      parity: (g) => stepGrid(g, N, N, 'vn', false),
+    };
+    const grids = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-grid]')).map((c) => ({ c, f: rules[c.dataset.grid!], g: start.slice(), ras: new Raster(N, N) }));
+    const reset = () => { for (const x of grids) x.g = start.slice(); };
+    const paint = () => {
+      for (const x of grids) {
+        const st = stage(x.c); if (!st) continue;
+        const on = parse(st.t.ink), off = parse(st.t.panel);
+        for (let i = 0; i < N * N; i++) x.ras.set(i, x.g[i] ? on : off);
+        x.ras.flush(); x.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
+      }
+    };
+    const run = ticker(s, 4, () => { for (const x of grids) x.g = x.f(x.g); }, paint);
+    slide(s, { enter() { reset(); run.play(true); }, leave() { run.play(false); } });
+    for (const x of grids) onSize(x.c, () => { paint(); if (!run.playing) run.play(true); });
+  }
+
+  // ── D2: a flock ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.d2')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
+    const W = 1060, H = 820;
+    let f = flock(150, W, H, makeRng(1987));
+    const paint = () => {
+      const st = stage(c); if (!st) return;
+      const { ctx, t } = st, k = st.w / W;
+      ctx.fillStyle = t.ink;
+      for (let i = 0; i < f.n; i++) {
+        const a = Math.atan2(f.vy[i], f.vx[i]), x = f.x[i] * k, y = f.y[i] * k;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * 14, y + Math.sin(a) * 14);
+        ctx.lineTo(x + Math.cos(a + 2.5) * 8, y + Math.sin(a + 2.5) * 8);
+        ctx.lineTo(x + Math.cos(a - 2.5) * 8, y + Math.sin(a - 2.5) * 8);
+        ctx.fill();
+      }
+    };
+    const run = ticker(s, 50, () => stepFlock(f), paint);
+    slide(s, { enter() { f = flock(150, W, H, makeRng(1987)); run.play(true); }, leave() { run.play(false); } });
+    onSize(c, () => { paint(); if (!run.playing) run.play(true); });
+  }
+
+  // ── D3: a small Sierpiński triangle as the phenotype ──
+  for (const c of document.querySelectorAll<HTMLCanvasElement>('.slide.d3 canvas.sier')) {
+    const rows = evolve(seedRow(63, 'seed'), 90, 31);
+    onSize(c, () => {
+      const st = stage(c); if (!st) return;
+      const cell = Math.min(st.w / 63, st.h / 32);
+      st.ctx.fillStyle = st.t.ink;
+      rows.forEach((r, y) => r.forEach((v, x) => { if (v) st.ctx.fillRect(x * cell, y * cell, cell - 0.6, cell - 0.6); }));
+    });
+  }
+</script>

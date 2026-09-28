@@ -1,0 +1,23 @@
+---
+// The deck alone, behind a Start gate (fullscreen needs a click; a clicker press starts it in the window, which is
+// what Firefox's kiosk mode wants). The build inlines this page into dist/demos/defence/rollier-defence.html.
+import Deck from '../../../components/defence/Deck.astro';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>The rich landscape of iterated simplicity · Michiel Rollier</title>
+  </head>
+  <body>
+    <Deck mode="present" />
+  </body>
+</html>
+
+<style is:global>
+  html, body { margin: 0; background: #fafaf7; }
+  *, *::before, *::after { box-sizing: border-box; }
+</style>

@@ -1,0 +1,173 @@
+---
+// C1–C3: rule 90's table and the 256 rules it belongs to, the Game of Life, and the still lifes the cover is made of.
+import Slide from './Slide.astro';
+const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
+const four = [
+  { rule: 8, words: 'dies out' },
+  { rule: 108, words: 'repeats' },
+  { rule: 30, words: 'looks random' },
+  { rule: 110, words: 'builds structures' },
+];
+const still = [
+  { name: 'block', rows: ['##', '##'] },
+  { name: 'beehive', rows: ['.##.', '#..#', '.##.'] },
+  { name: 'loaf', rows: ['.##.', '#..#', '.#.#', '..#.'] },
+  { name: 'boat', rows: ['##.', '#.#', '.#.'] },
+  { name: 'pond', rows: ['.##.', '#..#', '#..#', '.##.'] },
+];
+---
+<Slide label="256 rules" builds={1} class="c1">
+  <h2>256 rules</h2>
+  <div class="table">
+    {cases.map((c) => (
+      <div class="case">
+        <div class="three">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div>
+        <i class:list={['one', c.out && 'on']} />
+        <b class="mono">{c.out}</b>
+      </div>
+    ))}
+  </div>
+  <p class="c1-sum mono">01011010 in binary = <span class="accent">rule 90</span></p>
+  <div class="four" data-b="1">
+    {four.map((f) => (
+      <figure>
+        <canvas data-rule={f.rule} aria-label={`rule ${f.rule} from a random row`}></canvas>
+        <figcaption><span class="mono">{f.rule}</span> {f.words}</figcaption>
+      </figure>
+    ))}
+  </div>
+</Slide>
+
+<Slide label="The Game of Life" builds={1} class="c2">
+  <div class="row grow c2-row">
+    <div class="col c2-side">
+      <h2>The Game of Life</h2>
+      <p>Eight neighbours instead of two.</p>
+      <ul class="rules">
+        <li><b>dead</b>, exactly 3 live neighbours: <b>born</b></li>
+        <li><b>alive</b>, 2 or 3: <b>survives</b></li>
+        <li>otherwise: <b>dead</b></li>
+      </ul>
+      <p class="accent" data-b="1">A glider: five cells that walk.</p>
+    </div>
+    <canvas class="life" aria-label="The Game of Life running on a grid"></canvas>
+  </div>
+  <p class="cite">J. H. Conway, 1970</p>
+</Slide>
+
+<Slide label="Still lifes" builds={1} class="c3">
+  <h2>Still lifes</h2>
+  <p class="lede">Patterns that the rule leaves exactly as they are.</p>
+  <div class="still">
+    {still.map((p) => (
+      <figure>
+        <svg viewBox={`-1 -1 ${p.rows[0].length + 4} ${p.rows.length + 4}`} aria-hidden="true">
+          {Array.from({ length: p.rows.length + 2 }, (_, y) => Array.from({ length: p.rows[0].length + 2 }, (_, x) => {
+            const on = p.rows[y - 1]?.[x - 1] === '#';
+            return <rect x={x + 0.06} y={y + 0.06} width="0.88" height="0.88" class={on ? 'on' : 'off'} />;
+          }))}
+        </svg>
+        <figcaption class="mono">{p.name}</figcaption>
+      </figure>
+    ))}
+  </div>
+  <div class="art" data-b="1">
+    <canvas data-cover-art aria-hidden="true"></canvas>
+    <p class="art-note">Every cell here obeys the Game of Life, and nothing ever changes.</p>
+  </div>
+</Slide>
+
+<style>
+  .table { display: flex; justify-content: center; gap: calc(26 * var(--u)); }
+  .case { display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
+  .three { display: flex; gap: calc(6 * var(--u)); }
+  .case i { display: block; width: calc(52 * var(--u)); height: calc(52 * var(--u)); background: var(--panel); border: calc(2 * var(--u)) solid var(--line); }
+  .case i.on { background: var(--ink); border-color: var(--ink); }
+  .case b { font-size: calc(44 * var(--u)); }
+  .c1-sum { text-align: center; font-size: calc(46 * var(--u)); }
+  .four { display: flex; justify-content: space-between; margin-top: calc(10 * var(--u)); }
+  .four figure { margin: 0; display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
+  .four canvas { width: calc(400 * var(--u)); height: calc(300 * var(--u)); }
+  .four figcaption { font-size: calc(36 * var(--u)); text-align: center; }
+
+  .c2-row { align-items: center; gap: calc(50 * var(--u)); }
+  .c2-side { width: calc(560 * var(--u)); flex: none; gap: calc(30 * var(--u)); }
+  .rules { list-style: none; padding: 0; gap: calc(18 * var(--u)); }
+  .life { width: calc(1170 * var(--u)); height: calc(700 * var(--u)); flex: none; }
+
+  .still { display: flex; justify-content: space-around; align-items: center; flex: 1; padding-bottom: calc(40 * var(--u)); }
+  .still figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
+  .still svg { height: calc(330 * var(--u)); }
+  .still rect.on { fill: var(--ink); }
+  .still rect.off { fill: var(--panel); }
+  .still figcaption { font-size: calc(40 * var(--u)); }
+  .art { position: absolute; inset: 0; background: var(--bg); }
+  .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .art-note {
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); max-width: calc(820 * var(--u));
+    font-size: calc(52 * var(--u)); line-height: 1.2; background: var(--bg); padding: calc(20 * var(--u)) calc(28 * var(--u));
+  }
+</style>
+
+<script>
+  import { slide, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { step as ecaStep, seedRow } from '../../scripts/eca';
+  import { makeRng } from '../../scripts/net';
+  import { stepLife, randomLife, glider } from '../../scripts/life';
+  import { stillMosaic, drawCells } from '../../scripts/defence/cover';
+  import tiles from '../../data/tiles.json';
+  import { Raster } from '../../scripts/raster';
+  import { parse } from '../../scripts/palette';
+
+  // ── C1: four rules from one random row, scrolling ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.c1')) {
+    const W = 100, H = 75, first = seedRow(W, 'random', makeRng(256));
+    const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c) => ({ c, rule: +c.dataset.rule!, rows: [first], ras: new Raster(W, H) }));
+    const reset = () => { for (const p of panels) p.rows = [first]; };
+    const advance = () => { for (const p of panels) { p.rows.push(ecaStep(p.rows[p.rows.length - 1], p.rule)); if (p.rows.length > H) p.rows.shift(); } };
+    const paint = () => {
+      for (const p of panels) {
+        const st = stage(p.c); if (!st) continue;
+        const on = parse(st.t.ink), off = parse(st.t.panel);
+        for (let y = 0; y < H; y++) p.ras.setRow(y, p.rows[y] ?? new Uint8Array(W), on, off);
+        p.ras.flush(); p.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
+      }
+    };
+    const run = ticker(s, 14, advance, paint);
+    slide(s, {
+      set(b) { if (b >= 1) run.play(true); else { run.play(false); reset(); paint(); } },
+      enter() { reset(); },
+      leave() { run.play(false); },
+    });
+    for (const p of panels) onSize(p.c, paint);
+  }
+
+  // ── C2: a random soup, then a glider on an empty field ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.c2')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!, W = 100, H = 60, ras = new Raster(W, H);
+    let g = new Uint8Array(W * H), out = new Uint8Array(W * H);
+    const soup = () => { g = randomLife(W, H, 0.35, makeRng(1970)); };
+    const lone = () => { g = new Uint8Array(W * H); glider(g, W, H, 6, 6); };
+    const paint = () => {
+      const st = stage(c); if (!st) return;
+      const on = parse(st.t.ink), off = parse(st.t.panel);
+      for (let i = 0; i < W * H; i++) ras.set(i, g[i] ? on : off);
+      ras.flush(); ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
+    };
+    const run = ticker(s, 8, () => { stepLife(g, W, H, out); [g, out] = [out, g]; }, paint);
+    slide(s, {
+      set(b: number, how: How) { if (how !== 'prev' || b === 0) { if (b === 0) soup(); else lone(); } run.rate = b ? 6 : 8; run.play(true); paint(); },
+      enter() { soup(); },
+      leave() { run.play(false); },
+    });
+    soup();
+    onSize(c, () => { paint(); if (!run.playing) run.play(true); });
+  }
+
+  // ── C3: the cover art over the still lifes ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.c3')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!, art = stillMosaic(tiles, 13, 8, 3, 20261002, 0.02);
+    onSize(c, () => { const st = stage(c); if (st) drawCells(st.ctx, art, 0, 0, st.w / 216, st.w, st.h, st.t.ink); });
+  }
+</script>

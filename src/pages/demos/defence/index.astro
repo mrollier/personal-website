@@ -1,0 +1,31 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Deck from '../../../components/defence/Deck.astro';
+---
+<Base title="The defence, slide by slide" description="The slides of my public PhD defence on cellular automata and network automata, every one live: step through them here, or present them fullscreen with a clicker." wide>
+  <div class="measure">
+    <h1>The defence, slide by slide</h1>
+    <p>
+      On Friday 2 October 2026 I defend my PhD thesis, <em>The rich landscape of iterated simplicity:
+      cellular automata and network automata</em>, in a public talk of about 35 minutes. These are its
+      slides. Each one is live: step through its builds with the arrows under it, drag and click where it
+      invites you to, or present the whole talk fullscreen. The thesis itself, chapter by chapter, is on
+      <a href="/demos/thesis/">its own page</a>.
+    </p>
+    <p class="present">
+      <button type="button" data-present="deck">Present</button>
+      <a href="/demos/defence/rollier-defence.html" download>offline version (one file)</a>
+      <span>clicker or PageDown and PageUp · b blanks · q leaves</span>
+    </p>
+  </div>
+  <Deck mode="page" />
+</Base>
+
+<style>
+  .present { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; margin: 1.5rem 0; }
+  .present button {
+    font: inherit; font-size: 1rem; color: var(--bg); background: var(--ink); border: 1px solid var(--ink);
+    padding: 0.4em 1.4em; cursor: pointer; touch-action: manipulation;
+  }
+  .present button:hover { background: var(--accent); border-color: var(--accent); }
+</style>

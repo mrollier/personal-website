@@ -1,0 +1,162 @@
+---
+// B1–B4: the room plays rule 90 with its hands, then sees what it computed.
+import Slide from './Slide.astro';
+import Seats from './Seats.astro';
+const panels = [
+  { l: 1, r: 1, out: 0, when: 'both up', then: 'hand down' },
+  { l: 1, r: 0, out: 1, when: 'exactly one up', then: 'hand up' },
+  { l: 0, r: 0, out: 0, when: 'none up', then: 'hand down' },
+];
+const who = (up: number) => (up ? '#hand-up' : '#hand-down');
+const cls = (up: number) => (up ? 'up' : 'down');
+---
+<Slide label="Be a cell: the rule" builds={1}>
+  <div class="row b1-top">
+    <div class="col grow">
+      <h2>Be a cell</h2>
+      <p class="lede">Pick the two people sitting closest to you, left and right. Keep them all game. Ignore your own hand.</p>
+    </div>
+    <Seats class="b1-seats" you={[3, 4]} />
+  </div>
+  <div class="panels">
+    {panels.map((p) => (
+      <figure class="panel">
+        <svg viewBox="0 0 460 350" aria-hidden="true">
+          <use href={who(p.l)} class={cls(p.l)} x="20" y="0" width="100" height="130" />
+          <use href="#hand-down" class="ghost" x="180" y="0" width="100" height="130" />
+          <use href={who(p.r)} class={cls(p.r)} x="340" y="0" width="100" height="130" />
+          <text x="70" y="160" text-anchor="middle">left</text>
+          <text x="230" y="160" text-anchor="middle" class="q">you</text>
+          <text x="390" y="160" text-anchor="middle">right</text>
+          <path d="M230 176 V212 M216 198 L230 214 L244 198" class="arrow" />
+          <use href={who(p.out)} class={`${cls(p.out)} you`} x="180" y="220" width="100" height="130" />
+        </svg>
+        <figcaption>{p.when}<br />→ <b>your {p.then}</b></figcaption>
+      </figure>
+    ))}
+  </div>
+  <p class="steps" data-b="1"><b>Look</b> → <b>Decide</b> → <b>3 · 2 · 1</b> → <b>Switch</b><span>decide first, move only on “switch”</span></p>
+</Slide>
+
+<Slide label="Be a cell: the start">
+  <div class="col center grow">
+    <svg class="b2-hand" viewBox="0 0 100 130" aria-hidden="true"><use href="#hand-up" class="up" width="100" height="130" /></svg>
+    <p class="big">Hand up if you were born in an <b>odd</b> month</p>
+    <p class="months mono">Jan · Mar · May · Jul · Sep · Nov</p>
+  </div>
+</Slide>
+
+<Slide label="Be a cell: the rounds" builds={12} class="rounds">
+  <div class="col center grow">
+    <p class="r-label mono" data-round>Practice 1</p>
+    <p class="r-count mono" data-count aria-live="polite"></p>
+    <p class="r-note" data-note></p>
+  </div>
+</Slide>
+
+<Slide label="What you just did" builds={3} class="r90">
+  <div class="row grow r90-row">
+    <canvas class="r90-canvas" aria-label="Rule 90 drawn row by row: the start on top, each round below"></canvas>
+    <div class="col r90-side">
+      <h2>What you just did</h2>
+      <p>Top row: the start.<br />Each row below: the next round.</p>
+      <p class="accent" data-b="2">One hand up in the middle, same rule.</p>
+      <p class="big" data-b="3">Nobody saw the whole. Everybody followed the same simple, local rule.</p>
+    </div>
+  </div>
+</Slide>
+
+<style>
+  .b1-top { align-items: flex-start; }
+  .b1-top :global(.b1-seats) { width: calc(200 * var(--u)); flex: none; margin-top: calc(-44 * var(--u)); }
+  .panels { display: flex; gap: calc(60 * var(--u)); justify-content: flex-start; margin-top: calc(-20 * var(--u)); }
+  .panel { margin: 0; width: calc(480 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
+  .panel svg { width: 100%; }
+  .panel text { font-family: var(--mono); font-size: 26px; fill: var(--muted); }
+  .panel text.q { fill: var(--accent); }
+  .panel .ghost { fill: none; stroke: var(--line); stroke-dasharray: 6 6; }
+  .panel .you.down { stroke: var(--accent); }
+  .panel .arrow { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .panel figcaption { font-size: calc(38 * var(--u)); text-align: center; }
+  .steps { font-size: calc(44 * var(--u)); text-align: center; font-family: var(--mono); }
+  .steps span { display: block; font-family: var(--sans); font-size: calc(32 * var(--u)); color: var(--muted); margin-top: calc(8 * var(--u)); }
+
+  .b2-hand { width: calc(150 * var(--u)); }
+  .months { font-size: calc(64 * var(--u)); color: var(--accent); }
+
+  .r-label { font-size: calc(72 * var(--u)); font-weight: 600; }
+  .r-count { font-size: calc(300 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
+  .r-count.sw { color: var(--accent); font-size: calc(220 * var(--u)); }
+  .r-note { font-size: calc(40 * var(--u)); color: var(--muted); min-height: 2.6em; max-width: calc(1300 * var(--u)); text-align: center; }
+
+  .r90-row { align-items: center; gap: calc(56 * var(--u)); }
+  .r90-canvas { width: calc(1160 * var(--u)); height: calc(660 * var(--u)); flex: none; }
+  .r90-side { flex: 1; }
+</style>
+
+<script>
+  import { slide, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker, text } from '../../scripts/defence/stage';
+  import { evolve, seedRow } from '../../scripts/eca';
+  import { makeRng } from '../../scripts/net';
+
+  // ── B3: a round counter with a spoken countdown ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.rounds')) {
+    const round = s.querySelector<HTMLElement>('[data-round]')!, count = s.querySelector<HTMLElement>('[data-count]')!, note = s.querySelector<HTMLElement>('[data-note]')!;
+    const names = ['Practice 1', 'Practice 2', ...Array.from({ length: 10 }, (_, i) => `Round ${i + 1}`), 'That’s ten rounds'];
+    const notes = ['Look at your two neighbours. Decide. Wait for “switch”.', '', 'Back to the start: hand up if you were born in an odd month.', ...Array(9).fill(''), 'Keep your hand where it is, and look around.'];
+    let animate = true, timer = 0, left = 0, target = 0;
+    const show = (b: number) => { round.textContent = names[b]; note.textContent = notes[b]; count.textContent = ''; count.classList.remove('sw'); };
+    const stopCount = () => { clearTimeout(timer); timer = 0; };
+    // 3 · 2 · 1 · SWITCH over three seconds, then the next round's name
+    function countdown(b: number) {
+      stopCount(); target = b; left = 3;
+      note.textContent = ''; count.classList.remove('sw'); count.textContent = '3';
+      const tick = () => {
+        left--;
+        if (left > 0) { count.textContent = String(left); timer = window.setTimeout(tick, 750); }
+        else if (left === 0) { count.textContent = 'SWITCH'; count.classList.add('sw'); timer = window.setTimeout(tick, 900); }
+        else { timer = 0; show(target); }
+      };
+      timer = window.setTimeout(tick, 750);
+    }
+    slide(s, {
+      set(b: number, how: How) { if (how === 'next' && animate && b > 0) countdown(b); else { stopCount(); show(b); } },
+      enter() { stopCount(); },
+      leave() { stopCount(); },
+      intercept(dir) { if (dir > 0 && timer) { stopCount(); show(target); return true; } if (timer) stopCount(); return false; },
+      key(k) { if (k !== 'c' && k !== 'C') return false; animate = !animate; note.textContent = animate ? 'countdown on' : 'countdown off: the counter only'; return true; },
+    });
+    show(0);
+  }
+
+  // ── B4: rule 90 grows downward, from the room's random start and then from one raised hand ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.r90')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
+    const W = 81, T = 40;
+    const random = evolve(seedRow(W, 'random', makeRng(1990)), 90, T), single = evolve(seedRow(W, 'seed'), 90, T);
+    let rows = random, shown = 1;
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { ctx, w, h, t } = st, left = 150, cell = Math.min((w - left) / W, (h - 60) / (T + 1)), top = 44;
+      ctx.fillStyle = t.panel; ctx.fillRect(left, top, cell * W, cell * (T + 1));
+      ctx.fillStyle = t.ink;
+      for (let y = 0; y < shown; y++) for (let x = 0; x < W; x++) if (rows[y][x]) ctx.fillRect(left + x * cell, top + y * cell, cell - 1.5, cell - 1.5);
+      const f = { color: t.muted, font: t.mono, size: 30 };
+      text(ctx, 'start', left - 18, top + cell * 0.8, { ...f, align: 'right' });
+      for (const r of [10, 20, 30, 40]) text(ctx, `round ${r}`, left - 18, top + cell * (r + 0.8), { ...f, align: 'right', size: 26 });
+      text(ctx, 'rule 90', left + cell * W, top - 12, { ...f, align: 'right', size: 28 });
+    }
+    const run = ticker(c, 12, () => { if (shown >= rows.length) return true; shown++; }, paint);
+    function set(b: number, how: How) {
+      rows = b >= 2 ? single : random;
+      const grows = how === 'next' && (b === 1 || b === 2);
+      if (b === 0) { shown = 1; run.play(false); }
+      else if (grows) { shown = 1; run.play(true); }
+      else if (!(b === 3 && run.playing)) { shown = rows.length; run.play(false); }
+      paint();
+    }
+    slide(s, { set, enter() { rows = random; shown = 1; }, leave() { run.play(false); } });
+    onSize(c, paint);
+  }
+</script>

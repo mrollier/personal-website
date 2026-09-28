@@ -1,0 +1,35 @@
+---
+// The room as ten rows of eight seats, the screen at the front: the audience imagines, the grid shows it. Seats are
+// the #hand-up / #hand-down pictograms of Hud.astro, indexed row by row (data-i = row × 8 + column); scripts swap the
+// pictogram and draw links into [data-links]. `you` marks one seat and its two neighbours in the row.
+type Props = { class?: string; you?: [number, number]; label?: string };
+const { class: cls, you, label = 'The audience as ten rows of eight seats' } = Astro.props;
+const SEAT = { cols: 8, rows: 10, gx: 110, gy: 128, top: 96 };
+const { cols, rows, gx, gy, top } = SEAT;
+const seats: { c: number; r: number }[] = [];
+for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) seats.push({ c, r });
+const mark = (s: { c: number; r: number }) => (!you || s.r !== you[1] ? '' : s.c === you[0] ? 'you' : Math.abs(s.c - you[0]) === 1 ? 'near' : '');
+---
+<svg class:list={['seats', cls]} viewBox={`0 0 ${cols * gx} ${top + rows * gy}`} data-seats role="img" aria-label={label}>
+  <rect class="screen" x="60" y="12" width={cols * gx - 120} height="24" rx="4" />
+  <text class="lbl" x={(cols * gx) / 2} y="78" text-anchor="middle">screen</text>
+  <g data-links></g>
+  {seats.map((s) => <use href="#hand-down" class:list={['seat', 'down', mark(s)]} data-i={s.r * cols + s.c} x={s.c * gx + 13} y={top + s.r * gy + 8} width="84" height="109" />)}
+</svg>
+
+<style>
+  .seats { display: block; overflow: visible; }
+  .screen { fill: var(--line); }
+  .lbl { font-family: var(--mono); font-size: 34px; fill: var(--muted); }
+  .seat { transition: opacity 0.3s; }
+  .seat.down { fill: var(--panel); stroke: var(--muted); }
+  .seat.up { fill: var(--ink); stroke: var(--ink); }
+  .seat.dim { opacity: 0.35; }
+  .seat.you { fill: var(--accent); stroke: var(--accent); opacity: 1; }
+  .seat.near { stroke: var(--accent); opacity: 1; }
+  .seat.near.down { fill: #dbe5fb; }
+  .seat.near.up { fill: var(--accent); }
+  .seat.stubborn { fill: var(--danger); stroke: var(--danger); opacity: 1; }
+  .seats :global(line) { stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
+  .seats :global(line.faint) { stroke: var(--muted); stroke-width: 1.2; opacity: 0.35; }
+</style>

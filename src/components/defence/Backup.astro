@@ -10,55 +10,106 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     'Three objectives: rigorous foundations for these systems; how network topology shapes the dynamics; the systems turned into instruments, for neural networks and for network science.',
     'In the thesis’s words: to map, understand and apply the link between iterating simple local rules and the rich landscape of emergent outcomes.',
     'Chapters 4 to 10 each answer one part; Chapter 11 puts the answers side by side.' ] },
-  { id: 'q2', q: 'What makes the best classification rule special?', ref: 'Ch. 9 §9.6.3, §9.7', bullets: [
-    'The analysis works at the level of partitions of the rule space by jaggedness, not rule by rule.',
-    'The best individual rules were not examined one by one.',
-    'Calling the rules in the sweet spot “complex” is a hypothesis; it was not tested.' ] },
-  { id: 'q3', q: 'Is dynamical importance confounded by conditioning on consensus?', ref: 'Ch. 10 §10.2.2, §10.4', bullets: [
-    'η pools clampings that change a node’s start (its hand was up) with ones that only confirm it (already down).',
-    'Which starts reach consensus is itself linked to centrality; the thesis does not separate the two.',
-    `On the toy network of tonight: Spearman(η, degree) = ${cs.spearmanEtaDegree.toFixed(2)} overall, ${cs.spearmanGenuineDegree.toFixed(2)} from the changing clampings only, ${cs.spearmanConfirmatoryDegree.toFixed(2)} from the confirming ones only.`,
-    'So the ranking survives the split here, on one toy network; that is an illustration, not a result.' ] },
+  { id: 'q2', q: 'What are the main limitations?', ref: 'Ch. 11 §11.3', bullets: [
+    'The theory is shallow: exact for a small corner of rules, one step deep elsewhere; the rest is simulation.',
+    'Narrow settings, broad conclusions: one resolution, one network family, one starting density, synthetic networks only.',
+    'Evaluation lagged behind generation: point estimates without error bars, no rule held out, an importance score whose reliability went unmeasured.',
+    'Mechanisms are proposed, not shown: that sensitive rules synchronise and jagged rules discriminate is a reading of a pattern.' ] },
+  { id: 'q3', q: 'Why these networks and these parameter ranges?', ref: 'Ch. 3', bullets: [
+    'A Life-like rule only reads the share of a node’s neighbours that are on, so what matters is how the degrees are spread and how the links are arranged.',
+    'Each family is a dial for one of those: rewiring p runs a ring or grid from clustered and long to random and short; the power α runs preferential attachment from no hubs to one hub.',
+    'At p = 0 the rings and grids are the neighbourhoods of classical cellular automata, which anchors each dial in known territory.',
+    'Synthetic networks only: empirical ones are the next step.' ] },
   { id: 'q4', q: 'Is your Lyapunov exponent really an entropy?', ref: 'Ch. 4', bullets: [
     'It is a tangent-space quantity: the growth rate of a count of walks along which a defect can travel, which makes it entropy-like by construction.',
     'For the parity rule on a graph the exponents are ln|λₖ(A) + a∘|, the maximal one ln ρ(A + a∘I); for the rule without self, the logarithms of the adjacency eigenvalues.',
     'The thesis itself calls it closer to an entropy than to a rate of separation.',
     'Wolfram (1984) introduced both notions for cellular automata side by side.' ] },
-  { id: 'q5', q: 'Does small-world structure cause synchronisation?', ref: 'Ch. 6 §6.1.3', bullets: [
-    'No causal claim. The rule fails for p ≤ 0.04, peaks near p ≈ 0.3 (94%), beyond the small-world band, and drops to 39% at p = 1.',
-    'Short paths look necessary but not sufficient, for this rule.',
-    'Rewired grids behave differently: 82% unrewired, above 95% for 0.02 ≤ p ≤ 0.4.',
-    'At p = 0.2 the thesis reports 83% from the screening and 78% from the sweep, both at half the nodes on: two estimates of one point.' ] },
-  { id: 'q6', q: 'Can a classifier discover behaviour classes, or only transfer known ones?', ref: 'Ch. 8', bullets: [
-    'Its output only transfers the labels it was trained on.',
-    'Its internal representation can support exploration without labels, but that is not discovery.',
-    'A self-supervised attempt turned out hard.' ] },
-  { id: 'q7', q: 'What do cellular automata offer interpretability research?', ref: 'Chs. 7, 8', bullets: [
-    'Circuits whose weights are known exactly: a cellular automaton written into a neural network by hand (Ch. 7).',
-    'The shortcut lesson: high accuracy that came from reading the rule off the first row, not from the behaviour (Ch. 8).',
-    'An idea for future work, not a result of the thesis.' ] },
+  { id: 'q5', q: 'Without a chaos claim, why keep the name “Lyapunov spectrum”?', ref: 'Ch. 4 §4.4', bullets: [
+    'For continuity with the literature; the thesis says plainly that it counts walks and claims no chaos.',
+    'What the chapter adds: exact spectra as benchmarks, which correct spectra published earlier.',
+    'And the Boolean Jacobian, whose expected row sum is the sensitivity that Chs. 5 and 6 use to read rules.',
+    'Still, the chapter stands somewhat apart from the rest of the thesis.' ] },
+  { id: 'q6', q: 'Why odd resolutions and mirrored intervals?', ref: 'Ch. 5 §5.2, App. C', bullets: [
+    'Complementation symmetry: swapping on and off must map the rule space onto itself.',
+    'That needs the cut of the density axis mirrored around ½, with a middle interval that contains ½, hence an odd number of intervals.' ] },
+  { id: 'q7', q: 'How good is the mean-field approximation?', ref: 'Ch. 5 §5.3', bullets: [
+    'It is one step deep and annealed: every round, contacts are redrawn at random.',
+    'It ignores correlations and clustering, which the real network builds up at once.',
+    'Hence simulation remains necessary; the genotype narrows the search, it does not replace it.' ] },
   { id: 'q8', q: 'Is the genotype filter really cheaper than a genetic algorithm?', ref: 'Ch. 6 §6.1.3', bullets: [
     'The genetic algorithm of Das et al. spends some 10⁷ to 10⁸ simulations on the search.',
     'The filter simulates nothing: a bitwise condition and 512 mean-field curves, in a fraction of a second.',
     'Verification costs both the same order: the saving is in the search.',
     'The evolved rules of Das et al. synchronise better, on lattices: φ⁹₂₃,₄₇ is not the best synchroniser available, and the rule spaces differ.' ] },
-  { id: 'q9', q: 'How good is the mean-field approximation?', ref: 'Ch. 5 §5.3', bullets: [
-    'It is one step deep and annealed: every round, contacts are redrawn at random.',
-    'It ignores correlations and clustering, which the real network builds up at once.',
-    'Hence simulation remains necessary; the genotype narrows the search, it does not replace it.' ] },
-  { id: 'q10', q: 'Why not graph neural networks or graph kernels for classification?', ref: 'Ch. 9 §9.7', bullets: [
+  { id: 'q9', q: 'Does small-world structure cause synchronisation?', ref: 'Ch. 3 §3.3.2, Ch. 6 §6.1.3', bullets: [
+    'No causal claim. The rule fails for p ≤ 0.04, peaks near p ≈ 0.3 (94%), beyond the small-world band, and drops to 39% at p = 1.',
+    'Short paths look necessary but not sufficient, for this rule.',
+    'Rewired grids behave differently: 82% unrewired, above 95% for 0.02 ≤ p ≤ 0.4.',
+    'At p = 0.2 the thesis reports 83% from the screening and 78% from the sweep, both at half the nodes on: two estimates of one point.',
+    'p is not the same amount of rewiring in both families: a ring changes 2p − p² of its links, a grid p. The text now says so; the simulations stand, only the comparison between the two p axes shifts.' ] },
+  { id: 'q10', q: 'Can the network’s spectrum predict where the synchroniser works, as for oscillators?', ref: 'Chs. 4, 6, 11', bullets: [
+    'Not studied.',
+    'The spectrum governs the dynamics exactly only for affine rules such as parity; φ⁹₂₃,₄₇ is not affine.',
+    'The closest bridge is pinning control, which Ch. 11 names as a direction.' ] },
+  { id: 'q11', q: 'Can a classifier discover behaviour classes, or only transfer known ones?', ref: 'Ch. 8', bullets: [
+    'Its output only transfers the labels it was trained on.',
+    'Its internal representation can support exploration without labels, but that is not discovery.',
+    'A self-supervised attempt turned out hard.' ] },
+  { id: 'q12', q: 'How much confidence do the 98% and 61% deserve?', ref: 'Ch. 8', bullets: [
+    'The test set was kept apart for the final numbers, but the validation set chose the augmentations.',
+    'Each entry is the best of a few runs, as its caption says; there are no error bars.',
+    'No rule was held out, so 61% measures recognising rules the network has seen.',
+    'The lesson does not depend on the decimals: first check whether scanning the rule table already solves the task.' ] },
+  { id: 'q13', q: 'What makes the best classification rules special? The edge of chaos?', ref: 'Ch. 9 §9.4.2, §9.6.3, §9.7', bullets: [
+    'The analysis works at the level of partitions of the rule space by jaggedness, not rule by rule; the best individual rules were not examined one by one.',
+    'Calling the rules in the sweet spot “complex”, or placing them at an edge of chaos, is a hypothesis; no measure of their behaviour was computed to test it.',
+    'The edge of chaos is contested anyway: Mitchell, Hraber and Crutchfield (1993) could not reproduce Packard’s 1988 result.',
+    'Part of it may be counting: partitions are largest near a jaggedness of ½, and the best of many rules looks better than the best of few.' ] },
+  { id: 'q14', q: 'Why not graph neural networks or graph kernels for classification?', ref: 'Ch. 9 §9.7', bullets: [
     'Beating them was not the aim; on social and chemical benchmarks they do better.',
     'The rule-based pipeline needs no node attributes, handles networks of any size, and comes with one interpretable parameter: the rule.' ] },
-  { id: 'q11', q: 'Why odd resolutions and mirrored intervals?', ref: 'Ch. 5 §5.2, App. C', bullets: [
-    'Complementation symmetry: swapping on and off must map the rule space onto itself.',
-    'That needs the cut of the density axis mirrored around ½, with a middle interval that contains ½, hence an odd number of intervals.' ] },
-  { id: 'q12', q: 'Why is the groundwater work not in the thesis?', ref: 'MACCA-GW', bullets: [
-    'It is a spatially explicit cellular-automaton model of groundwater flow, not a network automaton.',
-    'It does not fit the thesis’s story from rules to networks, so it is published separately, in the ACRI 2026 proceedings.' ] },
-  { id: 'q13', q: 'Clamping is an intervention; what does merely swapping states do?', ref: 'Ch. 10 §10.3.1', bullets: [
+  { id: 'q15', q: 'What did the joint doctorate with São Paulo bring?', ref: 'Chs. 9, 10', bullets: [
+    'Network automata as instruments: the pipeline that classifies networks by the patterns a rule draws on them comes from the São Paulo group.',
+    'In Ch. 9, first-authored by Lucas de Oliveira, my part is the link from jaggedness to the genotype measures of Ch. 5, and review and editing.',
+    'Ch. 10, on node importance, grew out of the same collaboration.' ] },
+  { id: 'q16', q: 'Isn’t the stubborn person just a zealot from the voter model?', ref: 'Ch. 3 §3.5, Ch. 10', bullets: [
+    'Related, and the thesis says so: a zealot never changes its mind, and neither does a clamped node.',
+    'But the aim differs: not a model of opinions, a probe of how much each node matters.',
+    'Every node is clamped in turn: an intervention, not one zealot observed.',
+    'The rule is deterministic, non-monotone and chosen by its genotype. A quantitative comparison with zealot results is not in the thesis; it would be the natural test.' ] },
+  { id: 'q17', q: 'Clamping is an intervention; what does merely swapping states do?', ref: 'Ch. 10 §10.3.1', bullets: [
     'Swap the most central person who is up with the least central one who is down, again and again.',
     'On preferential-attachment networks with 8 contacts: at most 10 swaps by closeness flip the outcome 90% of the time.',
-    'Random swaps only push the outcome towards a coin toss: the 90% mark is never reached.' ] },
+    'Random swaps only push the outcome towards a coin toss: the 90% mark is never reached.',
+    'That random reference covers one setting only, α = 0, reconstructed from saved, binned output: thin, and a full rerun is the next step.',
+    'Clamping needs no such control: it tests every node, blind to any centrality.' ] },
+  { id: 'q18', q: 'Is dynamical importance confounded by conditioning on consensus?', ref: 'Ch. 10 §10.2.2, §10.4, Tab. 11.1', bullets: [
+    'η pools clampings that change a node’s start (its hand was up) with ones that only confirm it (already down).',
+    'Which starts reach consensus is itself linked to centrality; the thesis does not separate the two.',
+    `On the toy network of tonight: Spearman(η, degree) = ${cs.spearmanEtaDegree.toFixed(2)} overall, ${cs.spearmanGenuineDegree.toFixed(2)} from the changing clampings only, ${cs.spearmanConfirmatoryDegree.toFixed(2)} from the confirming ones only.`,
+    'So the ranking survives the split here, on one toy network; that is an illustration, not a result.',
+    'Why not split the thesis’s own scores? The raw clamping outputs are no longer available, so it needs a rerun; it is listed as the next step.' ] },
+  { id: 'q19', q: 'Could the score find keystone species, or whom to vaccinate?', ref: 'Chs. 10, 11', bullets: [
+    'It needs a known network and a dynamics that can be simulated on it.',
+    'The automaton is a generic probe, not a model of the real process: whether its ranking carries over is exactly the untested step.',
+    'Choosing a set of nodes rather than ranking single ones is influence maximisation, the direction Ch. 11 proposes.' ] },
+  { id: 'q20', q: 'Why discrete automata, and what is lost against continuous models?', ref: 'Ch. 1, MACCA-GW', bullets: [
+    'Gained: exact computation with no discretisation error, and networks, where there is no continuum to discretise.',
+    'Lost: calibration to physical parameters and built-in conservation laws.',
+    'The groundwater model sits right on that trade-off.' ] },
+  { id: 'q21', q: 'Why is the groundwater work not in the thesis?', ref: 'MACCA-GW', bullets: [
+    'It is a spatially explicit cellular-automaton model of groundwater flow, not a network automaton.',
+    'It does not fit the thesis’s story from rules to networks, so it is published separately, in the ACRI 2026 proceedings.',
+    'Next to MODFLOW it offers simplicity and many runs at once for ensembles; not parallelism as such, since parallel MODFLOW 6 exists.' ] },
+  { id: 'q22', q: 'With one more year, what would you do, and what differently?', ref: 'Ch. 10 §10.4, Ch. 11', bullets: [
+    'Finish Ch. 10 properly: faster simulation, the two kinds of clamping split, the score’s reliability measured, a comparison with an epidemic or Ising dynamics, empirical networks.',
+    'Differently from day one: held-out test sets, and every raw output stored.' ] },
+  { id: 'q23', q: 'What do cellular automata offer interpretability research?', ref: 'Chs. 7, 8', bullets: [
+    'Circuits whose weights are known exactly: a cellular automaton written into a neural network by hand (Ch. 7).',
+    'The shortcut lesson: high accuracy that came from reading the rule off the first row, not from the behaviour (Ch. 8).',
+    'An idea for future work, not a result of the thesis.',
+    'It is also a deliberate change of field, not only a bridge.' ] },
 ];
 ---
 <Slide label="Backup slides" appendix id="backup" class="bk">
@@ -76,8 +127,8 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
 ))}
 
 <style>
-  .index { columns: 2; column-gap: calc(60 * var(--u)); font-size: calc(31 * var(--u)); display: block; margin-top: calc(10 * var(--u)); }
-  .index li { break-inside: avoid; margin-bottom: calc(16 * var(--u)); }
+  .index { columns: 2; column-gap: calc(60 * var(--u)); font-size: calc(29 * var(--u)); display: block; margin-top: calc(10 * var(--u)); }
+  .index li { break-inside: avoid; margin-bottom: calc(12 * var(--u)); }
   .index a, .cite a { color: var(--ink); text-decoration: none; }
   .index a:hover, .cite a:hover { color: var(--accent); }
   .bq { font-size: calc(56 * var(--u)); max-width: calc(1600 * var(--u)); }

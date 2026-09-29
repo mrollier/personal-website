@@ -1,0 +1,7 @@
+---
+// The one control every simulation has: ▶ while it waits on its first frame, ↺ once it runs. Its slide's script ties
+// it to the simulation and to a build with `sim(btn, k, api)` (src/scripts/defence/deck.ts). Placed by the parent.
+type Props = { class?: string; style?: string };
+const { class: cls, style } = Astro.props;
+---
+<button type="button" class:list={['simbtn', cls]} style={style} data-simbtn aria-label="start" title="start"></button>

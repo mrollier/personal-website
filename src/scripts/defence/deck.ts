@@ -24,6 +24,37 @@ const apis = new WeakMap<Element, SlideApi>();
 export function slide(el: Element, api: SlideApi): void { apis.set(el, api); }
 export const buildOf = (el: Element) => +((el as HTMLElement).dataset.at ?? 0);
 
+export type SimApi = { /** back to the first frame, paused */ reset(): void; /** run from where it is */ play(): void };
+type Sim = { ks: number[]; api: SimApi; show(run: boolean): void };
+const sims = new WeakMap<Element, Sim[]>();
+/** A simulation that waits for a trigger. On the build before a trigger build k it sits on its first frame under a
+ * ▶ button; the step to k with Next starts it and the button turns into ↺. Clicking ↺ puts it back on its first
+ * frame, and when k is the current build also steps the slide back to k − 1, so the next press starts it again;
+ * clicking ▶ starts it. Arriving by a jump never starts it. Several trigger builds run it again from a new first
+ * frame, which the slide's own `set` chooses. `btn` is a <SimButton/> on the slide. Returns the button's setter, for a
+ * simulation that something else can start too (a click on the picture). */
+export function sim(btn: HTMLButtonElement, k: number | number[], api: SimApi): (run: boolean) => void {
+  const s = btn.closest<HTMLElement>('[data-slide]')!, ks = ([] as number[]).concat(k);
+  const show = (run: boolean) => { btn.dataset.run = run ? '1' : ''; btn.setAttribute('aria-label', run ? 'reset' : 'start'); btn.title = run ? 'reset' : 'start'; };
+  sims.set(s, [...(sims.get(s) ?? []), { ks, api, show }]);
+  show(false);
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const at = buildOf(s), run = !!btn.dataset.run;
+    if (!run && ks.includes(at + 1)) s.dispatchEvent(new CustomEvent('deck:step', { detail: 1 }));
+    else if (run && ks.includes(at)) s.dispatchEvent(new CustomEvent('deck:step', { detail: -1 }));
+    else if (run) { api.reset(); show(false); } else { api.play(); show(true); }
+  });
+  return show;
+}
+function simsTo(s: HTMLElement, from: number, b: number, how: How) {
+  for (const x of sims.get(s) ?? []) {
+    if (how === 'jump' || !x.ks.some((k) => k <= b) || x.ks.includes(b + 1)) { x.api.reset(); x.show(false); }
+    else if (how === 'next' && x.ks.includes(b) && from === b - 1) { x.api.play(); x.show(true); }
+    else if (how === 'prev') x.show(true);
+  }
+}
+
 const NEXT = new Set(['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'n', 'N']);
 const PREV = new Set(['PageUp', 'ArrowLeft', 'ArrowUp', 'Backspace', 'p', 'P']);
 
@@ -40,16 +71,28 @@ export function mountDeck(deck: HTMLElement): void {
   const fsEl = () => document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
   let cur = 0, presenting = false, started = 0, timer = false, digits = '', digitsAt = 0;
 
-  slides.forEach((s, i) => { s.dataset.index = String(i); s.dataset.at = '0'; });
+  slides.forEach((s, i) => {
+    s.dataset.index = String(i); s.dataset.at = '0';
+    s.querySelectorAll<HTMLElement>('[data-b-only]').forEach((e) => e.classList.toggle('on', e.dataset.bOnly!.split(' ').includes('0')));
+  });
 
   function setBuild(s: HTMLElement, b: number, how: How) {
     b = Math.max(0, Math.min(builds(s), b));
+    const from = +(s.dataset.at ?? 0);
     s.dataset.at = String(b);
     s.querySelectorAll<HTMLElement>('[data-b]').forEach((e) => e.classList.toggle('on', +e.dataset.b! <= b));
     s.querySelectorAll<HTMLElement>('[data-b-off]').forEach((e) => e.classList.toggle('off', +e.dataset.bOff! <= b));
+    s.querySelectorAll<HTMLElement>('[data-b-only]').forEach((e) => e.classList.toggle('on', e.dataset.bOnly!.split(' ').includes(String(b))));
     apis.get(s)?.set?.(b, how);
+    simsTo(s, from, b, how);
     s.dispatchEvent(new CustomEvent('deck:build', { detail: b }));
   }
+  // a sim's button steps its slide as Next or Prev would
+  for (const s of slides) s.addEventListener('deck:step', (e) => {
+    const d = (e as CustomEvent).detail as 1 | -1;
+    if (!apis.get(s)?.intercept?.(d)) setBuild(s, +(s.dataset.at ?? 0) + d, d > 0 ? 'next' : 'prev');
+    if (presenting) deck.focus({ preventScroll: true });
+  });
 
   // ── the page: one card per slide, with its own build buttons ──
   if (!standalone) for (const s of slides) {

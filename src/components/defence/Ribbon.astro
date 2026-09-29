@@ -1,0 +1,16 @@
+---
+// The thesis map in small along the bottom of a slide, so the room can see where the talk is: the four parts with
+// their chapters, the current one filled (class `cur`; the site already uses `now`), the ones skipped tonight hollow.
+// `ch` = 0 fills none, and a slide's script can set `cur` on a tile itself. The big version is the map slide.
+import { PARTS } from '../../scripts/defence/ribbon';
+type Props = { ch: number };
+const { ch } = Astro.props;
+---
+<div class="ribbon" aria-hidden="true">
+  {PARTS.map((p) => (
+    <span class="rpart">
+      <span class="rn">{p.n}</span>
+      {p.chs.map((c) => <span class:list={['rch', c.skip && 'skip', c.ch === ch && 'cur']} data-ch={c.ch}><b>{c.ch}</b> {c.name}</span>)}
+    </span>
+  ))}
+</div>

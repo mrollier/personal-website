@@ -1,66 +1,72 @@
 ---
-// F5–F8: the synchronisation task, 262,144 rules narrowed to 27 by the genotype alone, the trade-off between
-// sensitivity and mean-field speed among the 27, the winner at work on a rewired grid, and the flip that turns a
+// F5–F8: the synchronisation task, 262,144 rules narrowed to 27 by the genotype alone; among them, the best ones are
+// volatile (said intuitively, the numbers left off); the winner at work on a rewired grid; and the flip that turns a
 // synchroniser into a consensus-seeker.
 import Slide from './Slide.astro';
-import Phi from './Phi.astro';
+import SimButton from './SimButton.astro';
 ---
-<Slide label="A needle in a haystack" builds={4} class="f5">
+<Slide label="A needle in a haystack" builds={4} class="f5" ch={6}>
   <div class="row grow f5-row">
-    <canvas class="rules" aria-label="Every one of the 262,144 rules as one pixel: born set down, survive set across"></canvas>
+    <canvas class="rules" aria-label="Every one of the 262,144 rules as one pixel: where it is born down, where it survives across"></canvas>
     <div class="col f5-side">
       <h2>A needle in a haystack</h2>
-      <p class="lede">Everyone flashes in step: all hands up, all down, all up, … starting from a random room.</p>
+      <p class="lede">The task: from a random start, all nodes flash in step. All on, all off, all on, …</p>
       <ol class="steps">
         <li data-b="1"><b>262,144</b> rules, one pixel each</li>
-        <li data-b="2"><b class="accent">512</b> look the same with colours swapped, as the task does</li>
-        <li data-b="3"><b class="danger">27</b> push the room away from half-half while flipping it: <span class="muted">computed in a fraction of a second, no simulation</span></li>
-        <li data-b="4">Simulated: <b>22</b> never synchronised once. One stands out: <Phi b={23} s={47} /></li>
+        <li data-b="2"><b>512</b> look the same with on and off swapped, as the task does</li>
+        <li data-b="3"><b>27</b> leave half on, half off while flipping it, found <b>without a single simulation</b></li>
+        <li data-b="4">Simulated: <b>22</b> never synchronised once. One stands out.</li>
       </ol>
     </div>
   </div>
   <p class="cite">The global synchronisation task: R. Das, J. P. Crutchfield, M. Mitchell, J. E. Hanson, 1995</p>
+  <p slot="say">What can the two numbers do? A classic test for cellular automata is the global synchronisation task: starting from a random pattern, get every node to flash in step, all on, then all off, then all on again. No node can see the whole network, so this is hard for local rules.</p>
+  <p slot="say">Here are all 262,144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the mean-field curve keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
 </Slide>
 
-<Slide label="The trade-off" builds={2} class="f6">
-  <h2>The trade-off</h2>
+<Slide label="We want volatile rules" builds={1} class="f6" ch={6}>
+  <h2>We want volatile rules</h2>
   <div class="row grow f6-row">
-    <canvas class="scatter" aria-label="The 27 candidates: Boolean sensitivity against the steepness of the mean-field curve"></canvas>
-    <div class="col f6-side">
-      <canvas class="inset" aria-label="Mean-field and Derrida curves of the winning rule"></canvas>
-      <p class="lede" data-b="1">Ideally both high. In practice: a trade-off. The winner chose sensitivity.</p>
-      <p class="small" data-b="2">27 rules, one resolution, one degree: an observation, not a law.</p>
-    </div>
+    <canvas class="scatter" aria-label="The 27 candidates: how volatile they are against how fast they leave the mixed state"></canvas>
+    <p class="lede f6-side" data-b="1">Volatile: one neighbour more or less often changes what a node does next.</p>
   </div>
+  <p slot="say">Why does that one rule win? Each of the 27 candidates is a dot here: to the right, rules that leave the half-on, half-off state quickly; upwards, rules that are more volatile, whose output often changes when one neighbour changes. Ideally a rule would be both, but among the 27 you cannot have it all.</p>
+  <p slot="say">The winner is among the most volatile rules, though not the most volatile, and only moderately fast. A volatile rule does not freeze into patches that each keep their own rhythm, and that is what synchronisation needs. With only 27 rules this is an observation, not a law, but the same preference for volatile rules comes back later in the talk.</p>
 </Slide>
 
-<Slide label="Watch it work" builds={3} class="f7">
+<Slide label="Watch it work" builds={3} class="f7" ch={6}>
   <div class="row grow f7-row">
-    <canvas class="grid" aria-label="The winning rule on a rewired 30 by 30 grid"></canvas>
+    <div class="f7-box">
+      <canvas class="grid" aria-label="The winning rule on a rewired 30 by 30 grid"></canvas>
+      <SimButton class="f7-btn" />
+    </div>
     <div class="col f7-side">
       <h2>Watch it work</h2>
-      <canvas class="trace" aria-label="Share of hands up, round by round"></canvas>
+      <canvas class="trace" aria-label="Share of nodes on, round by round"></canvas>
       <div class="trials" data-b="2">
         <p><span data-won>0</span> of 20 fresh networks synchronised</p>
-        <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}</div>
+        <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}<SimButton class="f7-btn2" /></div>
       </div>
-      <p class="panel" data-b="3">In the thesis, on rewired rings of 1000 people with 8 contacts each: about 80% at p = 0.2, up to 94% near p ≈ 0.3, 39% when fully random, and never with 6 contacts. On rewired grids: over 95% for 0.02 ≤ p ≤ 0.4.</p>
+      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262,144, without a single simulation. The best one synchronises most partly rewired networks.</p>
     </div>
   </div>
-  <p class="cite"><Phi b={23} s={47} /> on a 30 × 30 grid, 8 contacts, 20% of links rewired, half the hands up at the start</p>
-  <p class="illus">illustration — computed on toy networks, not a thesis figure</p>
+  <p class="cite">The winner on a 30 × 30 grid, 20% of links rewired</p>
+  <p class="illus">illustration</p>
+  <p slot="say">The winner at work, on a grid of 900 nodes where a fifth of the links have been rewired, starting from half on. At first the network looks chaotic; then patches start flashing, the patches fall into step, and from about round 31 the whole grid flashes gently together. The curve on the right shows the share of nodes that are on, round by round.</p>
+  <p slot="say">Then twenty fresh networks, each with its own random start: 19 of the 20 synchronise. In the thesis, on rewired rings of 1000 nodes with eight neighbours each, the winner succeeds about 80% of the time when a fifth of the links are rewired, up to 94% near 30%, and 39% when the links are fully random; on rewired grids it succeeds more than 95% of the time. It fails on the bare ring and always fails with only six neighbours: the network matters in ways the rule alone cannot see.</p>
 </Slide>
 
-<Slide label="Flip it: consensus" builds={1} class="f8">
+<Slide label="Flip it: consensus" builds={2} class="f8" ch={6}>
   <div class="row grow f8-row">
     <canvas class="flip" aria-label="The mean-field curve of the synchroniser flipping into that of a consensus-seeker"></canvas>
     <div class="col f8-side">
       <h2>Flip it: consensus</h2>
-      <p class="lede">Turn every answer around: the room no longer flashes, it freezes, all up or all down. <b>Consensus-seeking rules.</b></p>
-      <p class="f8-names"><Phi b={23} s={47} /> → <Phi b={488} s={464} /></p>
-      <p data-b="1">Same sensitivity: the Derrida curve is unchanged. 106 candidates at this resolution; the best one per network type becomes our probe.</p>
+      <p class="lede" data-b="1">Swap on and off in every answer: the network no longer flashes, it freezes, all on or all off. <b>Consensus-seeking rules.</b></p>
+      <p class="result" data-b="2"><b>Our result</b> Just as volatile, and the same conditions find a consensus-seeking rule for almost every kind of network.</p>
     </div>
   </div>
+  <p slot="say">One more trick. Swap on and off in every answer of the rule, and its curve turns over: instead of flipping the network back and forth, it pushes the network to one side, all on or all off. The network freezes into agreement. These are consensus-seeking rules: here, consensus only means that every node ends up the same, not that the initial majority wins.</p>
+  <p slot="say">The flipped rules are exactly as volatile as the synchronisers they came from, and the same conditions find a consensus-seeking rule for every kind of network in the thesis except the sparsest. They come back later, twice.</p>
 </Slide>
 
 <style>
@@ -69,36 +75,36 @@ import Phi from './Phi.astro';
   .f5-side { gap: calc(30 * var(--u)); }
   .steps { gap: calc(22 * var(--u)); font-size: calc(36 * var(--u)); }
 
-  .f6-row { gap: calc(50 * var(--u)); align-items: flex-start; }
-  .scatter { width: calc(1060 * var(--u)); height: calc(820 * var(--u)); flex: none; }
-  .f6-side { gap: calc(30 * var(--u)); }
-  .inset { width: calc(620 * var(--u)); height: calc(330 * var(--u)); }
+  .f6-row { gap: calc(60 * var(--u)); align-items: center; }
+  .scatter { width: calc(1060 * var(--u)); height: calc(780 * var(--u)); flex: none; }
+  .f6-side { flex: 1; }
 
   .f7-row { gap: calc(60 * var(--u)); align-items: center; }
-  :global(.f7) .grid { width: calc(820 * var(--u)); height: calc(820 * var(--u)); flex: none; }
+  .f7-box { position: relative; flex: none; }
+  :global(.f7) .grid { width: calc(780 * var(--u)); height: calc(780 * var(--u)); }
+  .f7-box :global(.f7-btn) { right: calc(-32 * var(--u)); bottom: calc(-24 * var(--u)); }
   .f7-side { gap: calc(24 * var(--u)); flex: 1; }
   .trace { width: 100%; height: calc(260 * var(--u)); }
   .trials p { font-size: calc(34 * var(--u)); }
-  .dots { display: flex; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); }
+  .dots { display: flex; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); position: relative; align-items: center; }
+  .dots :global(.f7-btn2) { position: relative; margin-left: calc(20 * var(--u)); }
   .dots i { width: calc(34 * var(--u)); height: calc(34 * var(--u)); border-radius: 50%; border: calc(3 * var(--u)) solid var(--line); background: var(--bg); }
   .dots i.ok { background: var(--accent); border-color: var(--accent); }
   .dots i.no { background: var(--panel); border-color: var(--muted); }
   .dots i.run { border-color: var(--accent); }
-  .panel { font-size: calc(30 * var(--u)); background: var(--panel); padding: calc(18 * var(--u)) calc(22 * var(--u)); line-height: 1.3; }
+  :global(.f7) .result { font-size: calc(34 * var(--u)); }
 
   .f8-row { gap: calc(60 * var(--u)); align-items: center; }
-  .flip { width: calc(900 * var(--u)); height: calc(820 * var(--u)); flex: none; }
-  .f8-side { gap: calc(34 * var(--u)); }
-  .f8-names { font-size: calc(56 * var(--u)); }
+  .flip { width: calc(900 * var(--u)); height: calc(800 * var(--u)); flex: none; }
+  .f8-side { gap: calc(40 * var(--u)); }
 </style>
 
 <script>
-  import { slide, type How } from '../../scripts/defence/deck';
+  import { slide, sim, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
   import { axes, curve, dot, label, px, py, type Plot } from '../../scripts/defence/plot';
   import { makeRng, lattice } from '../../scripts/net';
   import { type Rule, meanField, step, randomState, density, mirror } from '../../scripts/llna';
-  import { derridaCoeffs, derridaAt } from '../../scripts/genotype';
   import { Raster } from '../../scripts/raster';
   import { parse, mix } from '../../scripts/palette';
   import sync from '../../data/defence/sync.json';
@@ -114,47 +120,37 @@ import Phi from './Phi.astro';
       const st = stage(c); if (!st) return;
       const { ctx, t } = st, side = Math.min(st.w - 60, st.h - 80), x0 = 60, y0 = 60;
       ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(x0 - 1, y0 - 1, side + 2, side + 2);
-      label(st, 'survive set σ →', x0, y0 - 30, { size: 28, color: t.muted, mono: true });
-      ctx.save(); ctx.translate(x0 - 22, y0); ctx.rotate(Math.PI / 2); label(st, 'born set β →', 0, 0, { size: 28, color: t.muted, mono: true }); ctx.restore();
+      label(st, 'where it survives →', x0, y0 - 30, { size: 28, color: t.muted });
+      ctx.save(); ctx.translate(x0 - 22, y0); ctx.rotate(Math.PI / 2); label(st, 'where it is born →', 0, 0, { size: 28, color: t.muted }); ctx.restore();
       if (at < 1) return;
       const faint = mix(parse(t.panel), parse(t.line), at >= 2 ? 0.4 : 0.75);
       ras.fill(faint); ras.flush(); ras.blit(ctx, { x: x0, y: y0, w: side, h: side }, true);
       const k = side / 512, at2 = (B: number, S: number) => [x0 + (S + 0.5) * k, y0 + (B + 0.5) * k];
       if (at >= 2) for (let B = 0; B < 512; B++) { const [x, y] = at2(B, 511 & ~mirror(B, 9)); dot(st, x, y, 3.2, t.accent); }
       if (at >= 3) for (const r of cands) { const [x, y] = at2(r.B, r.S); dot(st, x, y, 9, 'rgba(0,0,0,0)', t.danger); }
-      if (at >= 4) { const [x, y] = at2(23, 47); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); label(st, 'φ⁹₂₃,₄₇', x + 26, y + 4, { size: 34, weight: 700, bg: true }); }
+      if (at >= 4) { const [x, y] = at2(23, 47); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); label(st, 'the winner', x + 26, y + 4, { size: 34, weight: 700, bg: true }); }
     }
     slide(s, { set(b) { at = b; paint(); } });
     onSize(c, paint);
   }
 
-  // ── F6: sensitivity against mean-field steepness, and the winner's two curves ──
+  // ── F6: the 27 candidates, volatility (Boolean sensitivity at eight neighbours) against how fast they leave the
+  // mixed state (the mean-field slope at ½), in words and without numbers ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f6')) {
-    const [sc, inset] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
+    const sc = s.querySelector<HTMLCanvasElement>('canvas')!;
     function paint() {
       const st = stage(sc); if (!st) return;
-      const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 190, h: st.h - 150, x0: 0.9, x1: 2.6, y0: 0.5, y1: 7.5 };
-      axes(st, p, { xticks: [[1, '1'], [1.5, '1.5'], [2, '2'], [2.5, '2.5']], yticks: [[1, '1'], [3, '3'], [5, '5'], [7, '7']], xname: 'leaves half-half fast: |mean-field slope at ½|', yname: 'Boolean sensitivity, 8 contacts' });
+      const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 190, h: st.h - 110, x0: 0.9, x1: 2.6, y0: 0.5, y1: 7.5 };
+      axes(st, p, { xticks: [], yticks: [], xname: 'leaves half on, half off faster →', yname: 'more volatile →' });
       for (const r of cands) dot(st, px(p, Math.abs(r.slope)), py(p, r.bs8), 10, t.muted);
       const mark = (B: number, S: number, text: string, color: string, dx: number, dy: number) => {
         const r = cands.find((c) => c.B === B && c.S === S)!, x = px(p, Math.abs(r.slope)), y = py(p, r.bs8);
-        dot(st, x, y, 15, color); label(st, text, x + dx, y + dy, { size: 32, weight: 600, color, bg: true });
+        dot(st, x, y, 15, color); label(st, text, x + dx, y + dy, { size: 34, weight: 700, color, bg: true });
       };
-      mark(23, 47, 'φ⁹₂₃,₄₇ · the winner', t.danger, 26, -34);
-      mark(79, 27, 'φ⁹₇₉,₂₇ · runner-up', t.accent, 26, 30);
+      mark(23, 47, 'the winner', t.danger, 26, -30);
+      mark(79, 27, 'runner-up', t.accent, 26, 30);
     }
-    function paintInset() {
-      const st = stage(inset); if (!st) return;
-      const { t } = st, w = (st.w - 60) / 2, dc = derridaCoeffs(WIN, K, 0.5);
-      const a: Plot = { x: 20, y: 40, w: w - 30, h: st.h - 90, x0: 0, x1: 1, y0: 0, y1: 1 }, b: Plot = { ...a, x: 60 + w, x1: 0.5, y1: 0.5 };
-      for (const p of [a, b]) { st.ctx.strokeStyle = t.line; st.ctx.lineWidth = 2; st.ctx.strokeRect(p.x, p.y, p.w, p.h); curve(st, p, (x) => x, t.muted, 2, [8, 8]); }
-      curve(st, a, (x) => meanField(WIN, K, x), t.accent, 4);
-      curve(st, b, (x) => derridaAt(dc, x), t.danger, 4);
-      label(st, 'mean field', a.x, 18, { size: 26, color: t.accent });
-      label(st, 'Derrida', b.x, 18, { size: 26, color: t.danger });
-      label(st, 'φ⁹₂₃,₄₇', st.w - 4, st.h - 20, { size: 26, align: 'right', color: t.muted });
-    }
-    onSize(sc, paint); onSize(inset, paintInset);
+    onSize(sc, paint);
   }
 
   // ── F7: the winner on a rewired grid, then twenty fresh networks ──
@@ -180,7 +176,7 @@ import Phi from './Phi.astro';
     function paintTrace() {
       const st = stage(trace); if (!st) return;
       const { t } = st, T = Math.max(60, rho.length), q: Plot = { x: 150, y: 10, w: st.w - 170, h: st.h - 100, x0: 0, x1: T, y0: 0, y1: 1 };
-      axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'round', yname: 'hands up' });
+      axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'round', yname: 'share on' });
       curve(st, { ...q, x1: T }, () => 0.5, t.line, 2, [6, 8]);
       st.ctx.strokeStyle = t.accent; st.ctx.lineWidth = 3; st.ctx.beginPath();
       rho.forEach((v, i) => { const X = px(q, i), Y = py(q, v); if (i) st.ctx.lineTo(X, Y); else st.ctx.moveTo(X, Y); });
@@ -197,9 +193,9 @@ import Phi from './Phi.astro';
     // twenty trials, a slice of rounds per frame so no frame waits
     const dots = Array.from(s.querySelectorAll<HTMLElement>('[data-dots] i')), won = s.querySelector<HTMLElement>('[data-won]')!;
     let job = 0;
+    const clear = () => { cancelAnimationFrame(job); job = 0; dots.forEach((d) => d.className = ''); won.textContent = '0'; };
     function trials() {
-      cancelAnimationFrame(job);
-      dots.forEach((d) => d.className = ''); won.textContent = '0';
+      clear();
       let i = 0, wins = 0, x = new Uint8Array(N), y = new Uint8Array(N), hist: number[] = [], tnet = lattice(side, 8, p, makeRng(sync.trials[0].netSeed));
       const begin = () => { const tr = sync.trials[i]; tnet = lattice(side, 8, p, makeRng(tr.netSeed)); x = randomState(N, 0.5, makeRng(tr.startSeed)); hist = [density(x)]; dots[i].className = 'run'; };
       begin();
@@ -215,17 +211,10 @@ import Phi from './Phi.astro';
       job = requestAnimationFrame(frame);
     }
     reset();
-    slide(s, {
-      set(k: number, how: How) {
-        if (k === 0) { run.play(false); reset(); }
-        if (k >= 1 && how === 'next' && k === 1) { reset(); run.rate = 3; run.play(true); }
-        if (k >= 2 && how === 'next' && k === 2) trials();
-        if (how === 'jump' && k >= 1) { run.rate = 3; run.play(true); if (k >= 2) trials(); }
-        paintGrid(); paintTrace();
-      },
-      enter() { reset(); cancelAnimationFrame(job); dots.forEach((d) => d.className = ''); won.textContent = '0'; },
-      leave() { run.play(false); cancelAnimationFrame(job); },
-    });
+    const [gridBtn, trialBtn] = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
+    sim(gridBtn, 1, { reset() { run.play(false); reset(); run.rate = 3; paintGrid(); paintTrace(); }, play() { run.play(true); } });
+    sim(trialBtn, 2, { reset: clear, play: trials });
+    slide(s, { enter() { reset(); clear(); }, leave() { run.play(false); cancelAnimationFrame(job); } });
     onSize(grid, paintGrid); onSize(trace, paintTrace);
   }
 
@@ -238,19 +227,23 @@ import Phi from './Phi.astro';
       const st = stage(c); if (!st) return;
       const { t } = st, p: Plot = { x: 150, y: 30, w: st.w - 190, h: st.h - 160, x0: 0, x1: 1, y0: 0, y1: 1 };
       const ticks: [number, string][] = [[0, '0'], [0.5, '½'], [1, '1']];
-      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'share with a hand up now', yname: 'share next round' });
+      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'share on now', yname: 'share on next round' });
       curve(st, p, (x) => x, t.muted, 2, [10, 10]);
       if (u > 0) curve(st, p, f, t.line, 3);
       const e = u * u * (3 - 2 * u);
       curve(st, p, (x) => (1 - e) * f(x) + e * (1 - f(x)), e > 0.5 ? t.danger : t.accent, 6);
       label(st, e > 0.5 ? 'freezes: consensus' : 'flips: synchronisation', px(p, 0.04), py(p, 0.95), { size: 32, weight: 600, color: e > 0.5 ? t.danger : t.accent, bg: true });
     }
+    // the curve turns over on the click to build 1; going back, or arriving, snaps it
     const animate = () => {
-      cancelAnimationFrame(raf); u = 0; const t0 = performance.now() + 700;
-      const go = (now: number) => { u = Math.min(1, Math.max(0, (now - t0) / 1400)); paint(); if (u < 1) raf = requestAnimationFrame(go); };
+      cancelAnimationFrame(raf); u = 0; const t0 = performance.now() + 200;
+      const go = (now: number) => { u = Math.min(1, Math.max(0, (now - t0) / 1400)); paint(); raf = u < 1 ? requestAnimationFrame(go) : 0; };
       raf = requestAnimationFrame(go);
     };
-    slide(s, { enter: animate, leave() { cancelAnimationFrame(raf); } });
-    onSize(c, () => { if (!raf) animate(); else paint(); });
+    slide(s, {
+      set(b: number, how: How) { if (b === 1 && how === 'next') animate(); else if (b < 2 || how !== 'next') { cancelAnimationFrame(raf); raf = 0; u = b >= 1 ? 1 : 0; paint(); } },
+      leave() { cancelAnimationFrame(raf); raf = 0; },
+    });
+    onSize(c, paint);
   }
 </script>

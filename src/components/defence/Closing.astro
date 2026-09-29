@@ -1,83 +1,120 @@
 ---
-// I1–I3: the talk once more, one block at a time, each with a small animation to remind the room what happened; what
-// comes after the thesis; and the close: the title's slogan over the cover's landscape, brought together, then one
-// flipped cell that sets the still life moving, a QR code to the site (drawn at build time, no library at run time).
+// I1–I3: our answers to the research question, one chapter at a time, each with a small animation to remind the room
+// what happened and the ribbon lighting its chapter; three directions beyond the thesis, as pictures with a few words;
+// and the close: the title's slogan over the cover's landscape, brought together, then one flipped cell that sets the
+// still life moving, and a QR code to the site (drawn at build time, no library at run time).
 import Slide from './Slide.astro';
+import SimButton from './SimButton.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
 const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
-const recap = [
-  { name: 'Be a cell', say: 'You were cells. One rule about two neighbours, rule 90, drew a Sierpiński triangle.' },
-  { name: 'Cellular automata', say: 'Change the rule and the world changes: 256 rules in a row, and the Game of Life on a grid.' },
-  { name: 'Network automata', say: 'On a network, anyone can be your neighbour: count the share of your contacts, not the number.' },
-  { name: 'Reading the rule', say: 'Two numbers read a rule before it runs, and found 27 synchronisers among 262,144 rules without a single simulation.' },
-  { name: 'Which network?', say: 'A jagged rule draws a fingerprint of the network it runs on.' },
-  { name: 'The stubborn person', say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
+const answers = [
+  { half: 'What links rule and behaviour?', items: [
+    { ch: 5, say: 'Two numbers read from the rule predict the behaviour, partly.' },
+    { ch: 6, say: 'From 262,144 rules to 27 candidates, without a single simulation.' },
+  ] },
+  { half: 'Can we put that link to use?', items: [
+    { ch: 9, say: 'More jagged, volatile rules tend to tell networks apart better.' },
+    { ch: 10, say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
+  ] },
+];
+const beyond = [
+  { b: 0, title: 'Water and fire, cell by cell', say: 'at BionamiX: groundwater and wildfire spread' },
+  { b: 2, title: 'Which nodes to watch?', say: 'the stubborn person on real networks' },
+  { b: 3, title: 'Inside artificial intelligence', say: 'simple operations, iterated: the same gap' },
 ];
 ---
-<Slide label="What we did" builds={recap.length - 1} class="i1">
-  <h2>What we did</h2>
+<Slide label="Our answers" builds={4} class="i1" ch={0}>
+  <h2>Our answers</h2>
   <div class="row grow i1-row">
-    <ol class="i1-steps">
-      {recap.map((r, k) => <li data-k={k}>{r.name}</li>)}
-    </ol>
-    <div class="col i1-show">
-      <canvas class="i1-anim" aria-label="A small animation of the part of the talk named on the left"></canvas>
-      <div class="stack i1-say">
-        {recap.map((r, k) => <p data-b={k || undefined} data-b-off={k < recap.length - 1 ? k + 1 : undefined}>{r.say}</p>)}
-      </div>
+    <div class="col i1-list">
+      {answers.map((g, gi) => (
+        <section class="i1-group" data-b={gi ? 3 : 1}>
+          <p class="i1-half">{g.half}</p>
+          <ol>
+            {g.items.map((it, k) => <li data-b={gi * 2 + k + 1} data-k={gi * 2 + k}><b>{it.ch}</b><span>{it.say}</span></li>)}
+          </ol>
+        </section>
+      ))}
+    </div>
+    <div class="i1-box" data-b="1">
+      <canvas class="i1-anim" aria-label="A small animation of the chapter named on the left"></canvas>
+      <SimButton class="i1-btn" />
     </div>
   </div>
+  <p slot="say">Back to the research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? Four chapters answer it.</p>
+  <p slot="say">What links rule and behaviour: two numbers that can be read from a rule before running it, its generosity and its volatility, predict the behaviour partly, not completely (Chapter 5). They are enough to narrow 262,144 rules down to 27 candidates for the synchronisation task without a single simulation, and the best of them synchronises most partly rewired networks (Chapter 6).</p>
+  <p slot="say">Putting the link to use: more jagged, and so more volatile, rules tend to tell networks apart better, which makes jaggedness a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
 </Slide>
 
-<Slide label="Beyond this thesis" builds={1} class="i2">
+<Slide label="Beyond this thesis" builds={3} class="i2">
   <h2>Beyond this thesis</h2>
-  <ol class="beyond">
-    <li><b>Space and time at BionamiX.</b> The cellular-automaton paradigm models spatial processes, such as groundwater and wildfire spread. They need the extensions reviewed in the taxonomy: non-uniform rules, more states, larger neighbourhoods.<span class="pub" data-b="1"><span class="title">The MACCA-GW groundwater flow model</span><span class="where">ACRI 2026 proceedings, accepted</span></span></li>
-    <li><b>Next: what goes on inside artificial intelligence.</b> A trained neural network is simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. That is where I want to go, and the way of thinking in this thesis, from the parts to the whole and back, can help.</li>
-  </ol>
+  <div class="i2-three">
+    {beyond.map((x, k) => (
+      <figure data-b={x.b || undefined}>
+        <div class="i2-box">
+          <canvas class="i2-pic" data-pic={k} aria-hidden="true"></canvas>
+          {k === 0 && <SimButton class="i2-btn" />}
+        </div>
+        <figcaption><b>{x.title}</b><span>{x.say}</span></figcaption>
+        {k === 0 && <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026</span></p>}
+      </figure>
+    ))}
+  </div>
+  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as groundwater flow and the spread of wildfires. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. A first result is the MACCA-GW groundwater flow model, for the ACRI 2026 conference; it is not part of the thesis.</p>
+  <p slot="say">The stubborn-person probe could be tried on real networks, to ask which nodes to watch or where an intervention would matter most. That is a possibility, not yet a result.</p>
+  <p slot="say">And next for me: what goes on inside artificial intelligence. A trained neural network is also simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
 
 <Slide label="Thank you" builds={2} class="i3">
   <canvas class="art" aria-hidden="true"></canvas>
   <div class="i3-t">
     <div class="slogan">
-      <p class="half top">The rich landscape<span class="mono">what we see</span></p>
-      <p class="half bottom">of iterated simplicity<span class="mono">what we write down</span></p>
+      <p class="half top">The rich landscape<span>what we see</span></p>
+      <p class="half bottom">of iterated simplicity<span>what we write down</span></p>
     </div>
     <p class="worlds" data-b="1">We brought these two worlds closer together.</p>
     <div class="thanks" data-b="2">
       <p class="ty">Thank you</p>
       <div class="qrrow">
         <svg class="qr" viewBox={`0 0 ${qsize} ${qsize}`} role="img" aria-label="QR code for michielrollier.be"><rect width={qsize} height={qsize} fill="#fbf8f1" /><path d={qd} fill="#0c2448" /></svg>
-        <div class="col"><p class="url mono">michielrollier.be</p><p class="small">every demo of tonight, and the thesis chapter by chapter</p></div>
+        <div class="col"><p class="url">michielrollier.be</p><p class="small">every demo of tonight, and the thesis chapter by chapter</p></div>
       </div>
     </div>
   </div>
+  <p slot="say">The title once more, in two halves: the rich landscape is what we see, the behaviour; iterated simplicity is what we write down, the rule. This thesis brought those two worlds a little closer together.</p>
+  <p slot="say">Thank you. In the landscape one cell changes, and the still life starts to unravel. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
 </Slide>
 
 <style>
-  .i1-row { gap: calc(70 * var(--u)); align-items: stretch; }
-  .i1-steps { list-style: none; padding: 0; width: calc(430 * var(--u)); gap: calc(26 * var(--u)); justify-content: center; counter-reset: step; }
-  .i1-steps li { font-family: var(--mono); font-size: calc(34 * var(--u)); color: var(--muted); counter-increment: step; display: flex; gap: calc(18 * var(--u)); align-items: baseline; transition: color 0.3s ease; }
-  .i1-steps li::before { content: counter(step); font-size: 0.75em; width: 1.6em; height: 1.6em; display: inline-grid; place-items: center; border: calc(3 * var(--u)) solid var(--line); border-radius: 50%; flex: none; }
-  .i1-steps li.done { color: var(--ink); }
-  .i1-steps li.now { color: var(--accent); font-weight: 700; }
-  .i1-steps li.now::before { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-  .i1-show { flex: 1; gap: calc(24 * var(--u)); }
-  .i1-anim { width: calc(1130 * var(--u)); height: calc(640 * var(--u)); }
-  .i1-say p { font-size: calc(38 * var(--u)); line-height: 1.3; max-width: calc(1130 * var(--u)); }
+  .i1-row { gap: calc(70 * var(--u)); align-items: center; }
+  .i1-list { width: calc(800 * var(--u)); flex: none; gap: calc(40 * var(--u)); }
+  .i1-half { font-size: calc(38 * var(--u)); font-weight: 700; color: var(--accent); margin-bottom: calc(14 * var(--u)); }
+  .i1-group ol { list-style: none; padding: 0; gap: calc(16 * var(--u)); }
+  .i1-group li { display: flex; gap: calc(20 * var(--u)); align-items: baseline; font-size: calc(36 * var(--u)); line-height: 1.25; color: var(--muted); }
+  .i1-group li b { flex: none; width: calc(56 * var(--u)); height: calc(56 * var(--u)); display: inline-grid; place-items: center; border: calc(3 * var(--u)) solid var(--line); font-size: calc(30 * var(--u)); }
+  .i1-group li.cur { color: var(--ink); }
+  .i1-group li.cur b { background: var(--ink); border-color: var(--ink); color: var(--sun); }
+  .i1-box { position: relative; flex: none; }
+  .i1-anim { display: block; width: calc(860 * var(--u)); height: calc(640 * var(--u)); }
+  .i1-box :global(.i1-btn) { right: calc(-24 * var(--u)); bottom: calc(-16 * var(--u)); }
 
-  .pub { display: flex; align-items: baseline; gap: calc(20 * var(--u)); width: fit-content; margin-top: calc(14 * var(--u)); background: var(--panel); padding: calc(12 * var(--u)) calc(18 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); }
-  .pub .title { font-size: calc(30 * var(--u)); }
-  .pub .where { font-family: var(--mono); font-size: calc(24 * var(--u)); color: var(--muted); }
-  .beyond { font-size: calc(38 * var(--u)); gap: calc(44 * var(--u)); max-width: calc(1560 * var(--u)); margin-top: calc(30 * var(--u)); }
+  .i2-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(60 * var(--u)); margin-top: calc(30 * var(--u)); }
+  .i2-three figure { margin: 0; display: flex; flex-direction: column; gap: calc(20 * var(--u)); }
+  .i2-box { position: relative; }
+  .i2-pic { display: block; width: calc(520 * var(--u)); height: calc(520 * var(--u)); }
+  .i2-box :global(.i2-btn) { right: calc(10 * var(--u)); bottom: calc(10 * var(--u)); }
+  .i2-three figcaption { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
+  .i2-three figcaption b { font-size: calc(40 * var(--u)); }
+  .i2-three figcaption span { font-size: calc(32 * var(--u)); }
+  .pub { font-size: calc(28 * var(--u)); background: var(--panel); padding: calc(10 * var(--u)) calc(16 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); width: fit-content; white-space: nowrap; }
+  .pub span { color: var(--muted); margin-left: calc(10 * var(--u)); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* three states: the halves far apart; brought together (.together); moved up to make room for the thanks (.thanked) */
   .i3-t { position: relative; width: calc(1060 * var(--u)); height: 100%; }
   .half, .worlds { position: absolute; left: 0; transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1); }
-  .half { font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; font-size: calc(84 * var(--u)); }
+  .half { font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; font-size: calc(84 * var(--u)); }
   .half span { display: block; font-size: calc(30 * var(--u)); font-weight: 400; letter-spacing: 0; color: var(--muted); margin-top: calc(8 * var(--u)); transition: opacity 0.6s ease; }
   .half.top { top: calc(60 * var(--u)); }
   .half.bottom { top: calc(390 * var(--u)); }
@@ -89,7 +126,7 @@ const recap = [
   :global(.i3.thanked) .half.bottom { transform: translateY(calc(-240 * var(--u))); }
   :global(.i3.thanked) .worlds { transform: translateY(calc(-130 * var(--u))); }
   .thanks { position: absolute; left: 0; top: calc(420 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
-  .ty { font-family: var(--mono); font-weight: 600; font-size: calc(72 * var(--u)); letter-spacing: -0.02em; }
+  .ty { font-weight: 700; font-size: calc(72 * var(--u)); letter-spacing: -0.01em; }
   .qrrow { display: flex; gap: calc(30 * var(--u)); align-items: center; }
   .qr { width: calc(270 * var(--u)); height: calc(270 * var(--u)); flex: none; }
   .url { font-size: calc(44 * var(--u)); }
@@ -97,106 +134,62 @@ const recap = [
 </style>
 
 <script>
-  import { slide, type How } from '../../scripts/defence/deck';
+  import { slide, sim, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { pattern } from '../../scripts/defence/plot';
   import { decodeMosaic, mosaicPainter, type MosaicJson } from '../../scripts/defence/mosaic';
-  import { step as ecaStep, seedRow } from '../../scripts/eca';
-  import { stepLife, ActiveLife } from '../../scripts/life';
-  import { room, wire, COLS, ROWS } from '../../scripts/defence/room';
+  import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
   import { toyNet, startSeed } from '../../scripts/defence/toy';
+  import { parse, mix, css } from '../../scripts/palette';
   import mosaicData from '../../data/defence/mosaic.json';
   import sync from '../../data/defence/sync.json';
   import classify from '../../data/defence/classify.json';
   import clamp from '../../data/defence/clamp.json';
 
-  // ── I1: one small animation per block of the talk, in one canvas, square cells throughout ──
+  // ── I1: one small animation per answer, in one canvas, square cells throughout ──
   type Act = { rate: number; reset(): void; advance(): void; paint(st: Stage): void };
-  /** A grid of W × H square cells centred in the canvas; `on(x, y)` says which are filled. */
-  function cells(st: Stage, W: number, H: number, on: (x: number, y: number) => boolean, gap = 0) {
-    const { ctx, t } = st, c = Math.min(st.w / W, st.h / H), x0 = (st.w - W * c) / 2, y0 = (st.h - H * c) / 2;
-    ctx.fillStyle = t.panel; ctx.fillRect(x0, y0, W * c, H * c); ctx.fillStyle = t.ink;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) ctx.fillRect(x0 + x * c, y0 + y * c, c - gap, c - gap);
+  /** A grid of W × H square cells centred in the canvas; `on(x, y)` gives the colour of a cell, or null. */
+  function cells(st: Stage, W: number, H: number, fill: (x: number, y: number) => string | null) {
+    const { ctx, t } = st, c = Math.floor(Math.min(st.w / W, st.h / H)), x0 = (st.w - W * c) / 2, y0 = (st.h - H * c) / 2;
+    ctx.fillStyle = t.panel; ctx.fillRect(x0, y0, W * c, H * c);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const f = fill(x, y); if (f) { ctx.fillStyle = f; ctx.fillRect(x0 + x * c, y0 + y * c, c, c); } }
   }
 
-  // 1. rule 90 from one cell, a row per tick, then a pause and again
-  const R90 = (() => {
-    const W = 81, H = 41; let rows: Uint8Array[] = [], hold = 0;
+  // 5. the twin run of slide F4: two copies of a network, one node flipped, the differences in red
+  const TWIN = (() => {
+    const side = 30, N = side * side, LIFE: Rule = { r: 9, B: 8, S: 12 }, net = lattice(side, 8, 0.05, makeRng(55)), flip = 15 * side + 15;
+    let a = new Uint8Array(N), b = new Uint8Array(N), a2 = new Uint8Array(N), b2 = new Uint8Array(N), ticks = 0;
     return {
-      rate: 10,
-      reset() { rows = [seedRow(W, 'seed')]; hold = 0; },
-      advance() { if (rows.length < H) rows.push(ecaStep(rows[rows.length - 1], 90)); else if (++hold > 25) this.reset(); },
-      paint(st) { cells(st, W, H, (x, y) => !!rows[y]?.[x]); },
+      rate: 4,
+      reset() { a = randomState(N, 0.5, makeRng(5)); b = a.slice(); b[flip] ^= 1; ticks = 0; },
+      advance() { step(a, net, LIFE, a2); step(b, net, LIFE, b2); [a, a2] = [a2, a]; [b, b2] = [b2, b]; if (++ticks > 60) this.reset(); },
+      paint(st) { cells(st, side, side, (x, y) => { const i = y * side + x; return a[i] !== b[i] ? st.t.danger : a[i] ? st.t.ink : null; }); },
     } satisfies Act;
   })();
 
-  // 2. the Game of Life: Gosper's glider gun, the gliders swallowed at the far edges
-  const GUN = (() => {
-    const W = 64, H = 36, g0 = new Uint8Array(W * H);
-    const art = ['........................O', '......................O.O', '............OO......OO............OO', '...........O...O....OO............OO', 'OO........O.....O...OO', 'OO........O...O.OO....O.O', '..........O.....O.......O', '...........O...O', '............OO'];
-    art.forEach((line, y) => [...line].forEach((ch, x) => { if (ch === 'O') g0[(y + 2) * W + x + 2] = 1; }));
-    let g = g0.slice(), out = new Uint8Array(W * H), gens = 0;
-    return {
-      rate: 12,
-      reset() { g = g0.slice(); gens = 0; },
-      advance() {
-        stepLife(g, W, H, out); [g, out] = [out, g];
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x >= W - 3 || y >= H - 3) g[y * W + x] = 0;
-        if (++gens > 300) this.reset();
-      },
-      paint(st) { cells(st, W, H, (x, y) => !!g[y * W + x], 1); },
-    } satisfies Act;
-  })();
-
-  // 3. the room: the grid of contacts, then a growing share p of the links rewired across the room, and back
-  const ROOM = (() => {
-    const R = room(12836), you = 4 * COLS + 3; let p = 0, to = wire(R, 0), hold = 0;
-    // the room turned on its side: the ten rows run across
-    const X = (i: number) => Math.floor(i / COLS), Y = (i: number) => i % COLS;
-    return {
-      rate: 10,
-      reset() { p = 0; to = wire(R, 0); hold = 0; },
-      advance() { if (p < 0.3) { p = Math.min(0.3, p + 0.006); to = wire(R, p); } else if (++hold > 25) this.reset(); },
-      paint(st) {
-        const { ctx, t } = st, gap = Math.min(st.w / (ROWS + 1), st.h / (COLS + 1)), x0 = (st.w - (ROWS - 1) * gap) / 2, y0 = (st.h - (COLS - 1) * gap) / 2;
-        const px = (i: number) => x0 + X(i) * gap, py = (i: number) => y0 + Y(i) * gap;
-        ctx.lineCap = 'round';
-        for (const mine of [false, true]) {
-          ctx.beginPath();
-          R.links.forEach((l, k) => { if ((l.stay === you || to[k] === you) === mine) { ctx.moveTo(px(l.stay), py(l.stay)); ctx.lineTo(px(to[k]), py(to[k])); } });
-          ctx.strokeStyle = mine ? t.accent : t.muted; ctx.globalAlpha = mine ? 1 : 0.45; ctx.lineWidth = mine ? 4 : 2.5; ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        for (let i = 0; i < COLS * ROWS; i++) { ctx.beginPath(); ctx.arc(px(i), py(i), i === you ? 17 : 13, 0, 2 * Math.PI); ctx.fillStyle = i === you ? t.accent : t.ink; ctx.fill(); }
-        ctx.font = `600 34px ${t.mono}`; ctx.fillStyle = t.ink; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-        ctx.fillText(`p = ${p.toFixed(2)}`, st.w - 10, 6);
-      },
-    } satisfies Act;
-  })();
-
-  // 4. the synchroniser φ⁹₂₃,₄₇ on the rewired grid of slide F7: chaos, then the whole grid in step. Never more than
+  // 6. the synchroniser on the rewired grid of slide F7: chaos, then the whole grid in step. Never more than
   // 3 rounds a second, 2 once it flashes in step (the limit for a room)
   const SYNC = (() => {
     const side = 30, N = side * side, WIN: Rule = { r: 9, B: 23, S: 47 }, net = lattice(side, 8, 0.2, makeRng(sync.demo.netSeed));
-    let a = new Uint8Array(N), b = new Uint8Array(N), tick = 0, after = -1;
+    let a = new Uint8Array(N), b = new Uint8Array(N), after = -1;
     const act = {
       rate: 3,
-      reset() { a = randomState(N, 0.5, makeRng(sync.demo.startSeed)); tick = 0; after = -1; act.rate = 3; },
+      reset() { a = randomState(N, 0.5, makeRng(sync.demo.startSeed)); after = -1; act.rate = 3; },
       advance() {
-        step(a, net, WIN, b); [a, b] = [b, a]; tick++;
+        step(a, net, WIN, b); [a, b] = [b, a];
         const r = density(a);
         if (after < 0 && (r === 0 || r === 1)) { after = 0; act.rate = 2; }
         if (after >= 0 && ++after > 12) act.reset();
       },
-      paint(st: Stage) { cells(st, side, side, (x, y) => !!a[y * side + x], 1.5); },
+      paint(st: Stage) { cells(st, side, side, (x, y) => (a[y * side + x] ? st.t.ink : null)); },
     };
     return act;
   })();
 
-  // 5. the detective φ⁵₁₄,₁₃ on one network of each kind: the last 50 rounds of 50 people, rolling
+  // 9. the jagged rule on one network of each kind: the last 50 rounds of 50 nodes, rolling
   const DETECT = (() => {
     const det = classify.examples[1], rule: Rule = { r: det.r, B: det.B, S: det.S, part: 'uni' }, nets = [0, 1, 2].map((c) => toyNet(c, 0)), L = 50;
     let st0: Uint8Array[] = [], out: Uint8Array[] = [], hist: Uint8Array[][] = [];
@@ -211,16 +204,30 @@ const recap = [
       paint(st) {
         const { ctx, t } = st, side = Math.min((st.w - 80) / 3, st.h - 60), c = side / L;
         nets.forEach((net, k) => {
-          const x0 = (st.w - 3 * side - 80) / 2 + k * (side + 40), y0 = 0;
+          const x0 = (st.w - 3 * side - 80) / 2 + k * (side + 40), y0 = (st.h - side - 50) / 2;
           pattern(st, net.order, L, L, (j, i) => !!hist[k][j]?.[i], x0, y0, c);
-          ctx.font = `400 28px ${t.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = ['#3e679e', t.danger, t.ink][k];
+          ctx.font = `400 28px ${t.sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink;
           ctx.fillText(names[k], x0 + side / 2, y0 + side + 14);
         });
       },
     } satisfies Act;
   })();
 
-  // 6. the stubborn person of slide H1 on the toy network: the important one, and the whole room follows
+  /** The toy network of slide H1, nodes coloured by `fill`, one of them ringed. */
+  function drawClampNet(st: Stage, fill: (i: number) => string, ring = -1) {
+    const { ctx, t } = st, s = Math.min(st.w, st.h), bx = { x: (st.w - s) / 2 + 20, y: (st.h - s) / 2 + 20, w: s - 40, h: s - 40 };
+    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h;
+    ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+    ctx.stroke();
+    for (let i = 0; i < clamp.deg.length; i++) {
+      const r = 7 + 1.6 * Math.sqrt(clamp.deg[i]);
+      ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
+      if (i === ring) { ctx.beginPath(); ctx.arc(X(i), Y(i), r + 9, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = t.danger; ctx.stroke(); }
+    }
+  }
+
+  // 10. the stubborn person of slide H1 on the toy network: the important one, and the whole room follows
   const STUB = (() => {
     const RULE: Rule = { r: 9, B: 464, S: 488 }, n = clamp.deg.length, net = build('ba', n, clamp.edges as [number, number][]);
     const start = Uint8Array.from(clamp.demo.bits, (ch) => +ch), who = clamp.demo.hi, cl = new Int8Array(n).fill(-1); cl[who] = 0;
@@ -229,35 +236,90 @@ const recap = [
       rate: 3,
       reset() { a = start.slice(); a[who] = 0; hold = 0; },
       advance() { if (density(a) > 0) { stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; } else if (++hold > 6) this.reset(); },
-      paint(st) {
-        const { ctx, t } = st, s = Math.min(st.w, st.h), bx = { x: (st.w - s) / 2 + 20, y: 20, w: s - 40, h: s - 40 };
-        const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h;
-        ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
-        for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
-        ctx.stroke();
-        for (let i = 0; i < n; i++) {
-          const r = 7 + 1.6 * Math.sqrt(clamp.deg[i]);
-          ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.fillStyle = a[i] ? t.ink : t.panel; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
-          if (i === who) { ctx.beginPath(); ctx.arc(X(i), Y(i), r + 9, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = t.danger; ctx.stroke(); }
-        }
-      },
+      paint(st) { drawClampNet(st, (i) => (a[i] ? st.t.ink : st.t.panel), who); },
     } satisfies Act;
   })();
 
-  const ACTS: Act[] = [R90, GUN, ROOM, SYNC, DETECT, STUB];
+  const ACTS: Act[] = [TWIN, SYNC, DETECT, STUB], CHS = [5, 6, 9, 10];
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i1')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-steps li'));
+    const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-group li'));
+    const tiles = Array.from(s.querySelectorAll<HTMLElement>('.ribbon .rch')), btn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;
     let at = 0;
-    const paint = () => { const st = stage(c); if (st) ACTS[at].paint(st); };
-    const run = ticker(s, ACTS[0].rate, () => { ACTS[at].advance(); run.rate = ACTS[at].rate; }, paint);
-    const show = (b: number) => {
-      at = b; ACTS[at].reset(); run.rate = ACTS[at].rate;
-      items.forEach((li, k) => { li.classList.toggle('now', k === b); li.classList.toggle('done', k < b); });
-      paint(); run.play(true);
-    };
-    show(0);
-    slide(s, { set: show, leave() { run.play(false); } });
+    const paint = () => { const st = stage(c); if (st && at > 0) ACTS[at - 1].paint(st); };
+    const run = ticker(s, 4, () => { ACTS[at - 1].advance(); run.rate = ACTS[at - 1].rate; }, paint);
+    // each answer's animation starts with the click that shows it; its button only restarts or pauses it
+    const mark = (running: boolean) => { btn.dataset.run = running ? '1' : ''; btn.title = running ? 'reset' : 'start'; btn.setAttribute('aria-label', btn.title); };
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); if (at < 1) return;
+      if (btn.dataset.run) { run.play(false); ACTS[at - 1].reset(); paint(); mark(false); } else { run.play(true); mark(true); }
+    });
+    slide(s, {
+      set(b: number) {
+        at = b;
+        items.forEach((li, k) => li.classList.toggle('cur', k === b - 1));
+        tiles.forEach((t) => t.classList.toggle('cur', b > 0 && +t.dataset.ch! === CHS[b - 1]));
+        run.play(false);
+        if (b > 0) { ACTS[b - 1].reset(); run.rate = ACTS[b - 1].rate; paint(); run.play(true); mark(true); } else mark(false);
+      },
+      leave() { run.play(false); },
+    });
+    mark(false);
     onSize(c, paint);
+  }
+
+  // ── I2: three pictures: a fire spreading from cell to cell (started with its button), the toy network coloured by
+  // importance, and a small neural network ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.i2')) {
+    const [fireC, netC, aiC] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i2-pic'));
+    // the forest-fire automaton: 0 bare, 1 tree, 2 burning, 3 burnt; a burning cell sets each neighbouring tree alight
+    // with probability 0.7, and burns out in one round. A wind from the left makes it spread faster that way.
+    const W = 52, H = 52, trees = new Uint8Array(W * H);
+    { const rnd = makeRng(2026); for (let i = 0; i < W * H; i++) trees[i] = rnd() < 0.72 ? 1 : 0; }
+    let g = trees.slice(), rnd = makeRng(7), rounds = 0;
+    const light = () => { g = trees.slice(); rnd = makeRng(7); rounds = 0; for (let y = 22; y < 30; y++) g[y * W + 1] = 2; };
+    const advance = () => {
+      const out = g.slice(); let burning = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if (g[i] === 2) out[i] = 3;
+        else if (g[i] === 1) {
+          const lit = (xx: number, yy: number, p: number) => xx >= 0 && yy >= 0 && xx < W && yy < H && g[yy * W + xx] === 2 && rnd() < p;
+          if (lit(x - 1, y, 0.85) || lit(x + 1, y, 0.45) || lit(x, y - 1, 0.6) || lit(x, y + 1, 0.6)) { out[i] = 2; burning++; }
+        }
+      }
+      g = out; rounds++;
+      return burning === 0;
+    };
+    const paintFire = () => {
+      const st = stage(fireC); if (!st) return;
+      const tree = st.t.accent, ash = css(mix(parse(st.t.panel), parse(st.t.line), 0.5));
+      cells(st, W, H, (x, y) => { const v = g[y * W + x]; return v === 1 ? tree : v === 2 ? st.t.danger : v === 3 ? ash : null; });
+    };
+    const run = ticker(s, 8, advance, paintFire);
+    light();
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); light(); paintFire(); }, play() { run.play(true); } });
+    slide(s, { leave() { run.play(false); } });
+    onSize(fireC, paintFire);
+
+    onSize(netC, () => {
+      const st = stage(netC); if (!st) return;
+      const eta = clamp.eta, top = Math.max(...eta), lo = parse(st.t.panel), hi = parse(st.t.accent);
+      let most = 0; eta.forEach((v, i) => { if (v > eta[most]) most = i; });
+      drawClampNet(st, (i) => css(mix(lo, hi, eta[i] / top)), most);
+    });
+
+    onSize(aiC, () => {
+      const st = stage(aiC); if (!st) return;
+      const { ctx, t } = st, layers = [5, 7, 7, 7, 3], rnd = makeRng(11);
+      const pos = layers.map((m, l) => Array.from({ length: m }, (_, k) => [60 + (l * (st.w - 120)) / (layers.length - 1), st.h / 2 + (k - (m - 1) / 2) * 62] as const));
+      ctx.lineWidth = 1.5; ctx.strokeStyle = t.line; ctx.beginPath();
+      for (let l = 0; l + 1 < layers.length; l++) for (const [x1, y1] of pos[l]) for (const [x2, y2] of pos[l + 1]) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
+      ctx.stroke();
+      for (const layer of pos) for (const [x, y] of layer) {
+        ctx.beginPath(); ctx.arc(x, y, 18, 0, 2 * Math.PI); ctx.fillStyle = rnd() < 0.45 ? t.ink : t.panel; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
+      }
+    });
   }
 
   // ── I3: the slogan's two halves come together over the landscape, then one flipped cell, and thanks ──

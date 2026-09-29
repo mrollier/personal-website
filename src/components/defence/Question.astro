@@ -2,6 +2,7 @@
 // D1–D3: one recipe gives order, something complex and chaotic-looking noise; nature does it too (a flock, a brain); the
 // rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
+import SimButton from './SimButton.astro';
 const three = [
   { id: 'vote', label: 'order' },
   { id: 'life', label: 'complex?' },
@@ -10,12 +11,9 @@ const three = [
 const RULE = 54;
 const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (RULE >> n) & 1 }));
 ---
-<Slide label="One recipe, three outcomes" class="d1">
+<Slide label="One recipe, three outcomes" builds={1} class="d1">
   <h2>One recipe, three outcomes</h2>
-  <div class="d1-sub">
-    <p class="small">The same random start. Only the rule differs.</p>
-    <button type="button" class="ctl" data-reseed title="a new random start (r)">new start</button>
-  </div>
+  <p>The same random start. Only the rule differs.</p>
   <div class="three">
     {three.map((g) => (
       <figure>
@@ -23,23 +21,56 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
         <figcaption>{g.label}</figcaption>
       </figure>
     ))}
+    <SimButton class="d1-btn" />
   </div>
+  <p slot="say">Three grids start from the same random pattern and differ only in their rule. On the left, every cell copies what most of its block does: patches form and freeze. In the middle, the Game of Life: something that is hard to name, which people like to call complex. On the right, every cell takes the parity of its neighbours: it looks like noise, but this rule is linear and can be solved exactly. Looking chaotic is not the same as being unpredictable.</p>
+  <p slot="say">“Complex” has no agreed definition, and “the edge of order and chaos” is an intuition rather than a law. Tonight the word is used loosely.</p>
 </Slide>
 
-<Slide label="Nature does this too" builds={1} class="d2">
+<Slide label="Nature does this too: a flock" builds={2} class="d2 d2-flock">
   <h2>Nature does this too</h2>
   <div class="d2-row">
     <figure>
       <p class="lede">Each bird: align, stay close, don’t collide <span class="accent">→ a flock</span></p>
-      <canvas class="boids" aria-label="A flock of birds, each following three local rules; the pointer scares them"></canvas>
+      <div class="d2-box">
+        <canvas class="boids" aria-label="A flock of birds, each following three local rules; the pointer scares them"></canvas>
+        <SimButton class="d2-btn" />
+      </div>
     </figure>
-    <figure data-b="1">
-      <p class="lede">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought and behaviour</span></p>
-      <canvas class="brain" aria-label="A network of neurons in the shape of a brain, firing"></canvas>
+    <figure>
+      <p class="lede">Starlings, and a falcon</p>
+      <div class="d2-box">
+        <video src="/demos/defence/media/starlings.webm" muted loop playsinline preload="auto" aria-label="A starling flock splitting around a peregrine falcon and closing up behind it"></video>
+        <SimButton class="d2-btn" />
+      </div>
     </figure>
   </div>
-  <p class="cite">Flock after C. Reynolds, 1987</p>
-  <p class="illus" data-b="1">illustration: a neuron fires when its inputs fired, then rests</p>
+  <p class="cite">Flock after C. Reynolds, 1987 · video: C. Hemelrijk et al. 2019, CC BY 4.0, trimmed</p>
+  <p slot="say">Nature is full of the same recipe. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. On this page you can move the pointer over the simulated flock: the birds scatter from it and close up behind it.</p>
+  <p slot="say">The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it.</p>
+</Slide>
+
+<Slide label="Nature does this too: a brain" builds={2} class="d2 d2-brain">
+  <h2>Nature does this too</h2>
+  <div class="d2-row">
+    <figure>
+      <p class="lede">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought and behaviour</span></p>
+      <div class="d2-box">
+        <canvas class="brain" aria-label="A network of neurons in the shape of a brain, firing"></canvas>
+        <SimButton class="d2-btn" />
+      </div>
+    </figure>
+    <figure>
+      <p class="lede">Waves of activity in a young retina</p>
+      <div class="d2-box dark">
+        <video src="/demos/defence/media/retina.webm" muted loop playsinline preload="auto" aria-label="Waves of activity spreading across a developing mouse retina and dying out"></video>
+        <SimButton class="d2-btn" />
+      </div>
+    </figure>
+  </div>
+  <p class="cite">Left: illustration · video: developing mouse retina, Voufo et al., eLife 2023, CC BY 4.0, trimmed and recoloured</p>
+  <p slot="say">A single neuron is well understood: it fires, or not, depending on its inputs. How billions of them produce thought and behaviour is one of the hardest questions there is. The brain on the left is only an illustration: a neuron fires when enough of its inputs fired, then rests for a moment.</p>
+  <p slot="say">On the right, real neurons do something very similar. Before the eyes open, the retina of a young mouse produces waves of activity: a patch lights up, the activity spreads to neighbouring cells, stops at a boundary and dies out while the cells recover.</p>
 </Slide>
 
 <Slide label="Genotype and phenotype" builds={2} class="d3">
@@ -53,7 +84,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
           <div class="case"><div class="three-bits">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div><i class:list={['one', c.out && 'on']} /></div>
         ))}
       </div>
-      <p class="mono rule">rule {RULE}</p>
+      <p class="rule">rule {RULE}</p>
     </div>
     <div class="arrows" aria-hidden="true">⇄</div>
     <div class="col center">
@@ -62,45 +93,52 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       <canvas class="pheno" aria-label={`Rule ${RULE} from a random row, time running downward`}></canvas>
     </div>
   </div>
-  <p class="q" data-b="1">We want to narrow the gap</p>
-  <p class="q accent" data-b="2">…and put this knowledge to use</p>
+  <div class="rq" data-b="1">
+    <p class="rq-label">The research question</p>
+    <p class="q">What links a simple local rule to the rich behaviour it produces, <span data-b="2">and can we put that link to use?</span></p>
+  </div>
   </div>
   <p class="cite">Genotype and phenotype, after S. A. Kauffman, 1990</p>
+  <p slot="say">Borrowing two words from biology: the rule is the <em>genotype</em>, local and simple, what each cell does; the behaviour is the <em>phenotype</em>, global and rich, what the whole does. Here the rule is rule 54. Its table fits on one line, and yet you cannot read the pattern on the right off that table.</p>
+  <p slot="say">That gap is what the thesis is about. Its research question has two halves: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? The rule never tells the whole story, but it tells more than nothing, and the behaviour in turn tells us something about the rule and about the network it runs on.</p>
 </Slide>
 
 <style>
-  .d1-sub { display: flex; align-items: center; gap: calc(30 * var(--u)); }
-  .three { display: flex; justify-content: space-between; }
+  .three { display: flex; justify-content: space-between; position: relative; }
   .three figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(12 * var(--u)); }
   .three canvas { width: calc(560 * var(--u)); height: calc(560 * var(--u)); }
-  .three figcaption { font-family: var(--mono); font-size: calc(42 * var(--u)); }
+  .three figcaption { font-size: calc(42 * var(--u)); }
+  .three :global(.d1-btn) { right: calc(-80 * var(--u)); bottom: calc(80 * var(--u)); }
 
   .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
   .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
   .d2-row .lede { min-height: 2.5em; font-size: calc(42 * var(--u)); }
-  .d2-row canvas { width: calc(832 * var(--u)); height: calc(660 * var(--u)); background: var(--panel); }
+  .d2-box { position: relative; }
+  .d2-row canvas, .d2-row video { display: block; width: calc(832 * var(--u)); height: calc(586 * var(--u)); background: var(--panel); }
+  .d2-row video { object-fit: contain; }
+  .d2-box.dark video { background: #0c2448; }
+  .d2-box :global(.d2-btn) { right: calc(16 * var(--u)); bottom: calc(16 * var(--u)); }
   .boids { touch-action: none; }
 
   .d3-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: calc(28 * var(--u)); padding-bottom: calc(40 * var(--u)); }
   .gp { display: flex; justify-content: center; align-items: flex-start; gap: calc(50 * var(--u)); }
   .gp > .col { width: calc(720 * var(--u)); gap: calc(20 * var(--u)); }
   .gp h3 { font-size: calc(50 * var(--u)); }
-  .gp p { color: var(--muted); }
   .arrows { font-size: calc(120 * var(--u)); color: var(--accent); align-self: center; line-height: 1; }
   .mini { display: flex; gap: calc(12 * var(--u)); margin-top: calc(30 * var(--u)); }
   .case { display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u)); }
   .three-bits { display: flex; gap: calc(2 * var(--u)); }
   .case i { display: block; width: calc(26 * var(--u)); height: calc(26 * var(--u)); background: var(--panel); border: calc(1.5 * var(--u)) solid var(--line); }
   .case i.on { background: var(--ink); border-color: var(--ink); }
-  .gp p.rule { font-size: calc(32 * var(--u)); color: var(--ink); }
+  .gp p.rule { font-size: calc(32 * var(--u)); }
   .pheno { width: calc(640 * var(--u)); height: calc(320 * var(--u)); }
-  .q { font-family: var(--mono); font-weight: 600; font-size: calc(76 * var(--u)); letter-spacing: -0.02em; line-height: 1.15; text-align: center; }
-  .q + .q { margin-top: calc(-6 * var(--u)); }
-  .gp + .q { margin-top: calc(40 * var(--u)); }
+  .rq { margin-top: calc(40 * var(--u)); text-align: center; }
+  .rq-label { font-size: calc(34 * var(--u)); color: var(--accent); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: calc(10 * var(--u)); }
+  .q { font-weight: 700; font-size: calc(62 * var(--u)); line-height: 1.2; max-width: calc(1600 * var(--u)); margin: 0 auto; }
 </style>
 
 <script>
-  import { slide } from '../../scripts/defence/deck';
+  import { slide, sim } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
   import { stepLife, randomLife } from '../../scripts/life';
   import { stepGrid } from '../../scripts/grid';
@@ -122,7 +160,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     return out;
   }
 
-  // ── D1: three grids from one start; "new start" (or r) draws another ──
+  // ── D1: three grids from one start, started at build 1; the key r draws another start ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d1')) {
     const N = 108;
     let start = randomLife(N, N, 0.5, makeRng(1984));
@@ -142,20 +180,26 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       }
     };
     const run = ticker(s, 4, () => { for (const x of grids) x.g = x.f(x.g); }, paint);
-    const reseed = () => { start = randomLife(N, N, 0.5, makeRng((Math.random() * 4294967296) >>> 0)); reset(); paint(); run.play(true); };
-    s.querySelector('[data-reseed]')!.addEventListener('click', reseed);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
     slide(s, {
-      enter() { start = randomLife(N, N, 0.5, makeRng(1984)); reset(); run.play(true); },
+      enter() { start = randomLife(N, N, 0.5, makeRng(1984)); reset(); },
       leave() { run.play(false); },
-      key(k) { if (k !== 'r' && k !== 'R') return false; reseed(); return true; },
+      key(k) { if (k !== 'r' && k !== 'R') return false; start = randomLife(N, N, 0.5, makeRng((Math.random() * 4294967296) >>> 0)); reset(); paint(); return true; },
     });
-    for (const x of grids) onSize(x.c, () => { paint(); if (!run.playing) run.play(true); });
+    for (const x of grids) onSize(x.c, paint);
   }
 
-  // ── D2: a flock that scatters from the pointer, and a brain whose neurons fire ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.d2')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.boids')!, b = s.querySelector<HTMLCanvasElement>('canvas.brain')!;
-    const W = 832, H = 660, BIRDS = 100;
+  /** A clip beside a simulation: the same ▶/↺ button, started by its own build. */
+  function clip(s: HTMLElement, k: number) {
+    const v = s.querySelector<HTMLVideoElement>('video')!, btn = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]')[1];
+    // a seek decodes a frame, which can stall a slow machine, so rewind only when the clip has moved
+    sim(btn, k, { reset() { if (!v.paused) v.pause(); if (v.currentTime > 0) v.currentTime = 0; }, play() { v.play().catch(() => {}); } });
+  }
+
+  // ── D2: a flock that scatters from the pointer (build 1) beside starlings around a falcon (build 2) ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.d2-flock')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.boids')!;
+    const W = 832, H = 586, BIRDS = 100;
     let f = flock(BIRDS, W, H, makeRng(1987)), avoid: { x: number; y: number } | null = null;
     const paintFlock = () => {
       const st = stage(c); if (!st) return;
@@ -175,7 +219,15 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     c.addEventListener('pointermove', at);
     c.addEventListener('pointerdown', at);
     c.addEventListener('pointerleave', () => { avoid = null; });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { birds.play(false); f = flock(BIRDS, W, H, makeRng(1987)); avoid = null; paintFlock(); }, play() { birds.play(true); } });
+    clip(s, 2);
+    slide(s, { leave() { birds.play(false); } });
+    onSize(c, paintFlock);
+  }
 
+  // ── D2b: a brain whose neurons fire (build 1) beside waves in a developing retina (build 2) ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.d2-brain')) {
+    const b = s.querySelector<HTMLCanvasElement>('canvas.brain')!;
     // the brain: 0 resting, 1 firing, 2–3 recovering; `glow` fades each neuron after it fired
     const net = brain(260, 28, 6, 12, makeRng(3)), poly = outline(), REST = 3;
     let st0 = new Uint8Array(net.n), st1 = new Uint8Array(net.n), rnd = makeRng(9);
@@ -212,14 +264,11 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       for (let i = 0; i < net.n; i++) glow[i] *= 0.9;
       if (now - last >= 160) { last = now; fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; for (let i = 0; i < net.n; i++) if (st0[i] === 1) glow[i] = 1; }
     }, paintBrain);
-    slide(s, {
-      set(k) { neurons.play(k >= 1); if (k >= 1) paintBrain(); },
-      enter() { f = flock(BIRDS, W, H, makeRng(1987)); avoid = null; warm(); birds.play(true); },
-      leave() { birds.play(false); neurons.play(false); },
-    });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { neurons.play(false); warm(); paintBrain(); }, play() { neurons.play(true); } });
+    clip(s, 2);
+    slide(s, { leave() { neurons.play(false); } });
     warm();
-    onSize(c, () => { paintFlock(); if (!birds.playing) birds.play(true); });
-    onSize(b, () => { paintBrain(); if (+(s.dataset.at ?? 0) >= 1 && !neurons.playing) neurons.play(true); });
+    onSize(b, paintBrain);
   }
 
   // ── D3: rule 54 from a random row as the phenotype ──

@@ -1,62 +1,46 @@
 ---
-// E1: the four parts of the thesis with their papers, what is skipped tonight greyed (said out loud, not written), and
-// the cover appendix with its still-life paper. The groundwater paper waits for the end (I2): it is not in the thesis.
+// E1: the thesis map, the big version of the ribbon that runs along the bottom of every slide after it: four parts,
+// their chapters, where each was published, the ones skipped tonight hollow (said out loud, not written). Then the two
+// halves of the research question land on the two parts that answer them. The groundwater paper waits for the end.
 import Slide from './Slide.astro';
-type Paper = { title: string; where: string; skip?: boolean };
-const parts: { n: string; name: string; what: string; skip?: string; papers: Paper[] }[] = [
-  { n: 'I', name: 'Setting the stage', what: 'Cellular automata and networks',
-    papers: [{ title: 'A comprehensive taxonomy of cellular automata', where: 'CNSNS 2025' }] },
-  { n: 'II', name: 'Rules and their metrics', what: 'What a rule tells you before you run it',
-    papers: [
-      { title: 'Exact Lyapunov spectra of affine cellular automata and the parity rule on networks', where: 'under review, Chaos, Solitons & Fractals', skip: true },
-      { title: 'Essential metrics for Life on graphs', where: 'Physica D 2025' },
-    ] },
-  { n: 'III', name: 'Machine-learning perspectives', what: 'Cellular automata inside neural networks, and neural networks that classify them', skip: 'all',
-    papers: [
-      { title: 'Efficient simulation of non-uniform cellular automata with a convolutional neural network', where: 'ACRI 2024' },
-      { title: 'Convolutional neural networks for automated cellular automaton classification', where: 'book chapter, Springer 2025' },
-    ] },
-  { n: 'IV', name: 'Applications in network science', what: 'Rules as instruments',
-    papers: [
-      { title: 'Shape irregularity of Life-like network automaton rules as an indicator of classification performance', where: 'under review, Information Sciences · first author L. C. de Oliveira' },
-      { title: 'Dynamical node importance from consensus-seeking Life-like network automata', where: 'unpublished, work in progress' },
-    ] },
-];
+import { PARTS } from '../../scripts/defence/ribbon';
+const where: Record<number, string> = {
+  2: 'CNSNS 2025', 3: '', 4: 'under review', 5: 'Physica D 2025', 6: 'Physica D 2025',
+  7: 'ACRI 2024', 8: 'Springer 2025', 9: 'under review', 10: 'work in progress',
+};
+const half: Record<string, string> = { II: 'What links rule and behaviour?', IV: 'Can we put that link to use?' };
 ---
-<Slide label="The thesis in one slide" class="e1">
+<Slide label="The thesis in one slide" builds={1} class="e1">
   <h2>The thesis in one slide</h2>
   <div class="parts">
-    {parts.map((p) => (
-      <section class:list={['part', p.skip && 'skip']}>
-        <p class="n mono">Part {p.n}</p>
+    {PARTS.map((p) => (
+      <section class:list={['part', p.chs.every((c) => c.skip) && 'skip']}>
+        <p class="pn">Part {p.n}</p>
         <h3>{p.name}</h3>
-        <p class="what">{p.what}</p>
         <ul>
-          {p.papers.map((x) => <li class:list={[x.skip && 'skip']}><span class="title">{x.title}</span><span class="where">{x.where}</span></li>)}
+          {p.chs.map((c) => <li class:list={[c.skip && 'skip']}><span class="ch"><b>{c.ch}</b> {c.name}</span>{where[c.ch] && <span class="where">{where[c.ch]}</span>}</li>)}
         </ul>
+        {half[p.n] && <p class="half" data-b="1">{half[p.n]}</p>}
       </section>
     ))}
   </div>
-  <div class="appx">
-    <p class="n mono">Appendix: the cover</p>
-    <p class="tag"><span class="title">Exhaustive enumeration of symmetric still-lifes</span><span class="where">in preparation, Natural Computing</span></p>
-  </div>
+  <p class="appx"><b>Appendix</b> the cover’s still lifes <span class="where">in preparation</span></p>
+  <p slot="say">The thesis has four parts. Part I sets the stage: a taxonomy of the many kinds of cellular automata (<em>A comprehensive taxonomy of cellular automata</em>, CNSNS 2025) and the networks they can live on. Part II reads rules before running them: exact growth rates of defects for the simplest rules (under review, and too technical for tonight), and the two numbers and the synchronisers of <em>Essential metrics for Life on graphs</em> (Physica D 2025). Part III, skipped tonight, is about cellular automata and neural networks (ACRI 2024 and a Springer book chapter, 2025). Part IV uses rules as instruments in network science: which network is this (under review in Information Sciences, first author Lucas C. de Oliveira), and which node matters (unpublished, work in progress). An appendix explains the cover; its mathematics is being written up.</p>
+  <p slot="say">The two halves of the research question fall on two parts: Part II asks what links a rule and its behaviour, Part IV puts that link to use. From here on, the map runs along the bottom of every slide.</p>
 </Slide>
 
 <style>
-  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(28 * var(--u)); flex: 1; min-height: 0; }
-  .part { border: calc(2 * var(--u)) solid var(--line); padding: calc(24 * var(--u)); display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
-  .part.skip { color: var(--muted); border-style: dashed; }
-  .part .n { font-size: calc(28 * var(--u)); color: var(--accent); }
-  .part.skip .n { color: var(--muted); }
-  .part h3 { font-size: calc(40 * var(--u)); }
-  .what { font-size: calc(30 * var(--u)); color: var(--muted); }
-  .part ul { list-style: none; padding: 0; margin-top: auto; gap: calc(16 * var(--u)); }
-  .part li, .tag { background: var(--panel); padding: calc(12 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
-  .part li.skip, .part.skip li { opacity: 0.55; }
-  .title { font-size: calc(22 * var(--u)); line-height: 1.2; }
-  .where { font-family: var(--mono); font-size: calc(20 * var(--u)); color: var(--muted); }
-  .appx { display: flex; align-items: center; gap: calc(24 * var(--u)); }
-  .appx .n { font-size: calc(28 * var(--u)); color: var(--accent); }
-  .tag { margin: 0; flex-direction: row; align-items: baseline; gap: calc(20 * var(--u)); }
+  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(32 * var(--u)); flex: 1; min-height: 0; }
+  .part { border-top: calc(6 * var(--u)) solid var(--ink); padding-top: calc(20 * var(--u)); display: flex; flex-direction: column; gap: calc(16 * var(--u)); }
+  .part.skip { border-top-style: dashed; border-top-color: var(--line); }
+  .pn { font-size: calc(30 * var(--u)); font-weight: 700; color: var(--accent); }
+  .part h3 { font-size: calc(40 * var(--u)); min-height: 2.4em; }
+  .part ul { list-style: none; padding: 0; gap: calc(16 * var(--u)); }
+  .part li { border: calc(3 * var(--u)) solid var(--line); background: var(--panel); padding: calc(14 * var(--u)) calc(18 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
+  .part li.skip { background: none; border-style: dashed; opacity: 0.6; }
+  .ch { font-size: calc(38 * var(--u)); line-height: 1.15; }
+  .where { font-size: calc(26 * var(--u)); color: var(--muted); }
+  .half { margin-top: auto; border: calc(4 * var(--u)) solid var(--accent); color: var(--accent); padding: calc(16 * var(--u)) calc(20 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; line-height: 1.2; }
+  .appx { font-size: calc(30 * var(--u)); display: flex; gap: calc(16 * var(--u)); align-items: baseline; }
+  .appx .where { font-size: calc(26 * var(--u)); }
 </style>

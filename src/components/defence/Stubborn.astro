@@ -1,96 +1,78 @@
 ---
-// H1–H3: one stubborn person in a room that runs a consensus-seeking rule; the same on a toy network, where a quiet
-// node changes nothing and an important one flips everyone; clamp every node in turn for its dynamical importance η;
-// and what that is good for, and what is still missing. Data: src/data/defence/clamp.json.
+// H1–H2: one stubborn person in a room that runs a consensus-seeking rule; the same on a toy network, where a quiet
+// node changes nothing and an important one flips everyone (each run waits for its own start); then clamp every node
+// in turn for its dynamical importance, our result. The limitations are for the questions, not the slides.
+// Data: src/data/defence/clamp.json.
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
-import Phi from './Phi.astro';
+import SimButton from './SimButton.astro';
 import clamp from '../../data/defence/clamp.json';
-const sp = clamp.summary.spearmanEtaDegree.toFixed(2);
 ---
-<Slide label="The stubborn person" builds={3} class="h1">
+<Slide label="The stubborn person" builds={6} class="h1" ch={10}>
   <div class="row grow h1-row">
     <div class="stack h1-view">
       <div class="h1-seats" data-b-off="1"><Seats label="The room with every hand up except one" /></div>
-      <canvas class="net" data-b="1" aria-label="A network of 100 people running a consensus-seeking rule, one of them clamped"></canvas>
+      <div class="h1-box" data-b="1">
+        <canvas class="net" aria-label="A network of 100 people running a consensus-seeking rule, one of them clamped"></canvas>
+        <SimButton class="h1-btn" />
+      </div>
     </div>
     <div class="col h1-side">
       <h2>The stubborn person</h2>
-      <p class="lede">Everyone runs a consensus-seeking rule, and the room ends with every hand up.</p>
+      <p class="lede">Everyone follows a consensus-seeking rule, and the room ends with every hand up.</p>
       <p class="lede">Now one person refuses: <span class="danger">hand down, no matter what</span>. Does the room follow?</p>
-      <p class="h1-state mono" data-state></p>
+      <p class="h1-state" data-state></p>
     </div>
   </div>
-  <p class="cite"><Phi b={464} s={488} /> on a scale-free network of 100 people with about 8 contacts each · same start every time</p>
-  <p class="illus" data-b="1">illustration — computed on toy networks, not a thesis figure</p>
+  <p class="cite">A consensus-seeking rule on a scale-free network of 100 people, about eight contacts each · the same start every time</p>
+  <p class="illus" data-b="1">illustration</p>
+  <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Imagine everyone in the room follows one: after a few rounds every hand is up. Now one person refuses and keeps their hand down, whatever happens. Does the room follow them?</p>
+  <p slot="say">The same on a network of 100 people. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation.</p>
 </Slide>
 
-<Slide label="Clamp everyone, one at a time" builds={1} class="h2">
+<Slide label="Clamp everyone, one at a time" builds={2} class="h2" ch={10}>
   <h2>Clamp everyone, one at a time</h2>
   <div class="row grow h2-row">
     <canvas class="net" aria-label="The network with every person coloured by how much the room follows them when they are stubborn"></canvas>
     <div class="col h2-side">
-      <p><b>Dynamical importance η</b>: how much of the room ends up with a hand down, on average, when this person is stubborn.</p>
-      <canvas class="hist" data-b-off="1" aria-label="How many people have each dynamical importance"></canvas>
-      <canvas class="scatter" data-b="1" aria-label="Dynamical importance against the number of contacts"></canvas>
-      <p class="accent" data-b="1">Related to position (Spearman {sp}), but not one-to-one.</p>
+      <p><b>Importance</b>: how much of the room ends up with a hand down, on average, when this person is stubborn.</p>
+      <canvas class="hist" data-b-off="1" aria-label="How many people have each importance"></canvas>
+      <canvas class="scatter" data-b="1" aria-label="Importance against the number of contacts"></canvas>
+      <p class="result" data-b="2"><b>Our result</b> An importance found by simulation alone. It goes with how central a person is, but no single measure of centrality explains it.</p>
     </div>
   </div>
-  <p class="cite">η = 1 − ⟨ρᵀ⟩, thesis Eq. 10.2 · {clamp.summary.starts} starts that reach consensus, each person clamped in each</p>
-  <p class="illus">illustration — toy network, recomputed</p>
-</Slide>
-
-<Slide label="Why this is interesting, and what is missing" builds={1} class="h3">
-  <h2>Why this is interesting, and what’s missing</h2>
-  <div class="cols2">
-    <div class="col">
-      <h3 class="accent">Why</h3>
-      <ul>
-        <li>needs no centrality measure, only the ability to simulate</li>
-        <li>we rarely know the rule people or cells really follow: a generic, highly sensitive probe is attractive</li>
-        <li>in the thesis: correlates with centrality, never reducible to one measure; in preferential-attachment networks, a node whose neighbours are hubs matters <i>less</i></li>
-      </ul>
-    </div>
-    <div class="col" data-b="1">
-      <h3 class="danger">Not yet</h3>
-      <ul>
-        <li>unpublished, work in progress</li>
-        <li>one rule per network</li>
-        <li>reliability not yet measured</li>
-        <li>not yet compared with other dynamics, such as epidemics or the Ising model: the most important next step</li>
-      </ul>
-    </div>
-  </div>
+  <p class="cite">Chapter 10, work in progress · {clamp.summary.starts} starts that reach consensus, each person stubborn in each</p>
+  <p class="illus">illustration</p>
+  <p slot="say">Now make everyone stubborn in turn, one at a time, and record how much of the room ends up with a hand down: that is each person’s dynamical importance. On this network most people change almost nothing, and a few flip the room most of the time.</p>
+  <p slot="say">Against the number of contacts, importance is clearly related to position, but not one-to-one. In the thesis, across families of networks, it correlates with the usual measures of centrality but reduces to none of them; in one family, a node whose neighbours are hubs even matters less. What makes the score attractive is that it needs no measure of centrality at all, only the ability to simulate, and we rarely know the rule that real people or cells follow. This part of the thesis is unpublished and still in progress; its limitations are in the thesis and gladly discussed afterwards.</p>
 </Slide>
 
 <style>
   .h1-row { gap: calc(60 * var(--u)); align-items: center; }
   .h1-view { width: calc(900 * var(--u)); height: calc(900 * var(--u)); flex: none; place-items: center; }
   .h1-seats :global(.seats) { height: calc(880 * var(--u)); width: auto; }
-  .h1-view > canvas { width: calc(900 * var(--u)); height: calc(900 * var(--u)); }
+  .h1-box { position: relative; }
+  .h1-box canvas { display: block; width: calc(840 * var(--u)); height: calc(840 * var(--u)); }
+  .h1-box :global(.h1-btn) { right: calc(10 * var(--u)); bottom: calc(10 * var(--u)); }
   .h1-side { gap: calc(34 * var(--u)); }
-  .h1-state { font-size: calc(34 * var(--u)); color: var(--muted); min-height: 3em; }
+  .h1-state { font-size: calc(34 * var(--u)); min-height: 3em; }
 
   .h2-row { gap: calc(50 * var(--u)); align-items: flex-start; }
-  .h2-row > canvas.net { width: calc(820 * var(--u)); height: calc(820 * var(--u)); flex: none; }
+  .h2-row > canvas.net { width: calc(740 * var(--u)); height: calc(740 * var(--u)); flex: none; }
   .h2-side { gap: calc(24 * var(--u)); flex: 1; }
-  .hist, .scatter { width: calc(820 * var(--u)); height: calc(460 * var(--u)); }
-  .scatter { margin-top: calc(-484 * var(--u)); }
-
-  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: calc(70 * var(--u)); margin-top: calc(20 * var(--u)); }
-  .cols2 ul { font-size: calc(36 * var(--u)); gap: calc(20 * var(--u)); }
-  .cols2 h3 { font-size: calc(48 * var(--u)); margin-bottom: calc(10 * var(--u)); }
+  .hist, .scatter { width: calc(820 * var(--u)); height: calc(420 * var(--u)); }
+  .scatter { margin-top: calc(-444 * var(--u)); }
+  :global(.h2) .result { font-size: calc(34 * var(--u)); }
 </style>
 
 <script>
-  import { slide, type How } from '../../scripts/defence/deck';
+  import { slide, sim, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
   import { axes, dot, label, px, py, type Plot } from '../../scripts/defence/plot';
   import { type Rule, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
   import { build } from '../../scripts/net';
   import { parse, mix, css } from '../../scripts/palette';
-  import { spearman } from '../../scripts/stats';
   import clamp from '../../data/defence/clamp.json';
 
   const RULE: Rule = { r: 9, B: 464, S: 488 };
@@ -112,7 +94,8 @@ const sp = clamp.summary.spearmanEtaDegree.toFixed(2);
     }
   }
 
-  // ── H1: the room, then the network: nobody stubborn, a quiet one, an important one ──
+  // ── H1: the room, then the network: nobody stubborn (shown at build 1, run at 2), a quiet one (3, 4), an important
+  // one (5, 6) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.h1')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, out = s.querySelector<HTMLElement>('[data-state]')!;
     const svg = s.querySelector<SVGSVGElement>('svg.seats')!, seats = Array.from(svg.querySelectorAll<SVGUseElement>('use.seat'));
@@ -132,22 +115,25 @@ const sp = clamp.summary.spearmanEtaDegree.toFixed(2);
       if (at === 0) { out.textContent = ''; return; }
       out.innerHTML = `round ${tick} · ${up} of ${n} hands up` + (done ? (up <= 0 ? '<br><b class="danger">the whole room followed</b>' : who >= 0 ? '<br>nobody else followed' : '<br>consensus: every hand up') : '');
     }
-    const run = ticker(s, 3, () => {
+    const advance = () => {
       stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; tick++;
       const r = density(a);
       if (tick >= 40 || r === 0 || r === 1 || (who >= 0 && r >= 1 - 1.5 / n && tick > 12)) { done = true; return true; }
-    }, paint);
-    const set = (k: number, how: How) => {
-      at = k;
-      const node = k === 2 ? lo : k === 3 ? hi : -1;
-      reset(node);
-      if (k >= 1 && how === 'next') run.play(true);
-      else if (k >= 1) { run.play(false); while (!done) { stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; tick++; const r = density(a); if (tick >= 40 || r === 0 || r === 1 || (who >= 0 && r >= 1 - 1.5 / n && tick > 12)) done = true; } }
-      else run.play(false);
-      if (k === 0) out.textContent = '';
-      else paint();
+      return false;
     };
-    slide(s, { set, enter() { reset(-1); }, leave() { run.play(false); } });
+    const run = ticker(s, 3, advance, paint);
+    const nodeAt = (k: number) => (k >= 5 ? hi : k >= 3 ? lo : -1);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [2, 4, 6], { reset() { run.play(false); reset(nodeAt(at)); paint(); }, play() { run.play(true); } });
+    slide(s, {
+      // going back to a run shows how it ended; the button's waiting builds reset it
+      set(k: number, how: How) {
+        at = k;
+        if (nodeAt(k) !== who || how !== 'next') { run.play(false); reset(nodeAt(k)); if (how === 'prev' && k % 2 === 0 && k > 0) while (!advance()); }
+        paint();
+      },
+      enter() { reset(-1); },
+      leave() { run.play(false); },
+    });
     onSize(c, paint);
   }
 
@@ -159,22 +145,21 @@ const sp = clamp.summary.spearmanEtaDegree.toFixed(2);
       const st = stage(nc); if (!st) return;
       const lo = parse(st.t.panel), hiC = parse(st.t.accent);
       drawNet(st, (i) => css(mix(lo, hiC, eta[i] / top)), () => null);
-      label(st, 'darker blue: the room follows this person more', 30, st.h - 8, { size: 26, color: st.t.muted });
+      label(st, 'darker: the room follows this person more', 30, st.h - 8, { size: 26, color: st.t.muted });
     });
     onSize(hc, () => {
       const st = stage(hc); if (!st) return;
       const bins = 16, counts = new Array(bins).fill(0);
       for (const v of eta) counts[Math.min(bins - 1, Math.floor((v / 0.8) * bins))]++;
       const p: Plot = { x: 150, y: 20, w: st.w - 180, h: st.h - 130, x0: 0, x1: 0.8, y0: 0, y1: Math.max(...counts) * 1.1 };
-      axes(st, p, { xticks: [[0, '0'], [0.4, '0.4'], [0.8, '0.8']], yticks: [[0, '0'], [Math.max(...counts), String(Math.max(...counts))]], xname: 'dynamical importance η', yname: 'people' });
+      axes(st, p, { xticks: [[0, 'none'], [0.8, 'high']], yticks: [[0, '0'], [Math.max(...counts), String(Math.max(...counts))]], xname: 'importance', yname: 'people' });
       counts.forEach((k, b) => { st.ctx.fillStyle = st.t.accent; st.ctx.fillRect(px(p, (b * 0.8) / bins) + 2, py(p, k), (p.w / bins) - 4, py(p, 0) - py(p, k)); });
     });
     onSize(sc, () => {
       const st = stage(sc); if (!st) return;
       const kmax = Math.max(...clamp.deg), p: Plot = { x: 150, y: 20, w: st.w - 180, h: st.h - 130, x0: 0, x1: kmax + 2, y0: 0, y1: 0.85 };
-      axes(st, p, { xticks: [[4, '4'], [10, '10'], [20, '20'], [30, '30']].filter(([v]) => (v as number) <= kmax + 2) as [number, string][], yticks: [[0, '0'], [0.4, '0.4'], [0.8, '0.8']], xname: 'contacts', yname: 'η' });
+      axes(st, p, { xticks: [[4, '4'], [10, '10'], [20, '20'], [30, '30']].filter(([v]) => (v as number) <= kmax + 2) as [number, string][], yticks: [[0, 'none'], [0.8, 'high']], xname: 'contacts', yname: 'importance' });
       for (let i = 0; i < n; i++) dot(st, px(p, clamp.deg[i]), py(p, eta[i]), 8, st.t.accent);
-      label(st, `Spearman ${spearman(eta, clamp.deg).toFixed(2)}`, p.x + p.w - 10, p.y + 20, { size: 30, align: 'right', weight: 600, bg: true });
     });
   }
 </script>

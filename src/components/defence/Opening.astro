@@ -12,13 +12,14 @@ import Slide from './Slide.astro';
     <p class="fine">Supervisors: Prof. Dr. Ir. Jan M. Baetens · Prof. Dr. Odemir M. Bruno · Dr. Aisling Daly</p>
     <p class="fine">Joint PhD · Ghent University, Faculty of Bioscience Engineering · University of São Paulo, São Carlos Institute of Physics</p>
   </div>
+  <p slot="say">The title of the thesis, over a landscape in the style of its cover. The picture is not explained yet: within ten minutes the room will know what it is, and it comes back on the last slide.</p>
 </Slide>
 
 <style>
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
   .t { position: relative; width: calc(1040 * var(--u)); margin-top: calc(120 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
-  h1 { font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; font-size: calc(84 * var(--u)); margin: 0; }
-  .sub { font-family: var(--mono); font-size: calc(46 * var(--u)); color: var(--muted); margin-bottom: calc(50 * var(--u)); }
+  h1 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; font-size: calc(84 * var(--u)); margin: 0; }
+  .sub { font-size: calc(46 * var(--u)); margin-bottom: calc(50 * var(--u)); }
   .who { font-size: calc(52 * var(--u)); font-weight: 600; }
   .when { font-size: calc(38 * var(--u)); }
   .fine { font-size: calc(26 * var(--u)); color: var(--muted); max-width: calc(900 * var(--u)); }

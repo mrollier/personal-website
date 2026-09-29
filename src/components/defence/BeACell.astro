@@ -1,64 +1,76 @@
 ---
-// B1–B4: the room plays rule 90 with its hands, then sees what it computed.
+// B1–B4: the room plays rule 90 with its hands, then sees what it computed. The game is a device to show what a
+// cell does; after B4 the talk speaks of cells, and people come back only once, as the stubborn person.
 import Slide from './Slide.astro';
 import RulePanels from './RulePanels.astro';
+import SimButton from './SimButton.astro';
 ---
 <Slide label="Be a cell: the rule" builds={1}>
   <h2>Be a cell</h2>
-  <p class="lede">Pick the two people sitting closest to you, left and right. Keep them all game. Ignore your own hand.</p>
+  <p class="lede">For five rounds, each of you is a cell. Pick two people near you, and keep them. Ignore your own hand.</p>
   <RulePanels />
-  <p class="steps" data-b="1"><b>Look</b> → <b>Decide</b> → <b>3 · 2 · 1</b> → <b>Switch</b><span>decide first, move only on “switch”</span></p>
+  <p class="steps" data-b="1"><b>Look</b> → <b>Decide</b> → <b>3 · 2 · 1</b> → <b>Switch</b></p>
+  <p slot="say">The talk starts with a game. For five rounds, everyone in the room is a cell. You pick two people near you, your neighbours, and each round you look only at their hands. If exactly one of them has a hand up, yours goes up; if none or both do, yours goes down. Your own hand does not count, and neither does which neighbour is which: only how many are up.</p>
+  <p slot="say">Everybody first looks and decides, and only moves on “switch”. That keeps the whole room in step, as the cells of a cellular automaton are.</p>
 </Slide>
 
 <Slide label="Be a cell: the start">
   <div class="col center grow">
     <svg class="b2-hand" viewBox="0 0 100 130" aria-hidden="true"><use href="#hand-up" class="up" width="100" height="130" /></svg>
     <p class="big">Hands up if you were born in the <b>first six months</b> of the year</p>
-    <p class="months mono">Jan · Feb · Mar · Apr · May · Jun</p>
+    <p class="months">January to June</p>
   </div>
+  <p slot="say">The start is random, but in a way everyone can check for themselves: hands up if you were born between January and June.</p>
 </Slide>
 
-<Slide label="Be a cell: the rounds" builds={12} class="rounds">
+<Slide label="Be a cell: the rounds" builds={7} class="rounds">
   <div class="col center grow r-top">
-    <p class="r-label mono" data-round>Practice 1</p>
-    <p class="r-count mono" data-count aria-live="polite"></p>
+    <p class="r-label" data-round>Practice 1</p>
+    <p class="r-count" data-count aria-live="polite"></p>
     <p class="r-note" data-note></p>
   </div>
-  <RulePanels width={330} />
+  <RulePanels width={250} />
+  <p slot="say">Two practice rounds, then back to the start and five real rounds. Each click starts a three-second countdown, which the room says out loud: three, two, one, switch. The rule stays on screen the whole time. Nothing on screen shows the pattern the room makes: the room itself is the computer.</p>
 </Slide>
 
-<Slide label="What you just did" builds={3} class="r90">
+<Slide label="What you just did" builds={4} class="r90">
   <div class="row grow r90-row">
-    <canvas class="r90-canvas" aria-label="Rule 90 drawn row by row: the start on top, each round below"></canvas>
+    <div class="r90-box">
+      <canvas class="r90-canvas" aria-label="Rule 90 drawn row by row: the start on top, each round below"></canvas>
+      <SimButton class="r90-btn" />
+    </div>
     <div class="col r90-side">
       <h2>What you just did</h2>
       <p>Top row: the start.<br />Each row below: the next round.</p>
-      <p class="accent" data-b="2">One hand up in the middle, same rule.</p>
-      <p class="big" data-b="3">Nobody saw the whole. Everybody followed the same simple, local rule.</p>
+      <p data-b="2">One hand up in the middle, same rule.</p>
+      <p class="big" data-b="4">Nobody saw the whole. Everybody followed the same simple, local rule.</p>
     </div>
   </div>
+  <p slot="say">This is what a row of cells following one rule does, drawn round by round: the start on top, each round one row lower. The rule the room played is known as rule 90. From a random start, like tonight’s, it makes a jumble of triangles; from a single raised hand it draws a Sierpiński triangle.</p>
+  <p slot="say">Nobody saw the whole pattern; everyone only followed a simple, local rule. That is a cellular automaton, and that was the game: from here on, the cells are squares on a screen.</p>
 </Slide>
 
 <style>
-  .steps { font-size: calc(44 * var(--u)); text-align: center; font-family: var(--mono); }
-  .steps span { display: block; font-family: var(--sans); font-size: calc(32 * var(--u)); color: var(--muted); margin-top: calc(8 * var(--u)); }
+  .steps { font-size: calc(48 * var(--u)); text-align: center; }
 
   .b2-hand { width: calc(150 * var(--u)); }
-  .months { font-size: calc(64 * var(--u)); color: var(--accent); }
+  .months { font-size: calc(56 * var(--u)); color: var(--accent); }
 
-  .r-label { font-size: calc(72 * var(--u)); font-weight: 600; }
+  .r-label { font-size: calc(72 * var(--u)); font-weight: 700; }
   .r-top { gap: calc(12 * var(--u)); }
-  .r-count { font-size: calc(280 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
-  .r-count.sw { color: var(--accent); font-size: calc(220 * var(--u)); }
-  .r-note { font-size: calc(40 * var(--u)); color: var(--muted); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; }
+  .r-count { font-size: calc(260 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
+  .r-count.sw { color: var(--accent); font-size: calc(200 * var(--u)); }
+  .r-note { font-size: calc(40 * var(--u)); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; }
 
   .r90-row { align-items: center; gap: calc(56 * var(--u)); }
-  .r90-canvas { width: calc(1160 * var(--u)); height: calc(660 * var(--u)); flex: none; }
+  .r90-box { position: relative; flex: none; }
+  .r90-canvas { width: calc(1140 * var(--u)); height: calc(556 * var(--u)); }
+  .r90-box :global(.r90-btn) { right: calc(-24 * var(--u)); bottom: calc(-20 * var(--u)); }
   .r90-side { flex: 1; }
 </style>
 
 <script>
-  import { slide, type How } from '../../scripts/defence/deck';
+  import { slide, sim, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, text } from '../../scripts/defence/stage';
   import { evolve, seedRow } from '../../scripts/eca';
   import { makeRng } from '../../scripts/net';
@@ -66,8 +78,8 @@ import RulePanels from './RulePanels.astro';
   // ── B3: a round counter with a spoken countdown ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.rounds')) {
     const round = s.querySelector<HTMLElement>('[data-round]')!, count = s.querySelector<HTMLElement>('[data-count]')!, note = s.querySelector<HTMLElement>('[data-note]')!;
-    const names = ['Practice 1', 'Practice 2', ...Array.from({ length: 10 }, (_, i) => `Round ${i + 1}`), 'That’s ten rounds'];
-    const notes = ['Look at your two neighbours. Decide. Wait for “switch”.', '', 'Back to the start: hands up if you were born in the first six months of the year.', ...Array(9).fill(''), 'Keep your hand where it is, and look around.'];
+    const names = ['Practice 1', 'Practice 2', ...Array.from({ length: 5 }, (_, i) => `Round ${i + 1}`), 'That’s five rounds'];
+    const notes = ['Look at your two neighbours. Decide. Wait for “switch”.', '', 'Back to the start: hands up if you were born in the first six months of the year.', ...Array(4).fill(''), 'Keep your hand where it is, and look around.'];
     let animate = true, timer = 0, left = 0, target = 0;
     const show = (b: number) => { round.textContent = names[b]; note.textContent = notes[b]; count.textContent = ''; count.classList.remove('sw'); };
     const stopCount = () => { clearTimeout(timer); timer = 0; };
@@ -93,7 +105,7 @@ import RulePanels from './RulePanels.astro';
     show(0);
   }
 
-  // ── B4: rule 90 grows downward, from the room's random start and then from one raised hand ──
+  // ── B4: rule 90 grows downward, from the room's random start (builds 0–1) and then from one raised hand (2–3) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.r90')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas')!;
     const W = 81, T = 40;
@@ -101,25 +113,21 @@ import RulePanels from './RulePanels.astro';
     let rows = random, shown = 1;
     function paint() {
       const st = stage(c); if (!st) return;
-      const { ctx, w, h, t } = st, left = 150, cell = Math.min((w - left) / W, (h - 60) / (T + 1)), top = 44;
+      const { ctx, w, h, t } = st, left = 150, cell = Math.floor(Math.min((w - left) / W, (h - 60) / (T + 1))), top = 44;
       ctx.fillStyle = t.panel; ctx.fillRect(left, top, cell * W, cell * (T + 1));
       ctx.fillStyle = t.ink;
-      for (let y = 0; y < shown; y++) for (let x = 0; x < W; x++) if (rows[y][x]) ctx.fillRect(left + x * cell, top + y * cell, cell - 1.5, cell - 1.5);
+      for (let y = 0; y < shown; y++) for (let x = 0; x < W; x++) if (rows[y][x]) ctx.fillRect(left + x * cell, top + y * cell, cell, cell);
       const f = { color: t.muted, font: t.mono, size: 30 };
       text(ctx, 'start', left - 18, top + cell * 0.8, { ...f, align: 'right' });
       for (const r of [10, 20, 30, 40]) text(ctx, `round ${r}`, left - 18, top + cell * (r + 0.8), { ...f, align: 'right', size: 26 });
-      text(ctx, 'rule 90', left + cell * W, top - 12, { ...f, align: 'right', size: 28 });
     }
     const run = ticker(c, 12, () => { if (shown >= rows.length) return true; shown++; }, paint);
-    function set(b: number, how: How) {
-      rows = b >= 2 ? single : random;
-      const grows = how === 'next' && (b === 1 || b === 2);
-      if (b === 0) { shown = 1; run.play(false); }
-      else if (grows) { shown = 1; run.play(true); }
-      else if (!(b === 3 && run.playing)) { shown = rows.length; run.play(false); }
-      paint();
-    }
-    slide(s, { set, enter() { rows = random; shown = 1; }, leave() { run.play(false); } });
+    slide(s, {
+      set(b: number, how: How) { rows = b >= 2 ? single : random; if (how !== 'next' && b !== 0 && b !== 2) shown = rows.length; paint(); },
+      enter() { rows = random; shown = 1; },
+      leave() { run.play(false); },
+    });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [1, 3], { reset() { run.play(false); shown = 1; paint(); }, play() { run.play(true); } });
     onSize(c, paint);
   }
 </script>

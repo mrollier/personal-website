@@ -12,6 +12,7 @@
 
 .slide {
   --u: calc(100cqw / 1920);
+  --mono: var(--sans); /* one typeface on the slides: labels and canvas text too (they read --mono) */
   container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%;
   background: var(--bg); color: var(--ink); overflow: hidden;
   font-family: var(--sans); line-height: 1.3;
@@ -21,10 +22,10 @@
   display: flex; flex-direction: column; gap: calc(28 * var(--u)); font-size: calc(38 * var(--u));
 }
 .slide h2 {
-  font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+  font-family: var(--sans); font-weight: 700; letter-spacing: -0.01em; line-height: 1.1;
   font-size: calc(66 * var(--u)); margin: 0; color: var(--ink);
 }
-.slide h3 { font-family: var(--mono); font-weight: 600; font-size: calc(42 * var(--u)); margin: 0; line-height: 1.15; }
+.slide h3 { font-family: var(--sans); font-weight: 700; font-size: calc(42 * var(--u)); margin: 0; line-height: 1.15; }
 .slide p, .slide ul, .slide ol { margin: 0; }
 .slide ul, .slide ol { padding-left: 1.1em; display: flex; flex-direction: column; gap: 0.35em; }
 .slide .lede { font-size: calc(46 * var(--u)); line-height: 1.25; }
@@ -56,11 +57,48 @@
   position: absolute; bottom: calc(22 * var(--u)); font-size: calc(22 * var(--u)); color: var(--muted); line-height: 1.25; max-width: 60%;
 }
 .slide .cite { left: calc(96 * var(--u)); }
-.slide .illus { right: calc(150 * var(--u)); text-align: right; font-style: italic; max-width: 45%; } /* clear of the slide counter */
+.slide .illus { right: calc(150 * var(--u)); text-align: right; max-width: 45%; } /* clear of the slide counter */
 
-/* Builds: appear from their step on, and vanish from theirs. */
-.slide [data-b] { transition: opacity 0.35s ease; }
-.slide [data-b]:not(.on), .slide [data-b-off].off { opacity: 0; visibility: hidden; }
+/* Builds: appear from their step on, and vanish from theirs; data-b-only="1 2" shows only at those builds. */
+.slide [data-b], .slide [data-b-only] { transition: opacity 0.35s ease; }
+.slide [data-b]:not(.on), .slide [data-b-off].off, .slide [data-b-only]:not(.on) { opacity: 0; visibility: hidden; }
+
+/* Our own results, always in this one box, so the room learns what it means. */
+.slide .result {
+  background: var(--ink); color: var(--sun); padding: calc(20 * var(--u)) calc(30 * var(--u));
+  font-size: calc(38 * var(--u)); line-height: 1.25;
+}
+.slide .result > b:first-child { color: #b6d2ea; margin-right: 0.45em; }
+
+/* The one control of a simulation: ▶ while it waits, ↺ once it runs. */
+.slide .simbtn {
+  position: absolute; width: calc(64 * var(--u)); height: calc(64 * var(--u)); border-radius: 50%; padding: 0;
+  background: var(--panel); border: calc(3 * var(--u)) solid var(--ink); color: var(--ink); cursor: pointer; z-index: 2;
+  display: grid; place-items: center; touch-action: manipulation; opacity: 0.9;
+}
+.slide .simbtn:hover { background: var(--sun); opacity: 1; }
+.slide .simbtn::before { /* ▶ */
+  content: ""; width: 0; height: 0; margin-left: calc(6 * var(--u));
+  border-left: calc(22 * var(--u)) solid currentColor; border-top: calc(14 * var(--u)) solid transparent; border-bottom: calc(14 * var(--u)) solid transparent;
+}
+.slide .simbtn[data-run="1"]::before { /* ↺ */
+  content: "↺"; border: 0; width: auto; height: auto; margin: 0 0 calc(4 * var(--u)); font: 700 calc(40 * var(--u)) / 1 var(--sans);
+}
+
+/* The thesis map in small along the bottom. */
+.slide.ribboned .frame { padding-bottom: calc(120 * var(--u)); } /* the ribbon, and a credit line above it */
+.slide.ribboned .cite { bottom: calc(70 * var(--u)); }
+.slide.ribboned .illus { bottom: calc(70 * var(--u)); right: calc(96 * var(--u)); }
+.slide .ribbon {
+  position: absolute; left: calc(96 * var(--u)); bottom: calc(18 * var(--u)); display: flex; gap: calc(28 * var(--u));
+  font-size: calc(20 * var(--u)); line-height: 1; color: var(--muted); opacity: 0.8; white-space: nowrap;
+}
+.slide .rpart { display: flex; align-items: center; gap: calc(6 * var(--u)); }
+.slide .rn { font-weight: 600; margin-right: calc(4 * var(--u)); }
+.slide .rch { padding: calc(6 * var(--u)) calc(12 * var(--u)); border: calc(2 * var(--u)) solid var(--line); }
+.slide .rch b { font-weight: 600; }
+.slide .rch.skip { border-style: dashed; opacity: 0.55; }
+.slide .rch.cur { background: var(--ink); border-color: var(--ink); color: var(--sun); opacity: 1; }
 
 /* People: hand up is ink, hand down is a panel with a line. */
 .slide .up { color: var(--ink); fill: var(--ink); stroke: var(--ink); }
@@ -71,15 +109,19 @@
 .deck:not(.presenting) .slide + .cardbar { margin-bottom: 2.2rem; }
 .cardbar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; margin-top: 0.4rem;
-  font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
+  font-family: var(--mono); font-size: 0.8rem; color: var(--page-muted, var(--muted));
 }
-.cardbar > span { margin-right: auto; font-size: 1rem; font-weight: 600; color: var(--ink); }
+.cardbar > span { margin-right: auto; font-size: 1rem; font-weight: 600; color: var(--page-ink, var(--ink)); }
 .cardbar button {
-  font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+  font: inherit; color: var(--page-ink, var(--ink)); background: none; border: 1px solid var(--page-line, var(--line));
   padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
 }
-.cardbar button:hover { border-color: var(--accent); }
+.cardbar button:hover { border-color: var(--page-accent, var(--accent)); }
 .cardbar output { min-width: 7.5em; text-align: center; }
+.deck:not(.presenting) .slide + .cardbar:has(+ .say) { margin-bottom: 0.7rem; }
+/* what the speaker says, under the card; the page's own colours, not the slide's */
+.say { max-width: 72ch; margin: 0 0 2.6rem; font-size: 0.98rem; line-height: 1.55; color: var(--page-ink, var(--ink)); }
+.say p { margin: 0 0 0.6em; }
 
 /* ── presenting: one slide, as large as the window allows ── */
 html.deck-on { overflow: hidden; }
@@ -89,7 +131,7 @@ html.deck-on { overflow: hidden; }
 }
 .deck::backdrop { background: var(--bg); }
 .deck.presenting [role="tabpanel"], .deck.presenting .block { display: contents !important; }
-.deck.presenting .slide:not(.current), .deck.presenting .cardbar, .deck.presenting .intro { display: none !important; }
+.deck.presenting .slide:not(.current), .deck.presenting .cardbar, .deck.presenting .intro, .deck.presenting .say { display: none !important; }
 .deck.presenting .slide.current { width: min(100vw, calc(100vh * 16 / 9)); border: 0; }
 
 .hud { display: none; }

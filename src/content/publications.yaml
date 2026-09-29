@@ -1,4 +1,4 @@
-# One entry per paper. status: published | review | writing. Link: doi preferred, url for arXiv/preprint.
+# One entry per paper. status: published | accepted | review | writing. Link: doi preferred, url for arXiv/preprint.
 - id: life-on-graphs
   title: "Essential metrics for Life on graphs"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
@@ -107,7 +107,7 @@
   venue: "Cellular Automata (ACRI 2026, Springer)"
   year: 2026
   type: P1
-  status: review
+  status: accepted
 - id: still-life-sat
   title: "Exhaustive enumeration of symmetric still-life tiles in Life-like cellular automata via orbit-reduced SAT solving"
   authors: "M. Rollier"

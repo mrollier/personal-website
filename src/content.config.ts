@@ -15,7 +15,7 @@ export const collections = {
       venue: z.string(),
       year: z.number(),
       type: z.enum(['A1', 'B2', 'B3', 'P1']),
-      status: z.enum(['published', 'review', 'writing']).default('published'),
+      status: z.enum(['published', 'accepted', 'review', 'writing']).default('published'),
       doi: z.string().optional(),
       url: z.string().url().optional(),
       summary: z.string().optional(),

@@ -4,6 +4,7 @@ import { getCollection } from 'astro:content';
 const pubs = await getCollection('publications');
 const groups: [string, string][] = [
   ['published', 'Published'],
+  ['accepted', 'Accepted'],
   ['review', 'Under review'],
   ['writing', 'In progress'],
 ];

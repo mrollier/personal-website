@@ -115,27 +115,25 @@ import { pearson } from '../src/scripts/stats.ts';
 }
 
 // ── G and H: the precomputed toy data replays exactly from its seeds ──
-import { toyNet, toyFeatures, startSeed, lempelZiv, wordLengths, wordHistogram, TOY } from '../src/scripts/defence/toy.ts';
+import { toyNet, toyFeatures, startSeed, lempelZiv, shannon, TOY } from '../src/scripts/defence/toy.ts';
 import { runFrom } from '../src/scripts/consensus.ts';
 import { buildNet } from '../src/scripts/net.ts';
 {
-  // the worked examples of Miranda et al. 2016 (supplement S2): 0101…01 of length 20 is seven blocks, 7 ln 20 / 20 =
-  // 1.049; the words of 0011101100 are one of length three and one of length two
+  // the worked example of Miranda et al. 2016 (supplement S2): 0101…01 of length 20 is seven blocks, 7 ln 20 / 20 =
+  // 1.049; Shannon entropy in bits: 0 for a node that never changes, 1 for one on half of the time, 0.811 for a quarter
   assert.equal(lempelZiv(Array.from({ length: 20 }, (_, i) => i % 2)).toFixed(3), '1.049');
-  assert.deepEqual(wordLengths([0, 0, 1, 1, 1, 0, 1, 1, 0, 0]), [3, 2]);
-  assert.deepEqual(wordLengths([1, 1, 1]), [3]); assert.deepEqual(wordLengths([0, 0]), []);
-  // pooled over nodes, lengths in bins of two: node 0 has words 3 and 2, node 1 one word of 1 (s[t · n + i], n = 2)
-  assert.deepEqual(wordHistogram(Uint8Array.from([0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0]), 2, 0).slice(0, 3).map((v) => +v.toFixed(3)), [0.667, 0.333, 0]);
+  assert.equal(shannon([1, 1, 1]), 0); assert.equal(shannon([0, 0]), 0);
+  assert.equal(shannon([0, 1, 1, 0]), 1); assert.equal(shannon([0, 0, 0, 1]).toFixed(3), '0.811');
   const classify = JSON.parse(readFileSync(new URL('../src/data/defence/classify.json', import.meta.url), 'utf8'));
   for (const x of classify.examples) {
     const rule: Rule = { r: x.r, B: x.B, S: x.S, part: x.part };
     for (const [c, j] of [[0, 0], [1, 0], [2, 0], [1, 2], [2, 4]]) {
       const f = toyFeatures(toyNet(c, j), rule, startSeed(c, j));
-      for (const k of ['lz', 'words', 'density'] as const) f[k].forEach((v, b) => assert.ok(Math.abs(v - x[k][c * TOY.perType + j][b]) < 1e-4, `classify.json ${k} ${x.B},${x.S} type ${c} net ${j}`));
+      for (const k of ['entropy', 'lz', 'density'] as const) f[k].forEach((v, b) => assert.ok(Math.abs(v - x[k][c * TOY.perType + j][b]) < 1e-4, `classify.json ${k} ${x.B},${x.S} type ${c} net ${j}`));
     }
   }
   const [cons, det] = classify.examples;
-  assert.ok(cons.B === 488 && cons.S === 464 && det.jbar >= 0.5 && det.jbar <= 0.9 && (['lz', 'words', 'density'] as const).every((k) => det.acc[k] >= 14 / 15 - 1e-3));
+  assert.ok(cons.B === 488 && cons.S === 464 && det.jbar >= 0.5 && det.jbar <= 0.9 && det.acc.all === 1 && (['entropy', 'lz', 'density'] as const).every((k) => det.acc[k] >= 13 / 15 - 1e-3));
   // the three networks slide G3 shows reach consensus under the consensus-seeking rule
   for (const c of [0, 1, 2]) assert.ok(classify.consensusRounds[c * TOY.perType] !== null, `G3 network ${c} reaches consensus`);
   const clamp = JSON.parse(readFileSync(new URL('../src/data/defence/clamp.json', import.meta.url), 'utf8'));

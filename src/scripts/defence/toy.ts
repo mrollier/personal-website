@@ -1,7 +1,7 @@
 // The toy version of Ch. 9's pipeline that slides G1–G3 show: three kinds of network, one rule run on each, and as
 // fingerprints what the rows look like after a short transient: two of the features of Miranda et al. 2016 (Sci. Rep.
-// 6:37329, supplement S2), the Lempel–Ziv complexity of every node's row and the lengths of the words (runs of 1s) of
-// all rows together, and the neighbourhood densities the nodes see (what Ch. 9 used). The thesis used 23 datasets,
+// 6:37329, Methods and supplement S2), the Shannon entropy and the Lempel–Ziv complexity of every node's row, and the
+// neighbourhood densities the nodes see (what Ch. 9 used). The thesis used 23 datasets,
 // degree-segmented density histograms with 40 bins and an SVM; this keeps the idea and shrinks the rest.
 // Shared by scripts/defence/precompute.ts and the slides, so both compute the same thing. Pure.
 import { makeRng, buildNet, type Net, type NetSpec } from '../net.ts';
@@ -53,29 +53,13 @@ export function lempelZiv(s: ArrayLike<number>): number {
   return (g * Math.log(l)) / l;
 }
 
-/** The words of a binary sequence as Miranda et al. (2016) define them: the lengths of its maximal runs of 1s, those at
- * the ends included (a node on all along is one word as long as the run). */
-export function wordLengths(s: ArrayLike<number>): number[] {
-  const out: number[] = [];
-  let run = 0;
-  for (let t = 0; t <= s.length; t++) {
-    if (t < s.length && s[t]) run++;
-    else if (run) { out.push(run); run = 0; }
-  }
-  return out;
-}
-
-/** Their word-length feature: the words of all the nodes' rows (rounds burn ≤ t < T) pooled into one histogram of
- * lengths 1 to 40 in bins of two (the rare longer words left out), as frequencies. */
-export const WORDS = { lo: 1, hi: 41, bins: 20 };
-export function wordHistogram(s: Uint8Array, n: number, burn = TOY.burn): number[] {
-  const h = new Array<number>(WORDS.bins).fill(0), T = s.length / n, row = new Uint8Array(T - burn);
-  let total = 0;
-  for (let i = 0; i < n; i++) {
-    for (let t = burn; t < T; t++) row[t - burn] = s[t * n + i];
-    for (const w of wordLengths(row)) if (w < WORDS.hi) { h[Math.floor((w - WORDS.lo) / 2)]++; total++; }
-  }
-  return h.map((v) => (total ? v / total : 0));
+/** Shannon entropy in bits of a binary sequence, Miranda et al.'s (2016) μ_S of a node: −p log₂ p − (1 − p) log₂ (1 − p)
+ * for a share p of 1s, so 0 for a node that stays on or stays off and 1 for one that is on half of the time. */
+export function shannon(s: ArrayLike<number>): number {
+  let on = 0;
+  for (let t = 0; t < s.length; t++) on += s[t];
+  const p = on / s.length;
+  return p <= 0 || p >= 1 ? 0 : -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
 }
 
 /** Every node's feature over the rounds burn ≤ t < T of a run's pattern s[t · n + i]. */
@@ -91,17 +75,17 @@ export function histogram(xs: number[], lo: number, hi: number, bins: number): n
   return h.map((v) => v / xs.length);
 }
 
-/** The fingerprints of slides G1–G3: the histogram over the nodes of their row's Lempel–Ziv complexity and the pooled
- * word-length histogram (two features of Miranda et al. 2016), and the density histogram of `toyRun` (what Ch. 9 used,
- * there split by degree). */
-export const FEATURES = { lz: { lo: 0.575, hi: 1.425, bins: 17 }, words: WORDS }; // lz: one bin per block count, 0.6 to 1.4 at l = 90
-export type Features = { s: Uint8Array; lz: number[]; words: number[]; density: number[] };
+/** The fingerprints of slides G1–G3: histograms over the nodes of their row's Shannon entropy (on [0, 1] in 20 bins, as
+ * Miranda et al. 2016 bin it) and Lempel–Ziv complexity, and the density histogram of `toyRun` (what Ch. 9 used, there
+ * split by degree). */
+export const FEATURES = { entropy: { lo: 0, hi: 1, bins: 20 }, lz: { lo: 0.575, hi: 1.425, bins: 17 } }; // lz: one bin per block count, 0.6 to 1.4 at l = 90
+export type Features = { s: Uint8Array; entropy: number[]; lz: number[]; density: number[] };
 export function toyFeatures(net: Net, rule: Rule, seed: number): Features {
-  const run = toyRun(net, rule, seed), { lz } = FEATURES;
+  const run = toyRun(net, rule, seed), { entropy, lz } = FEATURES;
   return {
     s: run.s, density: run.fp,
+    entropy: histogram(perNode(run.s, net.n, shannon), entropy.lo, entropy.hi, entropy.bins),
     lz: histogram(perNode(run.s, net.n, lempelZiv), lz.lo, lz.hi, lz.bins),
-    words: wordHistogram(run.s, net.n),
   };
 }
 

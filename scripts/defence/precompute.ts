@@ -43,8 +43,9 @@ function sync() {
 
 // ── classify.json: a consensus-seeking rule and a jagged rule on three network types (G2, G3) ──
 type Sep = { acc: number; ratio: number };
-type Row = { B: number; S: number; J: number; jbar: number; lively: boolean; lz: Sep; words: Sep; density: Sep };
-const FEATS = ['lz', 'words', 'density'] as const;
+type Feat = 'entropy' | 'lz' | 'density';
+type Row = { B: number; S: number; J: number; jbar: number; lively: boolean; all: Sep } & Record<Feat, Sep>;
+const FEATS: Feat[] = ['entropy', 'lz', 'density'];
 function classify() {
   const nets = TOY.types.flatMap((_, c) => Array.from({ length: TOY.perType }, (_, j) => ({ c, j, net: toyNet(c, j) })));
   const cls = nets.map((x) => x.c), rows: Row[] = [];
@@ -52,14 +53,16 @@ function classify() {
   // lively: on every network the rule keeps between a fifth and four fifths of the hands up and at least a fifth changing
   // each round after the transient, so it separates by the texture of its pattern, not by dying out on one kind of network
   const isLively = (fs: Features[]) => fs.every((f, k) => { const n = nets[k].net.n, t0 = TOY.burn * n; let on = 0, flip = 0; for (let t = t0; t < f.s.length; t++) { on += f.s[t]; if (t >= t0 + n) flip += f.s[t] ^ f.s[t - n]; } const d = on / (f.s.length - t0), fl = flip / (f.s.length - t0 - n); return d >= 0.2 && d <= 0.8 && fl >= 0.2; });
-  const seps = (fs: Features[]) => Object.fromEntries(FEATS.map((k) => [k, separability(fs.map((f) => f[k]), cls)])) as Record<(typeof FEATS)[number], Sep>;
+  // each feature on its own, and all three side by side as one fingerprint
+  const seps = (fs: Features[]) => ({ ...(Object.fromEntries(FEATS.map((k) => [k, separability(fs.map((f) => f[k]), cls)])) as Record<Feat, Sep>), all: separability(fs.map((f) => FEATS.flatMap((k) => f[k])), cls) });
   for (let B = 0; B < 1 << TOY.r; B++) for (let S = 0; S < 1 << TOY.r; S++) {
     const rule: Rule = { r: TOY.r, B, S, part: 'uni' }, { J, Jbar } = jaggedness(rule), fs = featuresOf(rule);
     rows.push({ B, S, J, jbar: Jbar, lively: isLively(fs), ...seps(fs) });
   }
   // the detective: chosen by eye for three clearly different textures among the rules that qualify (lively, 0.5 ≤ J̄ ≤ 0.9,
-  // every feature classifying at least 14 of the 15 networks right); the qualifying rules are ranked by their weakest spread ratio
-  const qualifies = (x: Row) => x.lively && x.jbar >= 0.5 && x.jbar <= 0.9 && FEATS.every((k) => x[k].acc >= 14 / 15 - 1e-9);
+  // the three features together classifying all 15 networks right, and each alone at least 13); the qualifying rules are
+  // ranked by their weakest spread ratio
+  const qualifies = (x: Row) => x.lively && x.jbar >= 0.5 && x.jbar <= 0.9 && x.all.acc === 1 && FEATS.every((k) => x[k].acc >= 13 / 15 - 1e-9);
   const weakest = (x: Row) => Math.min(...FEATS.map((k) => x[k].ratio));
   const ranked = rows.filter(qualifies).sort((x, y) => weakest(y) - weakest(x));
   const det = rows.find((x) => x.B === 14 && x.S === 13)!;
@@ -67,15 +70,15 @@ function classify() {
   // the consensus-seeking rule of slide F8 (φ⁹₄₈₈,₄₆₄): how many networks reach consensus, and how alike its fingerprints are
   const cons: Rule = { r: 9, B: 488, S: 464 }, cf = featuresOf(cons), df = featuresOf({ r: TOY.r, B: det.B, S: det.S, part: 'uni' });
   const consensus = cf.map((f, k) => { const n = nets[k].net.n; for (let t = 0; t < TOY.T; t++) { let on = 0; for (let i = 0; i < n; i++) on += f.s[t * n + i]; if (on === 0 || on === n) return { round: t, up: on === n }; } return null; });
-  const csep = seps(cf), accOf = (xs: Row[], k: (typeof FEATS)[number]) => r3(xs.reduce((acc, x) => acc + x[k].acc, 0) / xs.length);
+  const csep = seps(cf), accOf = (xs: Row[], k: Feat) => r3(xs.reduce((acc, x) => acc + x[k].acc, 0) / xs.length);
   const band = (lo: number, hi: number) => rows.filter((x) => x.jbar >= lo && x.jbar <= hi);
   const corr = pearson(rows.map((x) => x.jbar), rows.map((x) => x.lz.acc));
   const r4 = (f: number[]) => f.map((v) => Math.round(v * 1e4) / 1e4);
-  const pack = (role: string, rule: Rule, fs: Features[], sep: Record<(typeof FEATS)[number], Sep>) => ({ role, r: rule.r, B: rule.B, S: rule.S, part: rule.part ?? 'pal', jbar: r3(jaggedness(rule).Jbar), acc: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].acc)])), ratio: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].ratio)])), lz: fs.map((f) => r4(f.lz)), words: fs.map((f) => r4(f.words)), density: fs.map((f) => r4(f.density)) });
+  const pack = (role: string, rule: Rule, fs: Features[], sep: ReturnType<typeof seps>) => ({ role, r: rule.r, B: rule.B, S: rule.S, part: rule.part ?? 'pal', jbar: r3(jaggedness(rule).Jbar), acc: Object.fromEntries([...FEATS, 'all' as const].map((k) => [k, r3(sep[k].acc)])), ratio: Object.fromEntries([...FEATS, 'all' as const].map((k) => [k, r3(sep[k].ratio)])), entropy: fs.map((f) => r4(f.entropy)), lz: fs.map((f) => r4(f.lz)), density: fs.map((f) => r4(f.density)) });
   console.log(`classify: detective ${det.B},${det.S} (J̄ ${det.jbar}, weakest ratio ${weakest(det).toFixed(2)}, rank ${ranked.indexOf(det) + 1} of ${ranked.length} qualifying; top ${ranked.slice(0, 3).map((x) => `${x.B},${x.S}`).join(' ')}); consensus φ⁹₄₈₈,₄₆₄ reaches consensus on ${consensus.filter(Boolean).length}/15, LZ accuracy ${csep.lz.acc.toFixed(2)} ratio ${csep.lz.ratio.toFixed(2)}; Pearson(J̄, LZ accuracy) over ${rows.length} rules = ${corr.toFixed(3)}`);
   save('classify.json', {
     about: 'Toy version of the Ch. 9 pipeline: fingerprints of three network types under a jagged r = 5 rule (uniform left-closed cut) and under the consensus-seeking rule φ⁹₄₈₈,₄₆₄. Illustration, not a thesis figure; the thesis used 23 datasets, degree-segmented density histograms and an SVM.',
-    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', features: { lz: { ...FEATURES.lz, about: 'Lempel–Ziv complexity of each node’s row after the transient as Miranda et al. 2016 (S2) define it: g blocks of the dictionary parsing, times ln l / l' }, words: { ...FEATURES.words, about: 'word lengths as Miranda et al. 2016 define them: the maximal runs of 1s of all nodes’ rows after the transient, pooled, lengths 1 to 40 in bins of two, as frequencies' }, density: { lo: 0, hi: 1, bins: TOY.bins, about: 'the share of contacts up that every person sees, every round after the transient (Ch. 9 used this, per degree, 40 bins)' } }, classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index; ratio = between-centroid over within-type spread', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient', choice: 'detective φ⁵₁₄,₁₃ picked by eye for distinct textures among the qualifying rules (lively, 0.5 ≤ J̄ ≤ 0.9, at least 14 of 15 right on every feature; it gets 14 on word lengths, 15 on the other two); consensus φ⁹₄₈₈,₄₆₄ = the consensus-seeking rule of slide F8' },
+    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', features: { entropy: { ...FEATURES.entropy, about: 'Shannon entropy in bits of each node’s row after the transient, as Miranda et al. 2016 (Methods) define it and bin it: [0, 1] in 20 bins' }, lz: { ...FEATURES.lz, about: 'Lempel–Ziv complexity of each node’s row after the transient as Miranda et al. 2016 (S2) define it: g blocks of the dictionary parsing, times ln l / l' }, density: { lo: 0, hi: 1, bins: TOY.bins, about: 'the share of contacts up that every person sees, every round after the transient (Ch. 9 used this, per degree, 40 bins)' } }, classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index; ratio = between-centroid over within-type spread; all = the three histograms side by side as one fingerprint', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient', choice: 'detective φ⁵₁₄,₁₃ picked by eye for distinct textures among the qualifying rules (lively, 0.5 ≤ J̄ ≤ 0.9, all 15 right on the three features together and at least 13 of 15 on each alone; it gets 13 on entropy alone, 15 on the others and together); consensus φ⁹₄₈₈,₄₆₄ = the consensus-seeking rule of slide F8' },
     summary: { rules: rows.length, lively: rows.filter((x) => x.lively).length, qualifying: ranked.length, detectiveRank: ranked.indexOf(det) + 1, consensusReached: consensus.filter(Boolean).length, pearsonJbarLzAcc: r3(corr), meanLzAccSmooth: accOf(band(0, 0.2), 'lz'), meanLzAccBand: accOf(band(0.5, 0.9), 'lz'), meanLzAccJagged: accOf(band(0.9, 1), 'lz') },
     consensusRounds: consensus,
     examples: [pack('consensus', cons, cf, csep), pack('detective', { r: TOY.r, B: det.B, S: det.S, part: 'uni' }, df, seps(df))],

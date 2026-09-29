@@ -25,7 +25,7 @@ const beyond = [
 ];
 ---
 <Slide label="Our answers" builds={4} class="i1" ch={0}>
-  <h2>Our answers</h2>
+  <h2 class="i1-q">What links a simple local rule to the rich behaviour it produces, and can we put that link to use?</h2>
   <div class="row grow i1-row">
     <div class="col i1-list">
       {answers.map((g, gi) => (
@@ -57,12 +57,12 @@ const beyond = [
           {k === 0 && <SimButton class="i2-btn" />}
         </div>
         <figcaption><b>{x.title}</b><span>{x.say}</span></figcaption>
-        {k === 0 && <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026</span></p>}
+        {k === 0 && <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026 proceedings, accepted</span></p>}
       </figure>
     ))}
   </div>
   <p class="illus">pictures: illustrations</p>
-  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as groundwater flow and the spread of wildfires. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. A first result is the MACCA-GW groundwater flow model, for the ACRI 2026 conference; it is not part of the thesis.</p>
+  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as groundwater flow and the spread of wildfires. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. A first result, the MACCA-GW groundwater flow model, is accepted for publication in the ACRI 2026 proceedings; it is not part of the thesis.</p>
   <p slot="say">The stubborn-person probe could be tried on real networks, to ask which nodes to watch or where an intervention would matter most. That is a possibility, not yet a result.</p>
   <p slot="say">And next for me: what goes on inside artificial intelligence. A trained neural network is also simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
@@ -88,6 +88,7 @@ const beyond = [
 </Slide>
 
 <style>
+  .i1-q { font-size: calc(50 * var(--u)); max-width: calc(1500 * var(--u)); }
   .i1-row { gap: calc(70 * var(--u)); align-items: center; }
   .i1-list { width: calc(800 * var(--u)); flex: none; gap: calc(40 * var(--u)); }
   .i1-half { font-size: calc(38 * var(--u)); font-weight: 700; color: var(--accent); margin-bottom: calc(14 * var(--u)); }

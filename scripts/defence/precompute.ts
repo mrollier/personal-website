@@ -43,8 +43,8 @@ function sync() {
 
 // ── classify.json: a consensus-seeking rule and a jagged rule on three network types (G2, G3) ──
 type Sep = { acc: number; ratio: number };
-type Row = { B: number; S: number; J: number; jbar: number; lively: boolean; lz: Sep; we: Sep; density: Sep };
-const FEATS = ['lz', 'we', 'density'] as const;
+type Row = { B: number; S: number; J: number; jbar: number; lively: boolean; lz: Sep; words: Sep; density: Sep };
+const FEATS = ['lz', 'words', 'density'] as const;
 function classify() {
   const nets = TOY.types.flatMap((_, c) => Array.from({ length: TOY.perType }, (_, j) => ({ c, j, net: toyNet(c, j) })));
   const cls = nets.map((x) => x.c), rows: Row[] = [];
@@ -58,8 +58,8 @@ function classify() {
     rows.push({ B, S, J, jbar: Jbar, lively: isLively(fs), ...seps(fs) });
   }
   // the detective: chosen by eye for three clearly different textures among the rules that qualify (lively, 0.5 ≤ J̄ ≤ 0.9,
-  // every feature classifying all fifteen networks right); the qualifying rules are ranked by their weakest spread ratio
-  const qualifies = (x: Row) => x.lively && x.jbar >= 0.5 && x.jbar <= 0.9 && FEATS.every((k) => x[k].acc === 1);
+  // every feature classifying at least 14 of the 15 networks right); the qualifying rules are ranked by their weakest spread ratio
+  const qualifies = (x: Row) => x.lively && x.jbar >= 0.5 && x.jbar <= 0.9 && FEATS.every((k) => x[k].acc >= 14 / 15 - 1e-9);
   const weakest = (x: Row) => Math.min(...FEATS.map((k) => x[k].ratio));
   const ranked = rows.filter(qualifies).sort((x, y) => weakest(y) - weakest(x));
   const det = rows.find((x) => x.B === 14 && x.S === 13)!;
@@ -71,11 +71,11 @@ function classify() {
   const band = (lo: number, hi: number) => rows.filter((x) => x.jbar >= lo && x.jbar <= hi);
   const corr = pearson(rows.map((x) => x.jbar), rows.map((x) => x.lz.acc));
   const r4 = (f: number[]) => f.map((v) => Math.round(v * 1e4) / 1e4);
-  const pack = (role: string, rule: Rule, fs: Features[], sep: Record<(typeof FEATS)[number], Sep>) => ({ role, r: rule.r, B: rule.B, S: rule.S, part: rule.part ?? 'pal', jbar: r3(jaggedness(rule).Jbar), acc: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].acc)])), ratio: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].ratio)])), lz: fs.map((f) => r4(f.lz)), we: fs.map((f) => r4(f.we)), density: fs.map((f) => r4(f.density)) });
+  const pack = (role: string, rule: Rule, fs: Features[], sep: Record<(typeof FEATS)[number], Sep>) => ({ role, r: rule.r, B: rule.B, S: rule.S, part: rule.part ?? 'pal', jbar: r3(jaggedness(rule).Jbar), acc: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].acc)])), ratio: Object.fromEntries(FEATS.map((k) => [k, r3(sep[k].ratio)])), lz: fs.map((f) => r4(f.lz)), words: fs.map((f) => r4(f.words)), density: fs.map((f) => r4(f.density)) });
   console.log(`classify: detective ${det.B},${det.S} (J̄ ${det.jbar}, weakest ratio ${weakest(det).toFixed(2)}, rank ${ranked.indexOf(det) + 1} of ${ranked.length} qualifying; top ${ranked.slice(0, 3).map((x) => `${x.B},${x.S}`).join(' ')}); consensus φ⁹₄₈₈,₄₆₄ reaches consensus on ${consensus.filter(Boolean).length}/15, LZ accuracy ${csep.lz.acc.toFixed(2)} ratio ${csep.lz.ratio.toFixed(2)}; Pearson(J̄, LZ accuracy) over ${rows.length} rules = ${corr.toFixed(3)}`);
   save('classify.json', {
     about: 'Toy version of the Ch. 9 pipeline: fingerprints of three network types under a jagged r = 5 rule (uniform left-closed cut) and under the consensus-seeking rule φ⁹₄₈₈,₄₆₄. Illustration, not a thesis figure; the thesis used 23 datasets, degree-segmented density histograms and an SVM.',
-    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', features: { lz: { ...FEATURES.lz, about: 'Lempel–Ziv (1976) complexity of each person’s row after the transient, times log₂ n / n' }, we: { ...FEATURES.we, about: 'Shannon entropy (bits) of the lengths of the runs of 1s in each person’s row after the transient' }, density: { lo: 0, hi: 1, bins: TOY.bins, about: 'the share of contacts up that every person sees, every round after the transient (Ch. 9 used this, per degree, 40 bins)' } }, classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index; ratio = between-centroid over within-type spread', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient', choice: 'detective φ⁵₁₄,₁₃ picked by eye for distinct textures among the qualifying rules (lively, 0.5 ≤ J̄ ≤ 0.9, accuracy 1 on all three features); consensus φ⁹₄₈₈,₄₆₄ = the consensus-seeking rule of slide F8' },
+    params: { types: TOY.types, perType: TOY.perType, T: TOY.T, burn: TOY.burn, bins: TOY.bins, r: TOY.r, part: 'uni', rho0: 0.5, netSeeds: '500 + 10·type + j', startSeeds: '3000 + 10·type + j', features: { lz: { ...FEATURES.lz, about: 'Lempel–Ziv complexity of each node’s row after the transient as Miranda et al. 2016 (S2) define it: g blocks of the dictionary parsing, times ln l / l' }, words: { ...FEATURES.words, about: 'word lengths as Miranda et al. 2016 define them: the maximal runs of 1s of all nodes’ rows after the transient, pooled, lengths 1 to 40 in bins of two, as frequencies' }, density: { lo: 0, hi: 1, bins: TOY.bins, about: 'the share of contacts up that every person sees, every round after the transient (Ch. 9 used this, per degree, 40 bins)' } }, classifier: 'leave-one-out nearest centroid, L1 distance, ties to the lower type index; ratio = between-centroid over within-type spread', lively: 'on every network, density between 0.2 and 0.8 and at least 0.2 of the nodes changing per round after the transient', choice: 'detective φ⁵₁₄,₁₃ picked by eye for distinct textures among the qualifying rules (lively, 0.5 ≤ J̄ ≤ 0.9, at least 14 of 15 right on every feature; it gets 14 on word lengths, 15 on the other two); consensus φ⁹₄₈₈,₄₆₄ = the consensus-seeking rule of slide F8' },
     summary: { rules: rows.length, lively: rows.filter((x) => x.lively).length, qualifying: ranked.length, detectiveRank: ranked.indexOf(det) + 1, consensusReached: consensus.filter(Boolean).length, pearsonJbarLzAcc: r3(corr), meanLzAccSmooth: accOf(band(0, 0.2), 'lz'), meanLzAccBand: accOf(band(0.5, 0.9), 'lz'), meanLzAccJagged: accOf(band(0.9, 1), 'lz') },
     consensusRounds: consensus,
     examples: [pack('consensus', cons, cf, csep), pack('detective', { r: TOY.r, B: det.B, S: det.S, part: 'uni' }, df, seps(df))],

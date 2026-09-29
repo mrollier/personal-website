@@ -1,0 +1,303 @@
+---
+// Figs. 4, 8, 9 and 11 of the mobility paper on public data: for every pair of the eleven provinces, how many days
+// one wave of hospital admissions runs ahead of the other (time-lagged cross-correlation) and how different the two
+// shapes are once lined up (dynamic time warping), each as a mean over 100 bootstrapped spline fits. Click a cell to
+// slide the two curves over each other yourself. Self-contained with src/scripts/{mobility,linalg,echoes,stats,figure}.ts.
+import data from '../data/mobility.json';
+type Props = { wave?: number; g?: number; h?: number };
+const { wave = 1, g = 1, h = 4 } = Astro.props;
+---
+<figure class="fig" id="lags" data-spread-lags data-wave={wave} data-g={g} data-h={h} tabindex="-1">
+  <div class="controls" role="group" aria-label="Wave and measure">
+    <button name="wave" type="button" value="0">wave 1</button>
+    <button name="wave" type="button" value="1">wave 2</button>
+    <span class="head">colour by</span>
+    <button name="measure" type="button" value="lag">time lag</button>
+    <button name="measure" type="button" value="dtw">shape (DTW)</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <div class="panes">
+    <div class="pane">
+      <svg class="heat" viewBox="0 0 430 420" role="img" aria-label={`Heatmap of ${data.prov.length} by ${data.prov.length} province pairs`}></svg>
+      <div class="legend"><span data-leg="lo"></span><span class="bar" data-bar></span><span data-leg="hi"></span></div>
+    </div>
+    <div class="pane">
+      <div class="title" data-title></div>
+      <svg class="detail" viewBox="0 0 520 330" role="img" aria-label="The two provinces' standardised admission curves, one shifted over the other, with their cross-correlation per shift underneath"></svg>
+      <div class="controls" role="group" aria-label="Shift">
+        <label>shift <input name="shift" type="range" min="-20" max="20" step="1" value="0" /> <output name="sv"></output></label>
+        <button name="best" type="button">best shift</button>
+        <button name="warp" type="button" aria-pressed="false">warping</button>
+      </div>
+    </div>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+  <p class="summary" data-summary></p>
+  <div class="tip" hidden></div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; position: relative; }
+  .fig:focus { outline: none; }
+  .panes { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: 0.8rem 1.2rem; align-items: start; }
+  @media (max-width: 760px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+  .pane { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+  .title { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); min-height: 1.4em; }
+  .title :global(b) { color: var(--ink); font-weight: 600; }
+  .title :global(.sw) { display: inline-block; width: 1.4em; height: 0.25em; vertical-align: middle; margin-right: 0.3em; }
+  svg { display: block; width: 100%; height: auto; background: var(--panel); border: 1px solid var(--line); font-family: var(--mono); touch-action: manipulation; }
+  svg :global(text) { fill: var(--muted); font-size: 11px; }
+  svg :global(.name) { fill: var(--ink); }
+  svg :global(.lab) { fill: var(--ink); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+  svg :global(.cell) { stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
+  svg :global(.diag) { fill: var(--line); }
+  svg :global(.sel) { fill: none; stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
+  svg :global(.grid) { stroke: var(--line); }
+  svg :global(.base) { stroke: var(--muted); }
+  svg :global(.cg) { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+  svg :global(.ch) { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+  svg :global(.warp) { stroke: var(--muted); stroke-width: 0.8; opacity: 0.6; }
+  svg :global(.cc) { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+  svg :global(.best) { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+  svg :global(.now) { stroke: var(--accent); stroke-width: 1.5; }
+  svg :global(.hit) { fill: transparent; cursor: ew-resize; }
+  .legend { display: flex; align-items: center; gap: 0.5rem; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+  .bar { flex: 1; height: 0.6rem; max-width: 12rem; }
+  .controls, .status, .summary {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; margin: 0;
+  }
+  .status, .summary { display: block; min-height: 1.3em; }
+  .status { color: var(--ink); }
+  .head { color: var(--ink); margin-left: 0.4rem; }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="range"] { flex: 1 1 8rem; max-width: 14rem; accent-color: var(--accent); margin: 0; }
+  output[name="sv"] { min-width: 5.5em; color: var(--ink); }
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none; max-width: 18rem;
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.4; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); padding: 0.35rem 0.5rem; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  }
+  .tip[hidden] { display: none; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: auto;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg);
+  }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import data from '../data/mobility.json';
+  import { fitCounts, draws, zscore, tlcc, align, dtw, meanSd } from '../scripts/mobility';
+  import { spearman } from '../scripts/stats';
+  import { fullscreen, urlState, keys } from '../scripts/figure';
+
+  const WAVES = [{ s: 0, n: 123 }, { s: 184, n: 122 }];
+  const P = data.prov.length, R = 100, K = 20, NA = data.arr.length;
+  const SHORT = ['Antwerpen', 'Brussels', 'Vl.-Brabant', 'Br. Wallon', 'W.-Vlaand.', 'O.-Vlaand.', 'Hainaut', 'Liège', 'Limburg', 'Luxemb.', 'Namur'];
+  // The paper's Fig. 11: Spearman's ρ of CI against |lag| and against DTW over 903 arrondissement pairs, per wave.
+  const PAPER = [{ lag: '−0.15', dtw: '−0.31' }, { lag: '−0.14', dtw: '−0.24' }];
+  // Connectivity between provinces: commuters summed over their arrondissements, both ways, logged.
+  const C = Array.from({ length: P }, (_, a) => Array.from({ length: P }, (_, b) => {
+    let s = 0;
+    for (let i = 0; i < NA; i++) for (let j = 0; j < NA; j++) if (data.arr[i].prov === a && data.arr[j].prov === b) s += data.commute[i * NA + j] + data.commute[j * NA + i];
+    return Math.log(s);
+  }));
+  const pairs: [number, number][] = [];
+  for (let a = 0; a < P; a++) for (let b = a + 1; b < P; b++) pairs.push([a, b]);
+
+  type Wave = { fit: Float64Array[]; z: Float64Array[][]; lag: Int8Array[][]; lagM: number[][]; lagS: number[][]; dtw: (Float64Array | null)[][]; dtwM: number[][]; dtwS: number[][]; done: number };
+  const waves: Wave[] = [];
+  function build(w: number): Wave {
+    const { s, n } = WAVES[w], fit: Float64Array[] = [], z: Float64Array[][] = [];
+    for (let p = 0; p < P; p++) {
+      const f = fitCounts(data.hosp.values.slice(s, s + n).map((r) => r[p]));
+      fit.push(zscore(f.mu)); z.push(draws(f, R, 101 + p + 1000 * w).map(zscore));
+    }
+    const grid = <T,>(f: () => T) => Array.from({ length: P }, () => Array.from({ length: P }, f));
+    const W: Wave = { fit, z, lag: grid(() => new Int8Array(R)), lagM: grid(() => 0), lagS: grid(() => 0), dtw: grid(() => null), dtwM: grid(() => NaN), dtwS: grid(() => NaN), done: 0 };
+    for (const [a, b] of pairs) {
+      const l = new Int8Array(R); for (let r = 0; r < R; r++) l[r] = tlcc(z[a][r], z[b][r], K).lag;
+      W.lag[a][b] = l; W.lag[b][a] = l.map((v) => -v);
+      const [m, sd] = meanSd(l); W.lagM[a][b] = m; W.lagM[b][a] = -m; W.lagS[a][b] = W.lagS[b][a] = sd;
+    }
+    return W;
+  }
+  /** DTW for a few pairs at a time; true when the wave is complete. */
+  function dtwSome(W: Wave, count: number): boolean {
+    for (; W.done < pairs.length && count > 0; W.done++, count--) {
+      const [a, b] = pairs[W.done], d = new Float64Array(R);
+      for (let r = 0; r < R; r++) { const [x, y] = align(W.z[a][r], W.z[b][r], W.lag[a][b][r]); d[r] = dtw(x, y).dist; }
+      W.dtw[a][b] = W.dtw[b][a] = d;
+      const [m, sd] = meanSd(d); W.dtwM[a][b] = W.dtwM[b][a] = m; W.dtwS[a][b] = W.dtwS[b][a] = sd;
+    }
+    return W.done === pairs.length;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-spread-lags]').forEach((el) => {
+    // Build when the figure comes near the screen: 22 spline fits and 11 000 cross-correlations, then the warping in the background.
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); mount(el); } }, { rootMargin: '600px' });
+    io.observe(el);
+  });
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends Element = HTMLElement>(s: string) => el.querySelector<T>(s)!;
+    const url = urlState('lags', { wave: el.dataset.wave!, g: el.dataset.g!, h: el.dataset.h!, m: 'lag' });
+    const int = (v: string, d: string, hi: number) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x <= hi ? x : +d; };
+    const st = { wave: int(url.get('wave'), el.dataset.wave!, 1), g: int(url.get('g'), el.dataset.g!, P - 1), h: int(url.get('h'), el.dataset.h!, P - 1), m: url.get('m') === 'dtw' ? 'dtw' : 'lag', k: 0, warp: false };
+    if (st.g === st.h) { st.g = +el.dataset.g!; st.h = +el.dataset.h!; }
+    const heat = $<SVGSVGElement>('.heat'), det = $<SVGSVGElement>('.detail'), tip = $<HTMLDivElement>('.tip');
+    const shift = $<HTMLInputElement>('input[name="shift"]'), sv = $<HTMLOutputElement>('output[name="sv"]'), warpBtn = $<HTMLButtonElement>('button[name="warp"]');
+    for (const i of [0, 1]) waves[i] ??= build(i); // both, so the lag colours share one scale
+    const W = () => waves[st.wave];
+    const days = (v: number) => `${Math.abs(v).toFixed(1)} day${Math.abs(v) >= 0.95 && Math.abs(v) < 1.05 ? '' : 's'}`;
+
+    // --- heatmap ---------------------------------------------------------------------------------------------------
+    const H = { x0: 112, y0: 92, c: 28 };
+    let LMAX = 1, DMAX = 0.01;
+    function scales() {
+      LMAX = 1; DMAX = 0.01;
+      for (const w of waves) for (const [a, b] of pairs) { LMAX = Math.max(LMAX, Math.abs(w.lagM[a][b])); if (!Number.isNaN(w.dtwM[a][b])) DMAX = Math.max(DMAX, w.dtwM[a][b]); }
+      LMAX = Math.ceil(LMAX);
+    }
+    const lagColour = (v: number) => { const t = Math.max(-1, Math.min(1, v / LMAX)); return `color-mix(in oklab, var(${t < 0 ? '--danger' : '--accent'}) ${Math.round(Math.abs(t) * 100)}%, var(--panel))`; };
+    const dtwColour = (v: number) => { if (Number.isNaN(v)) return 'transparent'; const t = v / DMAX; return t < 0.7 ? `color-mix(in oklab, var(--accent) ${Math.round(6 + (t / 0.7) * 94)}%, var(--panel))` : `color-mix(in oklab, var(--ink) ${Math.round(((t - 0.7) / 0.3) * 50)}%, var(--accent))`; };
+    function paintHeat() {
+      const w = W(); scales();
+      let s = '';
+      for (let a = 0; a < P; a++) {
+        s += `<text class="name" x="${H.x0 - 6}" y="${H.y0 + a * H.c + H.c / 2 + 4}" text-anchor="end">${SHORT[a]}</text>`;
+        const x = H.x0 + a * H.c + H.c / 2, y = H.y0 - 6;
+        s += `<text class="name" transform="translate(${x} ${y}) rotate(-55)">${SHORT[a]}</text>`;
+        for (let b = 0; b < P; b++) {
+          const cx = H.x0 + b * H.c, cy = H.y0 + a * H.c;
+          if (a === b) { s += `<rect class="diag" x="${cx + 1}" y="${cy + 1}" width="${H.c - 2}" height="${H.c - 2}"/>`; continue; }
+          const fill = st.m === 'lag' ? lagColour(w.lagM[a][b]) : dtwColour(w.dtwM[a][b]);
+          s += `<rect class="cell" data-a="${a}" data-b="${b}" x="${cx}" y="${cy}" width="${H.c}" height="${H.c}" style="fill:${fill}"/>`;
+        }
+      }
+      s += `<rect class="sel" x="${H.x0 + st.h * H.c}" y="${H.y0 + st.g * H.c}" width="${H.c}" height="${H.c}"/>`;
+      s += `<text x="${H.x0}" y="${H.y0 + P * H.c + 16}">row on column, mean over 100 fits</text>`;
+      heat.innerHTML = s;
+      const bar = $('[data-bar]');
+      if (st.m === 'lag') {
+        bar.style.background = 'linear-gradient(90deg, var(--danger), var(--panel), var(--accent))';
+        $('[data-leg="lo"]').textContent = `row ${LMAX} d ahead`; $('[data-leg="hi"]').textContent = `row ${LMAX} d behind`;
+      } else {
+        bar.style.background = 'linear-gradient(90deg, color-mix(in oklab, var(--accent) 6%, var(--panel)), var(--accent) 70%, color-mix(in oklab, var(--ink) 50%, var(--accent)))';
+        $('[data-leg="lo"]').textContent = 'same shape'; $('[data-leg="hi"]').textContent = `DTW ${DMAX.toFixed(2)}`;
+      }
+    }
+
+    // --- the pair: two standardised curves, the second slid by k days, and C(k) underneath ------------------------
+    const D = { x0: 36, x1: 510, y0: 12, y1: 200, cy0: 238, cy1: 300 };
+    function paintDetail() {
+      const w = W(), a = w.fit[st.g], b = w.fit[st.h], n = a.length, { lag, c } = tlcc(a, b, K);
+      const X = (t: number) => D.x0 + (t / (n - 1)) * (D.x1 - D.x0), Y = (v: number) => D.y1 - ((v + 1.5) / 5) * (D.y1 - D.y0);
+      let s = '';
+      for (const v of [-1, 0, 1, 2, 3]) s += `<line class="${v ? 'grid' : 'base'}" x1="${D.x0}" x2="${D.x1}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${D.x0 - 5}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+      const { s: s0 } = WAVES[st.wave], day0 = Date.UTC(2020, 2, 1);
+      for (let t = 0; t < n; t++) { const d = new Date(day0 + (s0 + t) * 864e5); if (d.getUTCDate() === 1) s += `<text x="${X(t)}" y="${D.y1 + 14}" text-anchor="middle">${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getUTCMonth()]}</text>`; }
+      const k = st.warp ? lag : st.k;
+      if (st.warp) {
+        // Fig. 4, right: the curves lined up at the best shift, and which point of one DTW matches to which of the other.
+        const [x, y] = align(a, b, lag), off = Math.max(lag, 0), path = dtw(x, y, true).path!;
+        for (let q = 0; q < path.length; q += 2) { const [i, j] = path[q]; s += `<line class="warp" x1="${X(i + off)}" y1="${Y(x[i])}" x2="${X(j + off)}" y2="${Y(y[j])}"/>`; }
+      }
+      s += `<path class="cg" d="M${Array.from(a, (v, t) => `${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join('L')}"/>`;
+      const pts: string[] = []; for (let t = 0; t < n; t++) { const u = t + k; if (u >= 0 && u < n) pts.push(`${X(u).toFixed(1)} ${Y(b[t]).toFixed(1)}`); }
+      s += `<path class="ch" d="M${pts.join('L')}"/>`;
+      const peak = (v: Float64Array) => { let m = 0; for (let t = 1; t < v.length; t++) if (v[t] > v[m]) m = t; return m; };
+      const pa = peak(a), pb = peak(b);
+      s += `<text class="lab" x="${X(pa) - 6}" y="${Y(a[pa]) - 6}" text-anchor="end">${data.prov[st.g]}</text>`;
+      if (pb + k >= 0 && pb + k < n) s += `<text class="lab" x="${X(pb + k) + 6}" y="${Y(b[pb]) - 6}">${data.prov[st.h]}${k ? ` ${k > 0 ? '+' : '−'}${Math.abs(k)} d` : ''}</text>`;
+      s += `<text x="${D.x0 + 4}" y="${D.y0 + 10}">standard score</text>`;
+      // C(k), scaled to the correlation it would be for full overlap
+      const KX = (kk: number) => D.x0 + ((kk + K) / (2 * K)) * (D.x1 - D.x0), CY = (v: number) => D.cy1 - ((v + 0.2) / 1.2) * (D.cy1 - D.cy0);
+      s += `<line class="base" x1="${D.x0}" x2="${D.x1}" y1="${CY(0)}" y2="${CY(0)}"/>`;
+      s += `<path class="cc" d="M${Array.from(c, (v, i) => `${KX(i - K).toFixed(1)} ${CY(v).toFixed(1)}`).join('L')}"/>`;
+      s += `<line class="now" x1="${KX(k)}" x2="${KX(k)}" y1="${D.cy0 - 4}" y2="${D.cy1}"/><circle class="best" cx="${KX(lag)}" cy="${CY(c[lag + K])}" r="5"/>`;
+      for (const kk of [-20, -10, 0, 10, 20]) s += `<text x="${KX(kk)}" y="${D.cy1 + 14}" text-anchor="middle">${kk}</text>`;
+      s += `<text x="${D.x0}" y="${D.cy0 - 8}">cross-correlation C(k) for a shift of k days; the dot is the best</text>`;
+      s += `<rect class="hit" x="${D.x0}" y="${D.cy0 - 10}" width="${D.x1 - D.x0}" height="${D.cy1 - D.cy0 + 24}"/>`;
+      det.innerHTML = s;
+      shift.value = String(k); sv.value = `${k > 0 ? '+' : k < 0 ? '−' : ''}${Math.abs(k)} days`;
+      warpBtn.setAttribute('aria-pressed', String(st.warp));
+      $('[data-title]').innerHTML = `<span class="sw" style="background:var(--ink)"></span><b>${data.prov[st.g]}</b> and <span class="sw" style="background:var(--accent)"></span><b>${data.prov[st.h]}</b>, wave ${st.wave + 1}, fitted`;
+      const m = w.lagM[st.g][st.h], sd = w.lagS[st.g][st.h], dm = w.dtwM[st.g][st.h], ds = w.dtwS[st.g][st.h];
+      const who = Math.abs(m) < 0.05 ? `${data.prov[st.g]} and ${data.prov[st.h]} run level` : `${data.prov[st.g]} runs ${days(m)} ${m < 0 ? 'ahead of' : 'behind'} ${data.prov[st.h]}`;
+      $('output[name="status"]').textContent = `Over the 100 fits, ${who} (± ${sd.toFixed(1)}; ${Math.abs(m) > 2 * sd ? 'more than twice its spread, so significant' : 'within twice its spread, so not significant'})${Number.isNaN(dm) ? '' : `; DTW ${dm.toFixed(3)} ± ${ds.toFixed(3)}`}.`;
+    }
+
+    // --- the paper's Fig. 11 on the 55 province pairs --------------------------------------------------------------
+    function paintSummary() {
+      const w = W(), ci = pairs.map(([a, b]) => C[a][b]), mean = (f: (a: number, b: number) => number) => pairs.reduce((s, [a, b]) => s + f(a, b), 0) / pairs.length;
+      const rl = meanSd(Array.from({ length: R }, (_, r) => spearman(ci, pairs.map(([a, b]) => Math.abs(w.lag[a][b][r])))));
+      let txt = `Wave ${st.wave + 1}, all 55 pairs: the average lag is ${days(mean((a, b) => Math.abs(w.lagM[a][b])))}; connection by commuting against |lag| gives ρ = ${fmtRho(rl)}`;
+      if (w.done === pairs.length) {
+        const rd = meanSd(Array.from({ length: R }, (_, r) => spearman(ci, pairs.map(([a, b]) => w.dtw[a][b]![r]))));
+        txt += `, against DTW ρ = ${fmtRho(rd)}`;
+      } else txt += `; lining up the shapes, ${w.done} of 55 pairs`;
+      txt += `. The paper, phone data and 903 arrondissement pairs: ${PAPER[st.wave].lag} and ${PAPER[st.wave].dtw}.`;
+      $('[data-summary]').textContent = txt;
+    }
+    const fmtRho = ([m, s]: [number, number]) => `${m < 0 ? '−' : ''}${Math.abs(m).toFixed(2)} ± ${s.toFixed(2)}`;
+
+    function paint() {
+      paintHeat(); paintDetail(); paintSummary();
+      for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="wave"]')) b.setAttribute('aria-pressed', String(+b.value === st.wave));
+      for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="measure"]')) b.setAttribute('aria-pressed', String(b.value === st.m));
+      url.set('wave', String(st.wave)); url.set('g', String(st.g)); url.set('h', String(st.h)); url.set('m', st.m);
+    }
+    // Warping in the background, the wave on show first, then the other; repaint as cells fill in.
+    let busy = false;
+    function work() {
+      if (busy) return; busy = true;
+      const tick = () => {
+        const w = [waves[st.wave], waves[1 - st.wave]].find((x) => x.done < pairs.length);
+        if (!w) { busy = false; paint(); return; }
+        dtwSome(w, 3);
+        if (w === waves[st.wave]) { if (st.m === 'dtw') paintHeat(); paintSummary(); if (w.done === pairs.length) paintDetail(); }
+        setTimeout(tick, 0);
+      };
+      tick();
+    }
+
+    heat.addEventListener('click', (e) => { const c = (e.target as Element).closest('.cell') as SVGElement | null; if (!c) return; st.g = +c.dataset.a!; st.h = +c.dataset.b!; st.k = 0; st.warp = false; paint(); });
+    heat.addEventListener('pointermove', (e) => {
+      const c = (e.target as Element).closest('.cell') as SVGElement | null;
+      if (!c) { tip.hidden = true; return; }
+      const a = +c.dataset.a!, b = +c.dataset.b!, w = W(), m = w.lagM[a][b], sd = w.lagS[a][b], dm = w.dtwM[a][b];
+      tip.innerHTML = `<b>${data.prov[a]}</b> ${Math.abs(m) < 0.05 ? 'level with' : `${days(m)} ${m < 0 ? 'ahead of' : 'behind'}`} <b>${data.prov[b]}</b> ± ${sd.toFixed(1)}${Number.isNaN(dm) ? '' : `<br>DTW ${dm.toFixed(3)}`}<br>commuters both ways: ${new Intl.NumberFormat('en-GB').format(Math.round(Math.exp(C[a][b])))}`;
+      tip.hidden = false;
+      const r = el.getBoundingClientRect(); tip.style.left = `${e.clientX - r.left + 14}px`; tip.style.top = `${e.clientY - r.top + 14}px`;
+    });
+    heat.addEventListener('pointerleave', () => { tip.hidden = true; });
+    const setK = (k: number) => { st.k = Math.max(-K, Math.min(K, Math.round(k))); st.warp = false; paintDetail(); };
+    shift.addEventListener('input', () => setK(+shift.value));
+    $('button[name="best"]').addEventListener('click', () => { const w = W(); setK(tlcc(w.fit[st.g], w.fit[st.h], K).lag); });
+    warpBtn.addEventListener('click', () => { st.warp = !st.warp; if (!st.warp) { const w = W(); st.k = tlcc(w.fit[st.g], w.fit[st.h], K).lag; } paintDetail(); });
+    const dragK = (e: PointerEvent) => {
+      if (!(e.target as Element).classList.contains('hit') || (e.type === 'pointermove' && !e.buttons)) return;
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(det.getScreenCTM()!.inverse());
+      setK(((p.x - D.x0) / (D.x1 - D.x0)) * 2 * K - K);
+    };
+    det.addEventListener('pointerdown', dragK); det.addEventListener('pointermove', dragK);
+    for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="wave"]')) b.addEventListener('click', () => { st.wave = +b.value; st.k = 0; st.warp = false; paint(); work(); });
+    for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="measure"]')) b.addEventListener('click', () => { st.m = b.value; paint(); });
+
+    const fs = fullscreen(el, $<HTMLButtonElement>('button[name="full"]'));
+    keys(el, {
+      ArrowRight: () => setK(st.k + 1), ArrowLeft: () => setK(st.k - 1), b: () => $<HTMLButtonElement>('button[name="best"]').click(),
+      w: () => warpBtn.click(), '1': () => el.querySelector<HTMLButtonElement>('button[name="wave"][value="0"]')!.click(), '2': () => el.querySelector<HTMLButtonElement>('button[name="wave"][value="1"]')!.click(),
+      f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); },
+    });
+    paint(); work();
+  }
+</script>

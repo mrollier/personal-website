@@ -13,4 +13,5 @@ import './check-linalg.ts';
 import './check-lyapunov.ts';
 import './check-mosaic.ts';
 import './check-defence.ts';
+import './check-mobility.ts';
 console.log('all checks passed');

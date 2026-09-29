@@ -1,6 +1,6 @@
 // Dense linear algebra for small matrices, enough for Ch. 4: the eigenvalues of a symmetric matrix by
 // Householder reduction to tridiagonal form followed by the implicit QL algorithm, and a QR factorisation
-// by modified Gram–Schmidt for Benettin's method. Row-major Float64Arrays. Pure, no DOM, safe in a worker.
+// by modified Gram–Schmidt for Benettin's method; a Cholesky solve for the mobility demo's spline fits. Row-major Float64Arrays. Pure, no DOM, safe in a worker.
 
 /** Eigenvalues of the symmetric n × n matrix A, ascending; with `vectors`, the eigenvectors as the columns of the returned matrix. */
 export function symEigen(A: Float64Array, n: number, vectors = false): { values: Float64Array; vectors?: Float64Array } {
@@ -107,4 +107,22 @@ export function qr(M: Float64Array, n: number): { Q: Float64Array; R: Float64Arr
 export function matVec(A: Float64Array, n: number, x: Float64Array, y = new Float64Array(n)): Float64Array {
   for (let i = 0; i < n; i++) { let s = 0; for (let k = 0; k < n; k++) s += A[i * n + k] * x[k]; y[i] = s; }
   return y;
+}
+
+/** Lower-triangular L with A = L Lᵀ for a symmetric positive-definite row-major n × n matrix A (the demo's spline fits). */
+export function cholesky(A: Float64Array, n: number): Float64Array {
+  const L = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
+    let s = A[i * n + j]; for (let k = 0; k < j; k++) s -= L[i * n + k] * L[j * n + k];
+    L[i * n + j] = i === j ? Math.sqrt(Math.max(s, 1e-300)) : s / L[j * n + j];
+  }
+  return L;
+}
+
+/** x with L Lᵀ x = b, by forward then back substitution. */
+export function cholSolve(L: Float64Array, n: number, b: ArrayLike<number>): Float64Array {
+  const x = Float64Array.from(b);
+  for (let i = 0; i < n; i++) { let s = x[i]; for (let k = 0; k < i; k++) s -= L[i * n + k] * x[k]; x[i] = s / L[i * n + i]; }
+  for (let i = n - 1; i >= 0; i--) { let s = x[i]; for (let k = i + 1; k < n; k++) s -= L[k * n + i] * x[k]; x[i] = s / L[i * n + i]; }
+  return x;
 }

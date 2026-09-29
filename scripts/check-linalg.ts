@@ -1,6 +1,6 @@
 // Self-check for src/scripts/linalg.ts. Run: npm test
 import assert from 'node:assert/strict';
-import { symEigen, qr, matVec } from '../src/scripts/linalg.ts';
+import { symEigen, qr, matVec, cholesky, cholSolve } from '../src/scripts/linalg.ts';
 
 const near = (a: number, b: number, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} vs ${b}`);
 // The ring C₁₆: eigenvalues 2cos(2πj/16); the complete graph K₆: 5 once and −1 five times; the path P₃: −√2, 0, √2.
@@ -28,5 +28,12 @@ const { Q, R } = qr(M, m);
 for (let a = 0; a < m; a += 5) for (let b = 0; b < m; b += 5) { let dot = 0; for (let r = 0; r < m; r++) dot += Q[r * m + a] * Q[r * m + b]; near(dot, a === b ? 1 : 0, 1e-9); }
 for (let i = 0; i < m; i++) { assert.ok(R[i * m + i] > 0); for (let j = 0; j < i; j++) assert.equal(R[i * m + j], 0); }
 for (let i = 0; i < m; i += 3) for (let j = 0; j < m; j += 3) { let v = 0; for (let k = 0; k < m; k++) v += Q[i * m + k] * R[k * m + j]; near(v, M[i * m + j], 1e-9); }
+// Cholesky: L Lᵀ = A for A = Mᵀ M + I, and the solve returns x with A x = b.
+const P = new Float64Array(m * m);
+for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) { let v = i === j ? 1 : 0; for (let k = 0; k < m; k++) v += M[k * m + i] * M[k * m + j]; P[i * m + j] = v; }
+const L = cholesky(P, m);
+for (let i = 0; i < m; i += 3) for (let j = 0; j <= i; j += 2) { let v = 0; for (let k = 0; k < m; k++) v += L[i * m + k] * L[j * m + k]; near(v, P[i * m + j], 1e-9); }
+const b = Float64Array.from({ length: m }, () => rnd()), x = cholSolve(L, m, b), Px = matVec(P, m, x);
+for (let i = 0; i < m; i++) near(Px[i], b[i], 1e-9);
 
 console.log('linalg ok');

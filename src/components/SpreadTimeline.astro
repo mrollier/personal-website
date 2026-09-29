@@ -1,0 +1,97 @@
+---
+// Fig. 1 of the mobility paper: Belgium's daily new COVID-19 hospital admissions in 2020 (public Sciensano data,
+// summed over the provinces, 7-day centred mean), the two waves as the paper cuts them, lockdowns, school holidays
+// and the events that mattered. Drawn at build time; a small script adds the crosshair.
+import data from '../data/mobility.json';
+const W = 800, H = 256, L = 44, R = 12, T = 50, B = 26;
+const days = data.hosp.values.length, day0 = Date.UTC(2020, 2, 1);
+const nat = data.hosp.values.map((r) => r.reduce((a, b) => a + b, 0));
+const avg = nat.map((_, t) => { const w = nat.slice(Math.max(0, t - 3), t + 4); return w.reduce((a, b) => a + b, 0) / w.length; });
+const top = 800, X = (d: number) => L + (d / (days - 1)) * (W - L - R), Y = (v: number) => H - B - (v / top) * (H - T - B);
+const D = (m: number, d: number) => (Date.UTC(2020, m - 1, d) - day0) / 864e5;
+const MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+const fmt = (d: number) => { const t = new Date(day0 + d * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
+const line = 'M' + avg.map((v, t) => `${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join('L');
+const holidays = [[D(4, 6), D(4, 19)], [D(7, 1), D(8, 31)], [D(11, 2), D(11, 15)], [D(12, 21), D(12, 31)]];
+const lockdowns: [number, number, string][] = [[D(3, 18), D(5, 4), 'lockdown'], [D(11, 2), D(12, 31), 'second lockdown']];
+const waves = [{ name: 'wave 1', s: 0, m: D(3, 28), e: D(7, 1) }, { name: 'wave 2', s: D(9, 1), m: D(10, 30), e: D(12, 31) }];
+const events: [number, string, boolean][] = [
+  [D(3, 13), 'first measures', false], [D(3, 18), 'lockdown', false], [D(3, 20), 'borders closed', false],
+  [D(5, 4), 'lockdown exit begins', false], [D(5, 11), 'shops reopen', true], [D(6, 8), 'bars and restaurants reopen', false],
+  [D(7, 1), 'summer holidays', false], [D(9, 1), 'schools reopen', true], [D(10, 19), 'measures tightened', true], [D(11, 2), 'second lockdown', false],
+];
+const months = Array.from({ length: 10 }, (_, i) => D(i + 3, 1));
+const ticks = [0, 200, 400, 600, 800];
+---
+<figure class="fig" id="timeline" data-spread-timeline data-top={top} data-values={JSON.stringify(avg.map((v) => Math.round(v)))} data-events={JSON.stringify(events.map(([d, name]) => [d, name]))}>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Daily new COVID-19 hospital admissions in Belgium in 2020: a sharp first peak of about 600 a day at the end of March and a second, similar peak at the start of November">
+    {holidays.map(([a, b]) => <rect class="holiday" x={X(a)} y={T} width={X(b) - X(a)} height={H - T - B}><title>school holidays</title></rect>)}
+    {ticks.map((v) => <g><line class="grid" x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} /><text class="tick" x={L - 6} y={Y(v) + 4} text-anchor="end">{v}</text></g>)}
+    {months.map((d, i) => <text class="tick" x={X(d)} y={H - 8} text-anchor="middle">{MONTHS[i + 2]}</text>)}
+    {lockdowns.map(([a, b, name]) => <g class="lock"><line x1={X(a)} x2={X(b)} y1={T - 6} y2={T - 6} /><text x={X(a) + 2} y={T - 10}>{name}</text></g>)}
+    {waves.map((w) => (
+      <g class="wave">
+        <path d={`M${X(w.s)} ${T - 22}L${X(w.m)} ${T - 30}L${X(w.e)} ${T - 22}`} />
+        <circle cx={X(w.m)} cy={T - 30} r="2.5" />
+        <text x={X(w.s) + 2} y={T - 37}>{w.name}: rising to {fmt(w.m)}, falling to {fmt(w.e)}</text>
+      </g>
+    ))}
+    {events.map(([d, name, shown]) => (
+      <g class="event">
+        <line x1={X(d)} x2={X(d)} y1={T} y2={H - B} />
+        {shown && <text x={X(d) + 3} y={T + 12}>{name}</text>}
+      </g>
+    ))}
+    <path class="line" d={line} />
+    <g class="cross" visibility="hidden"><line y1={T} y2={H - B} /><circle r="4" /><text y={T + 12} /></g>
+    <rect class="hit" x={L} y={T} width={W - L - R} height={H - T - B} />
+  </svg>
+  <figcaption>
+    New hospital admissions per day in Belgium, 2020, 7-day centred mean (Sciensano, public, summed over the provinces).
+    Shaded: school holidays. Dotted: events, named when the pointer is on them. Above: the waves as the paper cuts them, and the two lockdowns.
+  </figcaption>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; }
+  svg { display: block; width: 100%; height: auto; background: var(--panel); border: 1px solid var(--line); font-family: var(--mono); font-size: 11px; }
+  .holiday { fill: var(--sun); opacity: 0.16; }
+  .grid { stroke: var(--line); }
+  .tick, .lock text, .event text, .wave text { fill: var(--muted); }
+  .wave text { fill: var(--ink); }
+  .lock line { stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 3; }
+  .wave path { fill: none; stroke: var(--ink); stroke-width: 1.2; }
+  .wave circle { fill: var(--ink); }
+  .event line { stroke: var(--muted); stroke-dasharray: 2 3; opacity: 0.7; }
+  .line { fill: none; stroke: var(--danger); stroke-width: 2; stroke-linejoin: round; }
+  .cross line { stroke: var(--ink); }
+  .cross circle { fill: var(--danger); stroke: var(--panel); stroke-width: 2; }
+  .cross text { fill: var(--ink); }
+  .hit { fill: transparent; pointer-events: all; }
+  figcaption { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+</style>
+
+<script>
+  // Crosshair: the date and the admissions under the pointer.
+  document.querySelectorAll<HTMLElement>('[data-spread-timeline]').forEach((el) => {
+    const svg = el.querySelector('svg')!, hit = svg.querySelector<SVGRectElement>('.hit')!, g = svg.querySelector<SVGGElement>('.cross')!;
+    const [line, dot, text] = [g.querySelector('line')!, g.querySelector('circle')!, g.querySelector('text')!];
+    const vals: number[] = JSON.parse(el.dataset.values!), days = vals.length, top = +el.dataset.top!;
+    const events: [number, string][] = JSON.parse(el.dataset.events!);
+    const x0 = +hit.getAttribute('x')!, w = +hit.getAttribute('width')!, y0 = +hit.getAttribute('y')!, h = +hit.getAttribute('height')!;
+    const day0 = Date.UTC(2020, 2, 1);
+    hit.addEventListener('pointermove', (e) => {
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM()!.inverse());
+      const d = Math.max(0, Math.min(days - 1, Math.round(((p.x - x0) / w) * (days - 1)))), x = x0 + (d / (days - 1)) * w, y = y0 + h - (vals[d] / top) * h;
+      line.setAttribute('x1', String(x)); line.setAttribute('x2', String(x));
+      dot.setAttribute('cx', String(x)); dot.setAttribute('cy', String(y));
+      const right = x > x0 + w * 0.75;
+      text.setAttribute('x', String(right ? x - 6 : x + 6)); text.setAttribute('text-anchor', right ? 'end' : 'start');
+      const ev = events.find(([t]) => Math.abs(t - d) <= 1);
+      const date = new Date(day0 + d * 864e5), month = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[date.getUTCMonth()];
+      text.textContent = `${date.getUTCDate()} ${month}: ${vals[d]} a day${ev ? ` · ${ev[1]}` : ''}`;
+      g.setAttribute('visibility', 'visible');
+    });
+    hit.addEventListener('pointerleave', () => g.setAttribute('visibility', 'hidden'));
+  });
+</script>

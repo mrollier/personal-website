@@ -1,0 +1,209 @@
+---
+// Figs. 3 and A.2 of the mobility paper: daily hospital admissions, their 7-day mean, and 100 spline fits drawn from
+// the fitted model's uncertainty, for two regions at once. A province is Sciensano's public count; an arrondissement
+// (whose counts are confidential) is its province thinned at random to its population, which gives the same noise.
+// Self-contained with src/scripts/{mobility,linalg,echoes,figure}.ts and src/data/mobility.json.
+import data from '../data/mobility.json';
+type Props = { a?: string; b?: string; wave?: number };
+const { a = 'p1', b = '32000', wave = 0 } = Astro.props;
+const k = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : `${Math.round(n / 1e3)}k`);
+const groups = data.prov.map((name, p) => {
+  const arr = data.arr.filter((x) => x.prov === p);
+  return { name, p, pop: arr.reduce((s, x) => s + x.pop, 0), arr: arr.length > 1 ? arr : [] };
+});
+const panels = [{ key: 'a', value: a }, { key: 'b', value: b }];
+---
+<figure class="fig" id="smoothing" data-spread-smooth data-a={a} data-b={b} data-wave={wave} tabindex="-1">
+  <div class="controls" role="group" aria-label="Wave and layers">
+    <button name="wave" type="button" value="0">wave 1</button>
+    <button name="wave" type="button" value="1">wave 2</button>
+    <span class="head">show</span>
+    <button name="layer" type="button" value="dots" aria-pressed="true">daily counts</button>
+    <button name="layer" type="button" value="mean" aria-pressed="true">7-day mean</button>
+    <button name="layer" type="button" value="fits" aria-pressed="true">100 fits</button>
+    <button name="resample" type="button">new sample</button>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  {panels.map(({ key, value }) => (
+    <div class="panel" data-panel={key}>
+      <div class="head-row">
+        <select name={key} aria-label={`Region ${key === 'a' ? 'on top' : 'below'}`}>
+          {groups.map((g) => (
+            <optgroup label={g.name}>
+              <option value={`p${g.p}`} selected={value === `p${g.p}`}>{g.name}, all of it · {k(g.pop)}</option>
+              {g.arr.map((x) => <option value={x.nis} selected={value === String(x.nis)}>{x.name} · {k(x.pop)}, sampled</option>)}
+            </optgroup>
+          ))}
+        </select>
+        <output data-read={key}></output>
+      </div>
+      <svg viewBox="0 0 800 210" role="img" data-plot={key}></svg>
+    </div>
+  ))}
+  <div class="tip" hidden></div>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; position: relative; }
+  .fig:focus { outline: none; }
+  .panel { display: flex; flex-direction: column; gap: 0.3rem; }
+  .head-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem; font-family: var(--mono); font-size: 0.85rem; color: var(--muted); }
+  .head-row select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); max-width: 100%; }
+  svg { display: block; width: 100%; height: auto; background: var(--panel); border: 1px solid var(--line); font-family: var(--mono); touch-action: manipulation; }
+  svg :global(text) { fill: var(--muted); font-size: 11px; }
+  svg :global(.grid) { stroke: var(--line); }
+  svg :global(.base) { stroke: var(--muted); }
+  svg :global(.dot) { fill: var(--muted); opacity: 0.75; }
+  svg :global(.mean) { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  svg :global(.draw) { fill: none; stroke: var(--accent); stroke-width: 1; opacity: 0.12; }
+  svg :global(.fit) { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+  svg :global(.peak) { stroke: var(--ink); stroke-width: 2; }
+  svg :global(.cross) { stroke: var(--muted); stroke-dasharray: 2 2; }
+  svg :global(.hit) { fill: transparent; }
+  .controls {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem;
+  }
+  .head { color: var(--ink); margin-left: 0.4rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls button:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+  output { color: var(--ink); }
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none; max-width: 18rem;
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.4; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); padding: 0.35rem 0.5rem; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  }
+  .tip[hidden] { display: none; }
+  .fig:is(:fullscreen, .full) {
+    position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: auto;
+    width: auto; height: 100dvh; max-height: 100dvh; background: var(--bg); justify-content: center;
+  }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import data from '../data/mobility.json';
+  import { fitCounts, draws, thin } from '../scripts/mobility';
+  import { fullscreen, urlState, keys } from '../scripts/figure';
+
+  const WAVES = [{ s: 0, n: 123 }, { s: 184, n: 122 }]; // 1 Mar – 1 Jul and 1 Sep – 31 Dec 2020, as in the paper
+  const MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+  const day0 = Date.UTC(2020, 2, 1);
+  const date = (d: number) => { const t = new Date(day0 + d * 864e5); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
+  const provPop = data.prov.map((_, p) => data.arr.filter((x) => x.prov === p).reduce((s, x) => s + x.pop, 0));
+  const R = 100;
+
+  type Region = { name: string; pop: number; p: number; thinned: boolean };
+  function region(v: string): Region | null {
+    if (/^p\d+$/.test(v) && +v.slice(1) < data.prov.length) { const p = +v.slice(1); return { name: data.prov[p], pop: provPop[p], p, thinned: false }; }
+    const a = data.arr.find((x) => String(x.nis) === v);
+    if (!a) return null;
+    return provPop[a.prov] === a.pop ? { name: a.name, pop: a.pop, p: a.prov, thinned: false } : { name: a.name, pop: a.pop, p: a.prov, thinned: true };
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-spread-smooth]').forEach(mount);
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends Element = HTMLElement>(s: string) => el.querySelector<T>(s)!;
+    const url = urlState('smooth', { a: el.dataset.a!, b: el.dataset.b!, wave: el.dataset.wave!, seed: '2' });
+    const keysAB = ['a', 'b'] as const;
+    const sel = { a: $<HTMLSelectElement>('select[name="a"]'), b: $<HTMLSelectElement>('select[name="b"]') };
+    const pick = (k: 'a' | 'b') => (region(url.get(k)) ? url.get(k) : el.dataset[k]!);
+    const state = { a: pick('a'), b: pick('b'), wave: url.get('wave') === '1' ? 1 : 0, seed: Math.max(1, Math.round(+url.get('seed')) || 2) };
+    const layers = { dots: true, mean: true, fits: true };
+    const tip = $<HTMLDivElement>('.tip'), resample = $<HTMLButtonElement>('button[name="resample"]');
+
+    type Result = { r: Region; y: Float64Array; per: number; mean: Float64Array; fit: Float64Array; curves: Float64Array[]; peak: [number, number, number]; lo: Float64Array; hi: Float64Array };
+    const res: Partial<Record<'a' | 'b', Result>> = {};
+
+    function compute(k: 'a' | 'b') {
+      const r = region(state[k])!, W = WAVES[state.wave];
+      const raw = data.hosp.values.slice(W.s, W.s + W.n).map((row) => row[r.p]);
+      const y = r.thinned ? thin(raw, r.pop / provPop[r.p], state.seed * 7919 + r.p * 31 + (k === 'b' ? 1 : 0)) : Float64Array.from(raw);
+      const per = 1e5 / r.pop, f = fitCounts(y), curves = draws(f, R, 7 + (k === 'b' ? 1 : 0));
+      const mean = y.map((_, t) => { let s = 0, c = 0; for (let u = Math.max(0, t - 3); u <= Math.min(y.length - 1, t + 3); u++) { s += y[u]; c++; } return s / c; });
+      // The peak day of each fit, as quartiles: a fit that flares up at an end of the window, where a stray patient or two
+      // carry it, would drag a mean and a standard deviation far off.
+      const peaks = curves.map((c) => { let m = 0; for (let t = 1; t < c.length; t++) if (c[t] > c[m]) m = t; return m; }).sort((p, q) => p - q);
+      const lo = new Float64Array(y.length), hi = new Float64Array(y.length);
+      for (let t = 0; t < y.length; t++) { const v = curves.map((c) => c[t]).sort((p, q) => p - q); lo[t] = v[4]; hi[t] = v[94]; }
+      res[k] = { r, y, per, mean, fit: f.mu, curves, peak: [peaks[24], peaks[49], peaks[74]], lo, hi };
+    }
+
+    const B = { x0: 44, x1: 790, y0: 12, y1: 186 };
+    let top = 1;
+    function paint(k: 'a' | 'b') {
+      const d = res[k]!, n = d.y.length, W = WAVES[state.wave];
+      const X = (t: number) => B.x0 + (t / (n - 1)) * (B.x1 - B.x0), Y = (v: number) => B.y1 - (v / top) * (B.y1 - B.y0);
+      const line = (c: ArrayLike<number>) => 'M' + Array.from(c, (v, t) => `${X(t).toFixed(1)} ${Y(v * d.per).toFixed(1)}`).join('L');
+      let s = '';
+      const step = niceStep(top);
+      for (let v = 0; v <= top + 1e-9; v += step) s += `<line class="${v ? 'grid' : 'base'}" x1="${B.x0}" x2="${B.x1}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${B.x0 - 5}" y="${Y(v) + 4}" text-anchor="end">${+v.toFixed(2)}</text>`;
+      for (let t = 0; t < n; t++) {
+        const dt = new Date(day0 + (W.s + t) * 864e5);
+        if (dt.getUTCDate() === 1) s += `<text x="${X(t)}" y="${B.y1 + 15}" text-anchor="middle">${MONTHS[dt.getUTCMonth()]}</text>`;
+      }
+      if (layers.fits) s += `<clipPath id="clip-${k}"><rect x="${B.x0}" y="${B.y0 - 2}" width="${B.x1 - B.x0}" height="${B.y1 - B.y0 + 2}"/></clipPath><g clip-path="url(#clip-${k})">${d.curves.map((c) => `<path class="draw" d="${line(c)}"/>`).join('')}</g>`;
+      if (layers.dots) for (let t = 0; t < n; t++) s += `<circle class="dot" cx="${X(t).toFixed(1)}" cy="${Y(Math.min(top, d.y[t] * d.per)).toFixed(1)}" r="2.2"/>`;
+      if (layers.mean) s += `<path class="mean" d="${line(d.mean)}"/>`;
+      s += `<path class="fit" d="${line(d.fit)}"/>`;
+      const [q1, pm, q3] = d.peak;
+      s += `<line class="peak" x1="${X(q1)}" x2="${X(q3)}" y1="${B.y0 + 4}" y2="${B.y0 + 4}"/><line class="peak" x1="${X(pm)}" x2="${X(pm)}" y1="${B.y0}" y2="${B.y0 + 8}"/>`;
+      s += `<text x="${X(pm) + 8}" y="${B.y0 + 16}">peak</text>`;
+      s += `<text x="${B.x0 + 4}" y="${B.y0 + 10}">per 100 000 a day</text>`;
+      s += `<line class="cross" x1="0" x2="0" y1="${B.y0}" y2="${B.y1}" visibility="hidden"/><rect class="hit" x="${B.x0}" y="${B.y0}" width="${B.x1 - B.x0}" height="${B.y1 - B.y0}"/>`;
+      const svg = $<SVGSVGElement>(`[data-plot="${k}"]`);
+      svg.innerHTML = s;
+      svg.setAttribute('aria-label', `${d.r.name}: daily admissions per 100 000 with a spline fit and 100 fits drawn from its uncertainty; the peak falls on ${date(W.s + pm)}, in half of the fits between ${date(W.s + q1)} and ${date(W.s + q3)}`);
+      const total = d.y.reduce((p, q) => p + q, 0);
+      $(`[data-read="${k}"]`).textContent = `${new Intl.NumberFormat('en-GB').format(d.r.pop)} people · ${total} admissions${d.r.thinned ? ` (sampled from ${data.prov[d.r.p]})` : ''} · peak ${date(W.s + pm)}${q1 === q3 ? ' in at least half of the fits' : `, in half of the fits between ${date(W.s + q1)} and ${date(W.s + q3)}`}`;
+    }
+    const niceStep = (span: number) => { const raw = span / 4, pow = 10 ** Math.floor(Math.log10(raw)), m = raw / pow; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * pow; };
+
+    function paintAll() {
+      // One y-scale for both panels, so a small arrondissement's noise reads against a large one's.
+      top = 0;
+      for (const k of keysAB) { const d = res[k]!; for (let t = 0; t < d.y.length; t++) top = Math.max(top, d.fit[t] * d.per, d.mean[t] * d.per, Math.min(d.y[t] * d.per, 2 * d.fit[t] * d.per + 1)); }
+      top = Math.ceil(top / niceStep(top)) * niceStep(top);
+      for (const k of keysAB) paint(k);
+      for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="wave"]')) b.setAttribute('aria-pressed', String(+b.value === state.wave));
+      for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="layer"]')) b.setAttribute('aria-pressed', String(layers[b.value as keyof typeof layers]));
+      resample.disabled = !res.a!.r.thinned && !res.b!.r.thinned;
+      for (const k of keysAB) { sel[k].value = state[k]; url.set(k, state[k]); }
+      url.set('wave', String(state.wave)); url.set('seed', String(state.seed));
+    }
+    function update(which: ('a' | 'b')[] = ['a', 'b']) { for (const k of which) compute(k); paintAll(); }
+
+    for (const k of keysAB) sel[k].addEventListener('change', () => { state[k] = sel[k].value; update([k]); });
+    for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="wave"]')) b.addEventListener('click', () => { state.wave = +b.value; update(); });
+    for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="layer"]')) b.addEventListener('click', () => { const l = b.value as keyof typeof layers; layers[l] = !layers[l]; paintAll(); });
+    resample.addEventListener('click', () => { state.seed++; update(); });
+
+    // Crosshair: the day, what was counted and the band the 100 fits span.
+    for (const k of keysAB) {
+      const svg = $<SVGSVGElement>(`[data-plot="${k}"]`);
+      svg.addEventListener('pointermove', (e) => {
+        if (!(e.target as Element).classList.contains('hit')) return;
+        const d = res[k]!, n = d.y.length, p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM()!.inverse());
+        const t = Math.max(0, Math.min(n - 1, Math.round(((p.x - B.x0) / (B.x1 - B.x0)) * (n - 1)))), x = B.x0 + (t / (n - 1)) * (B.x1 - B.x0);
+        const cross = svg.querySelector('.cross')!; cross.setAttribute('x1', String(x)); cross.setAttribute('x2', String(x)); cross.setAttribute('visibility', 'visible');
+        const f = (v: number) => (v * d.per).toFixed(1);
+        tip.innerHTML = `<b>${date(WAVES[state.wave].s + t)}</b>, ${d.r.name}<br>${d.y[t]} admitted (${f(d.y[t])} per 100k)<br>fit ${f(d.fit[t])}, 90% of fits ${f(d.lo[t])}–${f(d.hi[t])}`;
+        tip.hidden = false;
+        const r = el.getBoundingClientRect(), tw = tip.offsetWidth;
+        let tx = e.clientX - r.left + 14; if (tx + tw > r.width) tx = e.clientX - r.left - tw - 14;
+        tip.style.left = `${Math.max(0, tx)}px`; tip.style.top = `${e.clientY - r.top + 14}px`;
+      });
+      svg.addEventListener('pointerleave', () => { svg.querySelector('.cross')?.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+    }
+
+    const fs = fullscreen(el, $<HTMLButtonElement>('button[name="full"]'));
+    keys(el, { n: () => resample.click(), '1': () => { state.wave = 0; update(); }, '2': () => { state.wave = 1; update(); }, f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); } });
+    update();
+  }
+</script>

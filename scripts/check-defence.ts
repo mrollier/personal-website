@@ -2,9 +2,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
-import { pack, noise, bank } from '../src/scripts/defence/cover.ts';
+import { pack, noise, bank, spark } from '../src/scripts/defence/cover.ts';
 import { decodeMosaic } from '../src/scripts/defence/mosaic.ts';
-import { stepLife, putRle, GOSPER_GUN, EATER, EATER_AT } from '../src/scripts/life.ts';
+import { stepLife, putRle, GOSPER_GUN, EATER, EATER_AT, ActiveLife } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS } from '../src/scripts/defence/room.ts';
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
@@ -21,13 +21,22 @@ assert.equal(code.version, 2); assert.equal(code.size, 25);
 for (const [x, y] of [[0, 0], [24, 0], [0, 24], [8, 17]]) assert.ok(code.dark(x, y));
 for (const [x, y] of [[7, 7], [17, 7], [7, 17]]) assert.ok(!code.dark(x, y));
 
-// The title and closing mosaic (packed with the cover's code) is a still life on its padded torus, and every live cell
-// of the page sits on a tile's ground.
+// How many cells differ from the still life `g` 200 generations after cell i is taken away.
+function spread(g: Uint8Array, W: number, H: number, i: number): number {
+  const t = g.slice(), life = new ActiveLife(W, H);
+  t[i] = 0; life.touch(i % W, Math.floor(i / W));
+  for (let k = 0; k < 200; k++) life.step(t);
+  return t.reduce((d, v, j) => d + (v !== g[j] ? 1 : 0), 0);
+}
+
+// The title and closing mosaic (packed with the cover's code) is a still life on its padded torus, every live cell of
+// the page sits on a tile's ground, and the closing slide's flipped cell sets it moving for good.
 {
   const m = decodeMosaic(JSON.parse(readFileSync(new URL('../src/data/defence/mosaic.json', import.meta.url), 'utf8')));
   assert.equal(m.W * 9, m.H * 16);
   assert.equal(stepLife(m.live, m.PW, m.PH, new Uint8Array(m.PW * m.PH)), 0, 'the title mosaic is not a still life');
   for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) if (m.live[(y + m.M) * m.PW + x + m.M]) assert.ok(m.ground[y * m.W + x] > 0, 'a live cell on the field');
+  assert.ok(spread(m.live, m.PW, m.PH, spark(m.live, m.PW, m.PH, 0.8 * m.W + m.M, 0.5 * m.H + m.M)) >= 1000, 'the closing flip heals');
 }
 // The still-life art of slide C3: any packing of tiles of levels 5, 4 and 3 and ponds on the pond lattice is a still
 // life, whatever the heights and the seed, and no tile lands where it must keep clear (the note). Every tile of the bank,
@@ -39,6 +48,7 @@ for (let seed = 1; seed <= 40; seed++) {
   assert.ok(art.g.some((v) => v === 1) && new Set(art.ground).size >= 3, `packing ${seed} has too few levels`);
   assert.equal(stepLife(art.g, W, H, new Uint8Array(W * H)), 0, `packing ${seed} is not a still life`);
   for (let i = 0; i < W * H; i++) if (!clear(i % W, Math.floor(i / W))) assert.equal(art.ground[i], 0, `packing ${seed} covers the note`);
+  if (seed <= 10) assert.ok(spread(art.g, W, H, spark(art.g, W, H, 0.64 * W, 0.4 * H)) >= 1000, `the disturbance of packing ${seed} heals`);
 }
 for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
   const n = 6 * L, P = n + 4, g = new Uint8Array(P * P);

@@ -6,6 +6,7 @@
 // vertices, and tiles of any levels on vertex-disjoint diamonds form a still life: where two tiles meet, every cell sees
 // only frame ponds and cells that stay dead. So a packing only has to keep the diamonds apart.
 import { makeRng } from '../net.ts';
+import { ActiveLife } from '../life.ts';
 
 export type Tiles = Record<string, string[]>; // src/data/tiles.json: per level, base64 bit-packed 6L × 6L tiles by population
 export type Cells = { W: number; H: number; g: Uint8Array };
@@ -84,6 +85,24 @@ export function pack(tiles: Tiles, W: number, H: number, z: (x: number, y: numbe
     }
   }
   return { W, H, g, ground };
+}
+
+/** The live cell nearest (cx, cy) whose loss really sets a still life on a W × H torus moving. Not just the nearest:
+ * a cell with exactly three live neighbours is born again at once, and some losses heal within a few steps, so each
+ * candidate is tried on a copy first and must leave at least `spread` cells changed after `gens` generations. */
+export function spark(g: Uint8Array, W: number, H: number, cx: number, cy: number, gens = 60, spread = 60): number {
+  const near: [number, number][] = [];
+  for (let i = 0; i < W * H; i++) if (g[i]) near.push([(i % W - cx) ** 2 + (Math.floor(i / W) - cy) ** 2, i]);
+  near.sort((a, b) => a[0] - b[0]);
+  for (const [, i] of near.slice(0, 100)) {
+    const t = g.slice(), life = new ActiveLife(W, H);
+    t[i] = 0; life.touch(i % W, Math.floor(i / W));
+    for (let k = 0; k < gens && life.step(t) > 0; k++);
+    let d = 0;
+    for (let j = 0; j < W * H; j++) if (t[j] !== g[j]) d++;
+    if (d >= spread) return i;
+  }
+  return near.length ? near[0][1] : -1;
 }
 
 /** The live cells as squares of `cell` design pixels from (x0, y0), clipped to w × h. */

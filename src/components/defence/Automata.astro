@@ -6,12 +6,14 @@ import SimButton from './SimButton.astro';
 import tiles from '../../data/tiles.json';
 
 const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ n, bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
-// rule 168 dies out after about ten rows (rule 8 after two, too fast to see); only the rolling ones keep scrolling
+// rule 168 dies out after about ten rows (rule 8 after two, too fast to see). Rule 1's background blinks, on and off
+// every step: scrolled one row a step it would flash the whole panel seven times a second, so it fills once and stops,
+// like rule 168, and shows its blinking as stripes. Only the other two keep scrolling.
 const four = [
-  { rule: 168, words: 'dies out' },
-  { rule: 108, words: 'repeats' },
-  { rule: 30, words: 'looks random' },
-  { rule: 110, words: 'builds structures' },
+  { rule: 168, words: 'dies out', roll: false },
+  { rule: 1, words: 'repeats', roll: false },
+  { rule: 30, words: 'looks random', roll: true },
+  { rule: 110, words: 'builds structures', roll: true },
 ];
 // Conway's four cases in one Moore neighbourhood, one per build: the live neighbours (indices 0–8, the centre is 4),
 // the centre before and after
@@ -51,7 +53,7 @@ const likes = [
     {four.map((f) => (
       <figure>
         <div class="c1-box">
-          <canvas data-rule={f.rule} aria-label={`rule ${f.rule} from a random row`}></canvas>
+          <canvas data-rule={f.rule} data-roll={f.roll ? '1' : undefined} aria-label={`rule ${f.rule} from a random row`}></canvas>
           <SimButton class="c1-btn" />
         </div>
         <figcaption><b>rule {f.rule}</b> {f.words}</figcaption>
@@ -59,7 +61,7 @@ const likes = [
     ))}
   </div>
   <p slot="say">The parity rule is one of many. A cell looks at itself and its two neighbours, which makes eight possible situations; a rule says, for each of them, whether the cell is on or off next. Read those eight answers as a binary number and you get the rule’s name: 01011010 is 90, so the parity rule is rule 90. Eight yes-or-no answers make 256 rules in all, the elementary cellular automata. Click an answer in the table to flip it and see which rule you get.</p>
-  <p slot="say">Four of them, started one by one from the same random row: rule 168 dies out, rule 108 repeats itself, rule 30 looks random, and rule 110 builds structures that move and collide. Same recipe, very different outcomes. Each reset draws a new random row.</p>
+  <p slot="say">Four of them, started one by one from the same random row: rule 168 dies out, rule 1 repeats itself, blinking on and off, rule 30 looks random, and rule 110 builds structures that move and collide. Same recipe, very different outcomes. Each reset draws a new random row.</p>
 </Slide>
 
 <Slide label="The Game of Life" builds={8} class="c2">
@@ -88,7 +90,7 @@ const likes = [
   <p slot="say">From a random soup the grid churns for a while and then calms down into small blocks, blinkers and the odd traveller; a reset draws a new soup. These four rules are enough to build machines: this is Bill Gosper’s glider gun, which fires a glider every thirty steps, forever, into an eater that swallows each one.</p>
 </Slide>
 
-<Slide label="Still lifes" builds={2} class="c3">
+<Slide label="Still lifes" builds={3} class="c3">
   <h2>Still lifes</h2>
   <p class="lede">Patterns that the rule leaves exactly as they are.</p>
   <div class="still" data-b-off="1">
@@ -105,7 +107,7 @@ const likes = [
     <SimButton class="c3-btn" />
   </div>
   <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes. The three here are tiles of the mosaics of the cover, of three sizes.</p>
-  <p slot="say">Fit many of them together and you can make a picture in which every cell obeys the Game of Life and nothing ever changes. The cover of the thesis is made this way. Take away one cell and the picture starts to unravel. A reset packs a new landscape of tiles; on this page you can also click or drag on the picture to disturb it yourself.</p>
+  <p slot="say">Fit many of them together and you can make a picture in which every cell obeys the Game of Life and nothing ever changes. The cover of the thesis is made this way. The colours are only decoration: drain them away and every cell is simply alive or dead, and still nothing changes. Take away one cell and the picture starts to unravel. A reset packs a new landscape of tiles; on this page you can also click or drag on the picture to disturb it yourself.</p>
 </Slide>
 
 <Slide label="Life-like cellular automata" builds={3} class="c4">
@@ -181,13 +183,13 @@ const likes = [
 </style>
 
 <script>
-  import { slide, sim, fresh } from '../../scripts/defence/deck';
+  import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer, DESIGN } from '../../scripts/defence/stage';
   import { step as ecaStep, seedRow } from '../../scripts/eca';
   import { makeRng } from '../../scripts/net';
   import { stepLife, stepLifeLike, randomLife, putRle, GOSPER_GUN, EATER, EATER_AT, ActiveLife } from '../../scripts/life';
-  import { pack, noise, type Packed } from '../../scripts/defence/cover';
-  import { decodeMosaic, mosaicPainter, type Mosaic, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { pack, noise, spark, type Packed } from '../../scripts/defence/cover';
+  import { decodeMosaic, mosaicPainter, drain, type Mosaic, type MosaicJson } from '../../scripts/defence/mosaic';
   import tiles from '../../data/tiles.json';
   import mosaicData from '../../data/defence/mosaic.json';
   import { Raster } from '../../scripts/raster';
@@ -210,14 +212,14 @@ const likes = [
     const W = 100, H = 105, shared = seedRow(W, 'random', makeRng(256));
     const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
     const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c, k) => {
-      const p = { rule: +c.dataset.rule!, first: shared, rows: [shared], ras: new Raster(W, H), roll: k > 0 };
+      const p = { rule: +c.dataset.rule!, first: shared, rows: [shared], ras: new Raster(W, H), roll: !!c.dataset.roll };
       const paint = () => {
         const st = stage(c); if (!st) return;
         const on = parse(st.t.ink), off = parse(st.t.panel);
         for (let y = 0; y < H; y++) p.ras.setRow(y, p.rows[y] ?? new Uint8Array(W), on, off);
         p.ras.flush(); p.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
       };
-      // the first panel (it dies out) fills once and stops; the others scroll
+      // rule 168 and rule 1 fill once and stop; the others scroll
       const run = ticker(c, 14, () => {
         if (!p.roll && p.rows.length >= H) return true;
         p.rows.push(ecaStep(p.rows[p.rows.length - 1], p.rule));
@@ -279,16 +281,17 @@ const likes = [
     onSize(c, paint);
   }
 
-  // ── C3: three tiles, then a landscape of them packed as the cover is, clear of the note. The button takes away one
-  // cell, a click or a drag drops a few, and the Game of Life takes over until the grid is still again. A reset packs a
-  // new landscape, with another mix of levels. ──
+  // ── C3: three tiles, then a landscape of them packed as the cover is, clear of the note, in the cover's colours
+  // (build 1). Build 2 drains the colours, level by level: only alive and dead are left. The button (build 3) takes away
+  // one cell, a click or a drag drops a few, and the Game of Life takes over until the grid is still again. A reset
+  // packs a new landscape, with another mix of levels. ──
   const pal = decodeMosaic(mosaicData as MosaicJson);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c3')) {
     const c = s.querySelector<HTMLCanvasElement>('[data-cover-art]')!, W = 216, H = 126, cell = DESIGN / W, SEED = 20261002;
     const NOTE = { x: 96, y: 1080 - 80 - 130, w: 1000, h: 130 }; // the note's box in design pixels (see the style)
     const nx0 = NOTE.x / cell - 2, ny0 = NOTE.y / cell - 2, nx1 = (NOTE.x + NOTE.w) / cell + 2, ny1 = (NOTE.y + NOTE.h) / cell + 2;
     const gap = (x: number, y: number) => Math.hypot(Math.max(nx0 - x, 0, x - nx1), Math.max(ny0 - y, 0, y - ny1));
-    let base: Packed, live: Uint8Array, life: ActiveLife, down = false;
+    let base: Packed, live: Uint8Array, life: ActiveLife, down = false, spot = -1, stop = () => {};
     const bg = getComputedStyle(c).getPropertyValue('--bg').trim();
     const m: Mosaic = { W, H, M: 0, PW: W, PH: H, ground: new Uint8Array(W * H), live: new Uint8Array(W * H), field: bg, grounds: pal.grounds, inks: pal.inks };
     const draw = mosaicPainter(m, '#0c2448', bg);
@@ -298,6 +301,7 @@ const likes = [
       const z = (x: number, y: number) => 0.6 * big(x, y) + 0.3 * small(x, y) + 0.2 * (x / W) - 0.8 * Math.exp(-gap(x, y) / 16);
       base = pack(tiles, W, H, z, { 5: 0.66 + lean, 4: 0.56 + lean, 3: 0.46 + lean, 1: 0.34 }, seed, (x, y) => gap(x, y) > 0);
       m.ground = base.ground;
+      spot = spark(base.g, W, H, 0.64 * W, 0.4 * H); // the cell the button takes away, in the hills
     };
     const reset = () => { live = base.g.slice(); life = new ActiveLife(W, H); };
     const paint = () => {
@@ -309,14 +313,8 @@ const likes = [
       st.ctx.globalAlpha = 1;
     };
     const run = ticker(s, 12, () => life.step(live) === 0, paint);
-    // the button takes away the live cell nearest a point in the hills
-    const kick = () => {
-      const cx = 0.64 * W, cy = 0.4 * H;
-      let best = -1, bd = Infinity;
-      for (let i = 0; i < W * H; i++) if (live[i]) { const d = (i % W - cx) ** 2 + (Math.floor(i / W) - cy) ** 2; if (d < bd) { bd = d; best = i; } }
-      if (best >= 0) { live[best] = 0; life.touch(best % W, Math.floor(best / W)); }
-    };
-    const button = sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 2, {
+    const kick = () => { if (spot >= 0) { live[spot] = 0; life.touch(spot % W, Math.floor(spot / W)); } };
+    const button = sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 3, {
       reset() { run.play(false); reset(); paint(); },
       play() { kick(); paint(); run.play(true); },
       reroll() { build((Math.random() * 4294967296) >>> 0); },
@@ -334,7 +332,15 @@ const likes = [
     c.addEventListener('pointermove', (e) => { if (down) poke(e); });
     c.addEventListener('pointerup', () => { down = false; });
     c.addEventListener('pointercancel', () => { down = false; });
-    slide(s, { enter() { build(SEED); reset(); }, leave() { run.play(false); } });
+    slide(s, {
+      set(b: number, how: How) {
+        stop();
+        if (b === 2 && how === 'next') { draw.plain.fill(0); stop = drain(draw, [1, 3, 4, 5], paint); }
+        else { draw.plain.fill(b >= 2 ? 1 : 0); paint(); }
+      },
+      enter() { build(SEED); reset(); },
+      leave() { stop(); run.play(false); },
+    });
     build(SEED); reset();
     onSize(c, paint);
   }

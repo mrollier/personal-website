@@ -1,8 +1,8 @@
 ---
 // I1–I3: our answers to the research question, one chapter at a time, each with a small animation to remind the room
 // what happened and the ribbon lighting its chapter; three directions beyond the thesis, as pictures with a few words;
-// and the close: the title's slogan over the cover's landscape, brought together, then one flipped cell that sets the
-// still life moving, and a QR code to the site (drawn at build time, no library at run time).
+// and the close: the title's slogan over the cover's landscape, brought together, then its colours drained away and
+// one flipped cell that sets the still life moving, and a QR code to the site (drawn at build time, no library at run time).
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
@@ -84,7 +84,7 @@ const beyond = [
     </div>
   </div>
   <p slot="say">The title once more, in two halves: the rich landscape is what we see, the behaviour; iterated simplicity is what we write down, the rule. This thesis brought those two worlds a little closer together.</p>
-  <p slot="say">Thank you. In the landscape one cell changes, and the still life starts to unravel. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
+  <p slot="say">Thank you. The colours drain out of the landscape, as on the still-life slide; then one cell changes, and the still life starts to unravel. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
 </Slide>
 
 <style>
@@ -139,7 +139,8 @@ const beyond = [
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { pattern } from '../../scripts/defence/plot';
-  import { decodeMosaic, mosaicPainter, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { spark } from '../../scripts/defence/cover';
   import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, density } from '../../scripts/llna';
@@ -330,26 +331,28 @@ const beyond = [
     });
   }
 
-  // ── I3: the slogan's two halves come together over the landscape, then one flipped cell, and thanks ──
+  // ── I3: the slogan's two halves come together over the landscape; then thanks, the colours drain away as on slide
+  // C3, and once they are gone one flipped cell sets the still life moving ──
   const m = decodeMosaic(mosaicData as MosaicJson);
-  // the flipped cell: the live cell nearest to a point in the big tiles on the right of the page
-  let flip = -1, best = Infinity;
-  for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) { const i = (y + m.M) * m.PW + x + m.M; if (m.live[i]) { const d = (x - 0.8 * m.W) ** 2 + (y - 0.5 * m.H) ** 2; if (d < best) { best = d; flip = i; } } }
+  // the flipped cell: a live cell near a point in the big tiles on the right of the page, one whose loss spreads
+  const flip = spark(m.live, m.PW, m.PH, 0.8 * m.W + m.M, 0.5 * m.H + m.M);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448', getComputedStyle(c).getPropertyValue('--bg').trim());
-    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0;
+    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0, stop = () => {};
     const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; };
     const paint = () => { const st = stage(c); if (st) draw(st.ctx, live, 0, 0, st.w, st.h); };
     const run = ticker(s, 10, () => { gens++; return life.step(live) === 0; }, paint);
+    const go = () => { live[flip] ^= 1; life.touch(flip % m.PW, Math.floor(flip / m.PW)); run.play(true); };
     slide(s, {
       set(b: number, how: How) {
         s.classList.toggle('together', b >= 1); s.classList.toggle('thanked', b >= 2);
-        if (b < 2) { run.play(false); reset(); }
-        else if (how === 'next' || gens === 0) { reset(); live[flip] ^= 1; life.touch(flip % m.PW, Math.floor(flip / m.PW)); run.play(true); }
+        if (b < 2) { stop(); run.play(false); reset(); draw.plain.fill(0); }
+        else if (how === 'next') { stop(); reset(); draw.plain.fill(0); stop = drain(draw, [1, 2, 3, 4, 5, 6, 7], paint, go); }
+        else if (gens === 0) { stop(); reset(); draw.plain.fill(1); go(); }
         paint();
       },
-      enter() { reset(); },
-      leave() { run.play(false); },
+      enter() { stop(); reset(); draw.plain.fill(0); },
+      leave() { stop(); run.play(false); },
     });
     onSize(c, paint);
   }

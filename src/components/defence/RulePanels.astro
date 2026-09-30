@@ -1,7 +1,9 @@
 ---
 // Rule 90 as the room plays it: how many of your two neighbours have a hand up (0, 1 or 2; which one does not
 // matter), and what your hand does next. The picture says it all, so no words under it. Large on the rule slide, small on the rounds slide, so nobody has to
-// remember the rule during a countdown. `width` is one panel's width in design pixels.
+// remember the rule during a countdown. `width` is one panel's width in design pixels. A person's body is centred at
+// x = 42 of its 100-wide symbol (the raised hand sticks out to the right), so each sits 8 right of its slot's centre:
+// the pair sits evenly in its frame and your head right under the arrow.
 type Props = { width?: number };
 const { width = 360 } = Astro.props;
 const panels = [
@@ -18,10 +20,10 @@ const cls = (up: boolean) => (up ? 'up' : 'down');
       <p class="n"><b>{p.up}</b> up</p>
       <svg viewBox="0 0 300 390" aria-hidden="true">
         <rect class="pair" x="6" y="6" width="288" height="152" rx="24" />
-        <use href={who(p.up >= 1)} class={cls(p.up >= 1)} x="36" y="18" width="100" height="130" />
-        <use href={who(p.up >= 2)} class={cls(p.up >= 2)} x="164" y="18" width="100" height="130" />
+        <use href={who(p.up >= 1)} class={cls(p.up >= 1)} x="44" y="18" width="100" height="130" />
+        <use href={who(p.up >= 2)} class={cls(p.up >= 2)} x="172" y="18" width="100" height="130" />
         <path d="M150 178 V224 M132 206 L150 226 L168 206" class="arrow" />
-        <use href={who(!!p.out)} class={`${cls(!!p.out)} you`} x="100" y="244" width="100" height="130" />
+        <use href={who(!!p.out)} class={`${cls(!!p.out)} you`} x="108" y="244" width="100" height="130" />
       </svg>
     </figure>
   ))}

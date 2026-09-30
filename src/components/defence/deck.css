@@ -1,8 +1,9 @@
 /* The defence deck. Always the light theme (the room is lit), whatever the page uses: the thesis cover's denim on
-   apricot (game-of-life-mosaics/studies/cover/assets/palettes.json). Every size inside a slide is in design pixels
+   apricot (game-of-life-mosaics/studies/cover/assets/palettes.json), toned down
+   from the cover field #ffd9a8 so it reads as a warm paper, not a colour. Every size inside a slide is in design pixels
    of a 1920-wide slide: calc(N * var(--u)). */
 .deck {
-  --bg: #ffd9a8; --ink: #0c2448; --muted: #3a5378; --line: #88afd5; --panel: #fff0d6;
+  --bg: #fce8cf; --ink: #0c2448; --muted: #3a5378; --line: #88afd5; --panel: #fff8ee;
   --accent: #2f5e8e; --sun: #fbf8f1; --danger: #a8321c;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -17,7 +18,9 @@
   background: var(--bg); color: var(--ink); overflow: hidden;
   font-family: var(--sans); line-height: 1.3;
 }
+.slide .sprig { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .slide .frame {
+  z-index: 1;
   position: absolute; inset: 0; padding: calc(64 * var(--u)) calc(96 * var(--u)) calc(56 * var(--u));
   display: flex; flex-direction: column; gap: calc(28 * var(--u)); font-size: calc(38 * var(--u));
 }
@@ -138,7 +141,7 @@ html.deck-on { overflow: hidden; }
 .deck.presenting .hud {
   display: flex; gap: 0.8em; align-items: center; position: fixed; right: 0.7em; bottom: 0.35em; z-index: 3;
   font-family: var(--mono); font-size: clamp(1rem, 2.3vh, 1.7rem); color: var(--muted); opacity: 0.85;
-  background: rgba(255, 217, 168, 0.85); padding: 0 0.3em; border-radius: 0.25em;
+  background: rgba(252, 232, 207, 0.85); padding: 0 0.3em; border-radius: 0.25em;
 }
 .hud button { font: inherit; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 0 0.2rem; }
 .hud button:hover { color: var(--ink); }
@@ -147,7 +150,7 @@ html.deck-on { overflow: hidden; }
 .deck.presenting.idle, .deck.presenting.idle * { cursor: none !important; }
 .blank { position: fixed; inset: 0; background: #000; z-index: 5; cursor: none; }
 .gate {
-  position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; background: rgba(255, 217, 168, 0.92);
+  position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; background: rgba(252, 232, 207, 0.92);
   font-family: var(--mono); text-align: center;
 }
 .gate button {

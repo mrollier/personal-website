@@ -2,9 +2,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
-import { stillMosaic } from '../src/scripts/defence/cover.ts';
+import { pack, noise, bank } from '../src/scripts/defence/cover.ts';
 import { decodeMosaic } from '../src/scripts/defence/mosaic.ts';
-import { stepLife } from '../src/scripts/life.ts';
+import { stepLife, putRle, GOSPER_GUN, EATER, EATER_AT } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS } from '../src/scripts/defence/room.ts';
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
@@ -29,12 +29,29 @@ for (const [x, y] of [[7, 7], [17, 7], [7, 17]]) assert.ok(!code.dark(x, y));
   assert.equal(stepLife(m.live, m.PW, m.PH, new Uint8Array(m.PW * m.PH)), 0, 'the title mosaic is not a still life');
   for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) if (m.live[(y + m.M) * m.PW + x + m.M]) assert.ok(m.ground[y * m.W + x] > 0, 'a live cell on the field');
 }
-// The still-life art of slide C3 is a still life, with and without tiles across the torus edge.
+// The still-life art of slide C3: any packing of tiles of levels 5, 4 and 3 and ponds on the pond lattice is a still
+// life, whatever the heights and the seed, and no tile lands where it must keep clear (the note). Every tile of the bank,
+// as the corner tiles use them, is a still life on its own.
 const tiles = JSON.parse(readFileSync(new URL('../src/data/tiles.json', import.meta.url), 'utf8'));
-for (const wrap of [false, true]) {
-  const art = stillMosaic(tiles, 13, 8, 3, 20261002, 0.5, -0.25, wrap), out = new Uint8Array(art.W * art.H);
-  assert.ok(art.g.some((v) => v === 1));
-  assert.equal(stepLife(art.g, art.W, art.H, out), 0, `mosaic with wrap=${wrap} is not a still life`);
+for (let seed = 1; seed <= 40; seed++) {
+  const W = 216, H = 126, clear = (x: number, y: number) => x > 110 || y < 90;
+  const art = pack(tiles, W, H, noise(W, H, 20 + seed, makeRng(seed)), { 5: 0.66, 4: 0.56, 3: 0.46, 1: 0.34 }, seed, clear);
+  assert.ok(art.g.some((v) => v === 1) && new Set(art.ground).size >= 3, `packing ${seed} has too few levels`);
+  assert.equal(stepLife(art.g, W, H, new Uint8Array(W * H)), 0, `packing ${seed} is not a still life`);
+  for (let i = 0; i < W * H; i++) if (!clear(i % W, Math.floor(i / W))) assert.equal(art.ground[i], 0, `packing ${seed} covers the note`);
+}
+for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
+  const n = 6 * L, P = n + 4, g = new Uint8Array(P * P);
+  for (let k = 0; k < n * n; k++) g[(Math.floor(k / n) + 2) * P + (k % n) + 2] = t[k];
+  assert.equal(stepLife(g, P, P, new Uint8Array(P * P)), 0, `a level-${L} tile is not a still life on its own`);
+}
+// C2: Gosper's gun firing into the eater, on the slide's 130 × 66 torus, settles into a cycle of 30 generations.
+{
+  const W = 130, H = 66, seen: string[] = [];
+  let g = new Uint8Array(W * H), o = new Uint8Array(W * H);
+  putRle(GOSPER_GUN, g, W, 26, 1); putRle(EATER, g, W, 26 + EATER_AT[0], 1 + EATER_AT[1]);
+  for (let t = 1; t <= 660; t++) { stepLife(g, W, H, o); [g, o] = [o, g]; if (t > 600) seen.push(Buffer.from(g).toString('base64')); }
+  assert.equal(seen[0], seen[30], 'the gun and the eater do not cycle with period 30');
 }
 // F1: the room. At p = 0 everyone is linked to the people around them (3 in a corner, 5 at a wall, 8 inside); the seat
 // in row 5, column 4 keeps 8 contacts at every p (seed 12836); rewiring never doubles a link or loops a seat, keeps the number

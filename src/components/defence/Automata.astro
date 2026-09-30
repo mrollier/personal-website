@@ -1,104 +1,102 @@
 ---
-// C1–C3: rule 90's table and the 256 rules it belongs to, the Game of Life, and the still lifes the cover is made of.
+// C1–C4: the parity rule's table and the 256 elementary rules it belongs to, the Game of Life, the still lifes the
+// cover is made of, and the Life-like rules the Game of Life belongs to. Every random start is new after a reset.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
-const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
+import tiles from '../../data/tiles.json';
+
+const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ n, bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
+// rule 168 dies out after about ten rows (rule 8 after two, too fast to see); only the rolling ones keep scrolling
 const four = [
-  { rule: 8, words: 'dies out' },
+  { rule: 168, words: 'dies out' },
   { rule: 108, words: 'repeats' },
   { rule: 30, words: 'looks random' },
   { rule: 110, words: 'builds structures' },
 ];
-// Conway's four cases, each as a 3 × 3 neighbourhood before and after one step: the live neighbours (indices 0–8, the
-// centre is 4), whether the centre was alive, and what it becomes. Only the centre is decided, so the neighbours are
-// greyed in the after picture.
+// Conway's four cases in one Moore neighbourhood, one per build: the live neighbours (indices 0–8, the centre is 4),
+// the centre before and after
 const life = [
-  { name: 'birth', live: [0, 2, 7], was: 0, now: 1, rule: 'exactly 3', verdict: 'born' },
-  { name: 'survival', live: [1, 6], was: 1, now: 1, rule: '2 or 3', verdict: 'stays alive' },
-  { name: 'loneliness', live: [2], was: 1, now: 0, rule: '0 or 1', verdict: 'dies' },
-  { name: 'overcrowding', live: [0, 1, 5, 6], was: 1, now: 0, rule: '4 or more', verdict: 'dies' },
+  { name: 'Being born', rule: 'exactly 3 live neighbours', live: [0, 2, 7], was: 0, now: 1 },
+  { name: 'Surviving', rule: '2 or 3 live neighbours', live: [1, 6], was: 1, now: 1 },
+  { name: 'Dying of loneliness', rule: '0 or 1 live neighbour', live: [2], was: 1, now: 0 },
+  { name: 'Dying of overpopulation', rule: '4 or more live neighbours', live: [0, 1, 5, 6], was: 1, now: 0 },
 ];
-const LC = 40, LG = 5, grid3 = 3 * LC + 2 * LG;
-const still = [
-  { name: 'block', rows: ['##', '##'] },
-  { name: 'beehive', rows: ['.##.', '#..#', '.##.'] },
-  { name: 'loaf', rows: ['.##.', '#..#', '.#.#', '..#.'] },
-  { name: 'boat', rows: ['##.', '#.#', '.#.'] },
-  { name: 'pond', rows: ['.##.', '#..#', '#..#', '.##.'] },
+// C3's three tiles: the median-population tile of levels 3, 4 and 5, each a still life on its own
+const tilePath = (level: number) => {
+  const all = (tiles as Record<string, string[]>)[level], size = 6 * level, bytes = atob(all[Math.floor(all.length / 2)]);
+  let d = '';
+  for (let k = 0; k < size * size; k++) if ((bytes.charCodeAt(k >> 3) >> (7 - (k & 7))) & 1) d += `M${k % size + 0.06} ${Math.floor(k / size) + 0.06}h0.88v0.88h-0.88z`;
+  return { size, d };
+};
+const still = [3, 4, 5].map(tilePath);
+const likes = [
+  { id: 'maze', name: 'Maze', bs: 'B3/S12345' },
+  { id: 'life', name: 'Game of Life', bs: 'B3/S23' },
+  { id: 'replicator', name: 'Replicator', bs: 'B1357/S1357' },
 ];
 ---
-<Slide label="256 rules" builds={2} class="c1">
-  <h2>256 rules</h2>
+<Slide label="Elementary cellular automata" builds={5} class="c1">
+  <h2>Elementary cellular automata</h2>
   <div class="table">
     {cases.map((c) => (
       <div class="case">
         <div class="three">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div>
-        <i class:list={['one', c.out && 'on']} />
-        <b>{c.out}</b>
+        <button type="button" class:list={['one', c.out && 'on']} data-bit={c.n} aria-pressed={c.out ? 'true' : 'false'} aria-label={`next state after ${c.bits.join('')}`}></button>
+        <b data-digit={c.n}>{c.out}</b>
       </div>
     ))}
   </div>
-  <p class="c1-sum">01011010 in binary = <b>rule 90</b></p>
+  <p class="c1-sum"><span data-bin>01011010</span> in binary = <b>rule <span data-num>90</span></b></p>
   <div class="four" data-b="1">
     {four.map((f) => (
       <figure>
-        <canvas data-rule={f.rule} aria-label={`rule ${f.rule} from a random row`}></canvas>
-        <figcaption><b>{f.rule}</b> {f.words}</figcaption>
+        <div class="c1-box">
+          <canvas data-rule={f.rule} aria-label={`rule ${f.rule} from a random row`}></canvas>
+          <SimButton class="c1-btn" />
+        </div>
+        <figcaption><b>rule {f.rule}</b> {f.words}</figcaption>
       </figure>
     ))}
-    <SimButton class="c1-btn" />
   </div>
-  <p slot="say">Rule 90 is one of many. A cell looks at itself and its two neighbours, which makes eight possible situations; a rule says, for each of them, whether the cell is on or off next. Read those eight answers as a binary number and you get the rule’s name: 01011010 is 90. Eight yes-or-no answers make 256 rules in all.</p>
-  <p slot="say">Four of them, started from the same random row: rule 8 dies out, rule 108 repeats itself, rule 30 looks random, and rule 110 builds structures that move and collide. Same recipe, very different outcomes.</p>
+  <p slot="say">The parity rule is one of many. A cell looks at itself and its two neighbours, which makes eight possible situations; a rule says, for each of them, whether the cell is on or off next. Read those eight answers as a binary number and you get the rule’s name: 01011010 is 90, so the parity rule is rule 90. Eight yes-or-no answers make 256 rules in all, the elementary cellular automata. Click an answer in the table to flip it and see which rule you get.</p>
+  <p slot="say">Four of them, started one by one from the same random row: rule 168 dies out, rule 108 repeats itself, rule 30 looks random, and rule 110 builds structures that move and collide. Same recipe, very different outcomes. Each reset draws a new random row.</p>
 </Slide>
 
-<Slide label="The Game of Life" builds={3} class="c2">
-  <div class="row grow c2-row">
-    <div class="col c2-side">
-      <h2>The Game of Life</h2>
-      <p>Eight neighbours instead of two: count the live ones.</p>
-      <div class="cases">
-        {life.map((k) => (
-          <figure class="case-l">
-            <figcaption>{k.name}</figcaption>
-            <svg viewBox={`-4 -4 ${2 * grid3 + 100} ${grid3 + 8}`} aria-hidden="true">
-              {[0, 1].map((after) => Array.from({ length: 9 }, (_, i) => {
-                const x = after * (grid3 + 92) + (i % 3) * (LC + LG), y = Math.floor(i / 3) * (LC + LG);
-                const centre = i === 4, on = centre ? (after ? k.now : k.was) : k.live.includes(i);
-                return <rect x={x} y={y} width={LC} height={LC} rx="4" class:list={[on ? 'on' : 'off', centre && 'mid', after && !centre && 'past']} />;
-              }))}
-              <path d={`M${grid3 + 18} ${grid3 / 2} h52 m-16 -14 l16 14 l-16 14`} class="arr" />
-            </svg>
-            <p>{k.rule}<br /><b>→ {k.verdict}</b></p>
-          </figure>
-        ))}
+<Slide label="The Game of Life" builds={8} class="c2">
+  <h2>The Game of Life</h2>
+  <p class="lede">Moving to two spatial dimensions</p>
+  <div class="stack grow c2-stage">
+    <div class="moore" data-b-only="0 1 2 3 4" data-cases={JSON.stringify(life)}>
+      <div class="moore-row">
+        <svg class="nb" viewBox="-6 -6 412 412" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, i) => <rect x={(i % 3) * 136} y={Math.floor(i / 3) * 136} width="128" height="128" rx="8" class:list={['off', i === 4 && 'mid']} data-i={i} />)}
+        </svg>
+        <svg class="then" viewBox="0 0 300 140" aria-hidden="true" data-b="1">
+          <path d="M20 70 h110 m-26 -24 l26 24 l-26 24" class="arr" />
+          <rect x="160" y="6" width="128" height="128" rx="8" class="off mid" data-after />
+        </svg>
       </div>
-      <p data-b="2">A glider: five cells that walk.</p>
+      <p class="case-name" data-case>Eight neighbours</p>
+      <p class="case-rule" data-caserule></p>
     </div>
-    <div class="life-box">
+    <div class="life-box" data-b="5">
       <canvas class="life" aria-label="The Game of Life running on a grid"></canvas>
       <SimButton class="c2-btn" />
     </div>
   </div>
-  <p class="cite">J. H. Conway, 1970</p>
-  <p slot="say">The best-known cellular automaton is two-dimensional: John Conway’s Game of Life, from 1970. Every cell counts how many of its eight neighbours are alive. A dead cell with exactly three live neighbours is born; a live cell with two or three survives; with fewer it dies of loneliness, with more of overcrowding.</p>
-  <p slot="say">From a random soup the grid churns for a while and then calms down into small blocks, blinkers and the odd traveller. The simplest traveller is the glider: five cells that walk diagonally across the grid, forever, by the same four rules.</p>
+  <p slot="say">Moving to two spatial dimensions: John Conway’s Game of Life, from 1970. Every cell now has eight neighbours, the Moore neighbourhood, and counts how many of them are alive. A dead cell with exactly three live neighbours is born; a live cell with two or three survives; with fewer it dies of loneliness, with more of overpopulation.</p>
+  <p slot="say">From a random soup the grid churns for a while and then calms down into small blocks, blinkers and the odd traveller; a reset draws a new soup. These four rules are enough to build machines: this is Bill Gosper’s glider gun, which fires a glider every thirty steps, forever, into an eater that swallows each one.</p>
 </Slide>
 
 <Slide label="Still lifes" builds={2} class="c3">
   <h2>Still lifes</h2>
   <p class="lede">Patterns that the rule leaves exactly as they are.</p>
-  <div class="still">
-    {still.map((p) => (
-      <figure>
-        <svg viewBox={`-1 -1 ${p.rows[0].length + 4} ${p.rows.length + 4}`} aria-hidden="true">
-          {Array.from({ length: p.rows.length + 2 }, (_, y) => Array.from({ length: p.rows[0].length + 2 }, (_, x) => {
-            const on = p.rows[y - 1]?.[x - 1] === '#';
-            return <rect x={x + 0.06} y={y + 0.06} width="0.88" height="0.88" class={on ? 'on' : 'off'} />;
-          }))}
-        </svg>
-        <figcaption>{p.name}</figcaption>
-      </figure>
+  <div class="still" data-b-off="1">
+    {still.map((t) => (
+      <svg viewBox={`-1 -1 ${t.size + 2} ${t.size + 2}`} style={`width: calc(${(t.size + 2) * 13} * var(--u))`} aria-hidden="true">
+        <rect x="-1" y="-1" width={t.size + 2} height={t.size + 2} class="bgr" />
+        <path d={t.d} class="on" />
+      </svg>
     ))}
   </div>
   <div class="art" data-b="1">
@@ -106,94 +104,155 @@ const still = [
     <p class="art-note">Every cell here obeys the Game of Life. Nothing changes, until you disturb it.</p>
     <SimButton class="c3-btn" />
   </div>
-  <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes: the block, the beehive, the loaf, the boat, the pond.</p>
-  <p slot="say">Fit many of them together and you can make a picture in which every cell obeys the Game of Life and nothing ever changes. The cover of the thesis is made this way. Take away one cell and the picture starts to unravel. On this page you can also click or drag on the picture to disturb it yourself.</p>
+  <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes. The three here are tiles of the mosaics of the cover, of three sizes.</p>
+  <p slot="say">Fit many of them together and you can make a picture in which every cell obeys the Game of Life and nothing ever changes. The cover of the thesis is made this way. Take away one cell and the picture starts to unravel. A reset packs a new landscape of tiles; on this page you can also click or drag on the picture to disturb it yourself.</p>
+</Slide>
+
+<Slide label="Life-like cellular automata" builds={3} class="c4">
+  <h2>Life-like cellular automata</h2>
+  <div class="likes">
+    {likes.map((g) => (
+      <figure>
+        <div class="c4-box">
+          <canvas data-grid={g.id} aria-label={`${g.name}, ${g.bs}, from a random start`}></canvas>
+          <SimButton class="c4-btn" />
+        </div>
+        <figcaption><b>{g.name}</b> <span>{g.bs}</span></figcaption>
+      </figure>
+    ))}
+  </div>
+  <p slot="say">Just as rule 90 is one of 256 elementary rules, the Game of Life is one of many Life-like rules: a dead cell is born with some numbers of live neighbours (B), a live cell survives with others (S). The Game of Life is B3/S23; there are 2<sup>18</sup> = 262,144 such rules, and again they behave very differently.</p>
+  <p slot="say">Three of them, each started with its own button: Maze (B3/S12345) freezes into corridors within a few steps, the Game of Life keeps something going that is hard to name, and Replicator (B1357/S1357), the parity rule on eight neighbours, looks like noise. Each reset draws a new random start.</p>
 </Slide>
 
 <style>
   .table { display: flex; justify-content: center; gap: calc(26 * var(--u)); }
   .case { display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
   .three { display: flex; gap: calc(6 * var(--u)); }
-  .case i { display: block; width: calc(52 * var(--u)); height: calc(52 * var(--u)); background: var(--panel); border: calc(2 * var(--u)) solid var(--line); }
-  .case i.on { background: var(--ink); border-color: var(--ink); }
+  .case i, .case .one { display: block; width: calc(58 * var(--u)); height: calc(58 * var(--u)); background: var(--panel); border: calc(2 * var(--u)) solid var(--line); }
+  .case i.on, .case .one.on { background: var(--ink); border-color: var(--ink); }
+  .case .one { padding: 0; cursor: pointer; touch-action: manipulation; outline-offset: calc(4 * var(--u)); }
+  .case .one:hover { border-color: var(--accent); box-shadow: 0 0 0 calc(3 * var(--u)) var(--line); }
   .case b { font-size: calc(44 * var(--u)); }
   .c1-sum { text-align: center; font-size: calc(46 * var(--u)); }
-  .four { display: flex; justify-content: space-between; margin-top: calc(10 * var(--u)); position: relative; }
-  .four :global(.c1-btn) { right: calc(-78 * var(--u)); bottom: calc(60 * var(--u)); }
+  .c1-sum [data-bin] { font-variant-numeric: tabular-nums; }
+  .four { display: flex; justify-content: space-between; margin-top: calc(10 * var(--u)); }
   .four figure { margin: 0; display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
-  .four canvas { width: calc(400 * var(--u)); height: calc(300 * var(--u)); }
+  .c1-box { position: relative; }
+  .four canvas { width: calc(400 * var(--u)); height: calc(420 * var(--u)); } /* 100 × 105 cells of 4 */
+  .c1-box :global(.c1-btn) { right: calc(-22 * var(--u)); bottom: calc(-22 * var(--u)); }
   .four figcaption { font-size: calc(36 * var(--u)); text-align: center; }
 
-  .c2-row { align-items: center; gap: calc(50 * var(--u)); }
-  .c2-side { flex: 1; gap: calc(26 * var(--u)); }
-  .cases { display: grid; grid-template-columns: 1fr 1fr; gap: calc(34 * var(--u)) calc(40 * var(--u)); margin: calc(6 * var(--u)) 0; }
-  .case-l { margin: 0; display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
-  .case-l figcaption { font-size: calc(34 * var(--u)); font-weight: 600; }
-  .case-l svg { width: calc(340 * var(--u)); }
-  .case-l p { font-size: calc(29 * var(--u)); line-height: 1.25; }
-  .case-l rect.off { fill: var(--panel); stroke: var(--line); stroke-width: 2; }
-  .case-l rect.on { fill: var(--ink); }
-  .case-l rect.past.on { fill: #9cb0bf; }
-  .case-l rect.mid { stroke: var(--accent); stroke-width: 5; }
-  .case-l .arr { fill: none; stroke: var(--muted); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
-  .life-box { position: relative; flex: none; }
-  .life { width: calc(900 * var(--u)); height: calc(900 * var(--u)); }
-  .life-box :global(.c2-btn) { right: calc(-40 * var(--u)); bottom: calc(-20 * var(--u)); }
+  .c2-stage { place-items: center; }
+  .moore { display: flex; flex-direction: column; align-items: center; gap: calc(18 * var(--u)); }
+  .moore-row { display: flex; align-items: center; gap: calc(20 * var(--u)); }
+  .nb { width: calc(430 * var(--u)); }
+  .then { width: calc(300 * var(--u)); }
+  .moore rect.off { fill: var(--panel); stroke: var(--line); stroke-width: 3; }
+  .moore rect.on { fill: var(--ink); stroke: var(--ink); stroke-width: 3; }
+  .moore rect.mid { stroke: var(--accent); stroke-width: 9; }
+  .moore .arr { fill: none; stroke: var(--muted); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+  .case-name { font-size: calc(56 * var(--u)); font-weight: 700; margin-top: calc(16 * var(--u)); }
+  .case-rule { font-size: calc(42 * var(--u)); color: var(--muted); min-height: 1.3em; }
+  .life-box { position: relative; }
+  .life { width: calc(1430 * var(--u)); height: calc(726 * var(--u)); } /* 130 × 66 cells of 11 */
+  .life-box :global(.c2-btn) { right: calc(-24 * var(--u)); bottom: calc(-20 * var(--u)); }
 
-  .still { display: flex; justify-content: space-around; align-items: center; flex: 1; padding-bottom: calc(40 * var(--u)); }
-  .still figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
-  .still svg { height: calc(330 * var(--u)); }
-  .still rect.on { fill: var(--ink); }
-  .still rect.off { fill: var(--panel); }
-  .still figcaption { font-size: calc(40 * var(--u)); }
+  .still { display: flex; justify-content: center; align-items: center; gap: calc(110 * var(--u)); flex: 1; padding-bottom: calc(40 * var(--u)); }
+  .still svg { display: block; }
+  .still .on { fill: var(--ink); }
+  .still .bgr { fill: var(--panel); }
   .art { position: absolute; inset: 0; background: var(--bg); }
   .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
   .art :global(.c3-btn) { right: calc(96 * var(--u)); bottom: calc(80 * var(--u)); }
+  /* the note's box, in design pixels, is also where the initial mosaic keeps clear (NOTE in the script) */
   .art-note {
-    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); max-width: calc(820 * var(--u));
-    font-size: calc(52 * var(--u)); line-height: 1.2; background: var(--bg); padding: calc(20 * var(--u)) calc(28 * var(--u)); pointer-events: none;
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); width: calc(1000 * var(--u));
+    font-size: calc(52 * var(--u)); line-height: 1.2; pointer-events: none;
   }
+
+  .likes { display: flex; justify-content: space-between; flex: 1; align-items: center; }
+  .likes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
+  .c4-box { position: relative; }
+  .likes canvas { width: calc(540 * var(--u)); height: calc(540 * var(--u)); }
+  .c4-box :global(.c4-btn) { right: calc(-22 * var(--u)); bottom: calc(-22 * var(--u)); }
+  .likes figcaption { display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u)); font-size: calc(44 * var(--u)); }
+  .likes figcaption span { font-size: calc(36 * var(--u)); color: var(--muted); }
 </style>
 
 <script>
-  import { slide, sim } from '../../scripts/defence/deck';
+  import { slide, sim, fresh } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer, DESIGN } from '../../scripts/defence/stage';
   import { step as ecaStep, seedRow } from '../../scripts/eca';
   import { makeRng } from '../../scripts/net';
-  import { stepLife, randomLife, glider, ActiveLife } from '../../scripts/life';
-  import { stillMosaic, drawCells } from '../../scripts/defence/cover';
+  import { stepLife, stepLifeLike, randomLife, putRle, GOSPER_GUN, EATER, EATER_AT, ActiveLife } from '../../scripts/life';
+  import { pack, noise, type Packed } from '../../scripts/defence/cover';
+  import { decodeMosaic, mosaicPainter, type Mosaic, type MosaicJson } from '../../scripts/defence/mosaic';
   import tiles from '../../data/tiles.json';
+  import mosaicData from '../../data/defence/mosaic.json';
   import { Raster } from '../../scripts/raster';
   import { parse } from '../../scripts/palette';
 
-  // ── C1: four rules from one random row, scrolling ──
+  const bits = (s: string) => [...s].reduce((m, c) => m | (1 << +c), 0);
+
+  // ── C1: the table clicks into any of the 256 rules; four rules from one random row, started one by one ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c1')) {
-    const W = 100, H = 75, first = seedRow(W, 'random', makeRng(256));
-    const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c) => ({ c, rule: +c.dataset.rule!, rows: [first], ras: new Raster(W, H) }));
-    const reset = () => { for (const p of panels) p.rows = [first]; };
-    const advance = () => { for (const p of panels) { p.rows.push(ecaStep(p.rows[p.rows.length - 1], p.rule)); if (p.rows.length > H) p.rows.shift(); } };
-    const paint = () => {
-      for (const p of panels) {
-        const st = stage(p.c); if (!st) continue;
+    let rule = 90;
+    const bin = s.querySelector<HTMLElement>('[data-bin]')!, num = s.querySelector<HTMLElement>('[data-num]')!;
+    const outs = Array.from(s.querySelectorAll<HTMLButtonElement>('button[data-bit]'));
+    const showRule = () => {
+      for (const b of outs) { const on = !!((rule >> +b.dataset.bit!) & 1); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+      for (const d of s.querySelectorAll<HTMLElement>('[data-digit]')) d.textContent = String((rule >> +d.dataset.digit!) & 1);
+      bin.textContent = rule.toString(2).padStart(8, '0'); num.textContent = String(rule);
+    };
+    for (const b of outs) b.addEventListener('click', () => { rule ^= 1 << +b.dataset.bit!; showRule(); });
+
+    const W = 100, H = 105, shared = seedRow(W, 'random', makeRng(256));
+    const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
+    const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c, k) => {
+      const p = { rule: +c.dataset.rule!, first: shared, rows: [shared], ras: new Raster(W, H), roll: k > 0 };
+      const paint = () => {
+        const st = stage(c); if (!st) return;
         const on = parse(st.t.ink), off = parse(st.t.panel);
         for (let y = 0; y < H; y++) p.ras.setRow(y, p.rows[y] ?? new Uint8Array(W), on, off);
         p.ras.flush(); p.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
-      }
-    };
-    const run = ticker(s, 14, advance, paint);
-    slide(s, { enter() { reset(); }, leave() { run.play(false); } });
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 2, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
-    for (const p of panels) onSize(p.c, paint);
+      };
+      // the first panel (it dies out) fills once and stops; the others scroll
+      const run = ticker(c, 14, () => {
+        if (!p.roll && p.rows.length >= H) return true;
+        p.rows.push(ecaStep(p.rows[p.rows.length - 1], p.rule));
+        if (p.rows.length > H) p.rows.shift();
+      }, paint);
+      sim(btns[k], 2 + k, {
+        reset() { run.play(false); p.rows = [p.first]; paint(); },
+        play() { run.play(true); },
+        reroll() { p.first = seedRow(W, 'random', fresh()); },
+      });
+      onSize(c, paint);
+      return { p, run };
+    });
+    slide(s, {
+      enter() { rule = 90; showRule(); for (const { p } of panels) p.first = shared; },
+      leave() { for (const { run } of panels) run.play(false); },
+    });
   }
 
-  // ── C2: a random soup (started at build 1), then a glider on an empty field (shown at 2, started at 3) ──
+  // ── C2: Conway's four cases in one neighbourhood (builds 1–4), a random soup (shown at 5, started at 6), then
+  // Gosper's glider gun firing into an eater (shown at 7, started at 8) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c2')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas')!, W = 90, H = 90, ras = new Raster(W, H);
-    let g = new Uint8Array(W * H), out = new Uint8Array(W * H), lone = false;
-    const first = () => {
-      if (lone) { g = new Uint8Array(W * H); glider(g, W, H, 6, 6); } else g = randomLife(W, H, 0.35, makeRng(1970));
-      run.rate = lone ? 6 : 8;
+    const cases = JSON.parse(s.querySelector<HTMLElement>('[data-cases]')!.dataset.cases!) as { name: string; rule: string; live: number[]; was: number; now: number }[];
+    const rects = Array.from(s.querySelectorAll<SVGRectElement>('.nb rect')), after = s.querySelector<SVGRectElement>('[data-after]')!;
+    const name = s.querySelector<HTMLElement>('[data-case]')!, what = s.querySelector<HTMLElement>('[data-caserule]')!;
+    const mark = (r: Element, on: boolean) => { r.classList.toggle('on', on); r.classList.toggle('off', !on); };
+    const neighbourhood = (b: number) => {
+      const k = b >= 1 && b <= 4 ? cases[b - 1] : null;
+      rects.forEach((r, i) => mark(r, !!k && (i === 4 ? !!k.was : k.live.includes(i))));
+      mark(after, !!k?.now);
+      name.textContent = k ? k.name : 'Eight neighbours'; what.textContent = k ? k.rule : '';
     };
+
+    const c = s.querySelector<HTMLCanvasElement>('canvas.life')!, W = 130, H = 66, ras = new Raster(W, H);
+    let g = new Uint8Array(W * H), out = new Uint8Array(W * H), gun = false, rnd = makeRng(1970);
     const paint = () => {
       const st = stage(c); if (!st) return;
       const on = parse(st.t.ink), off = parse(st.t.panel);
@@ -201,41 +260,72 @@ const still = [
       ras.flush(); ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
     };
     const run = ticker(s, 8, () => { stepLife(g, W, H, out); [g, out] = [out, g]; }, paint);
+    let start = randomLife(W, H, 0.35, rnd);
+    const first = () => {
+      if (gun) { g = new Uint8Array(W * H); putRle(GOSPER_GUN, g, W, 26, 1); putRle(EATER, g, W, 26 + EATER_AT[0], 1 + EATER_AT[1]); } else g = start.slice();
+      run.rate = gun ? 15 : 8;
+    };
     slide(s, {
-      set(b: number) { if (b >= 2 !== lone) { lone = b >= 2; run.play(false); first(); paint(); } },
-      enter() { lone = false; first(); },
+      set(b: number) { neighbourhood(b); if (b >= 7 !== gun) { gun = b >= 7; run.play(false); first(); paint(); } },
+      enter() { gun = false; start = randomLife(W, H, 0.35, makeRng(1970)); first(); },
       leave() { run.play(false); },
     });
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [1, 3], { reset() { run.play(false); first(); paint(); }, play() { run.play(true); } });
-    first();
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [6, 8], {
+      reset() { run.play(false); first(); paint(); },
+      play() { run.play(true); },
+      reroll() { if (!gun) start = randomLife(W, H, 0.35, fresh()); },
+    });
+    neighbourhood(0); first();
     onSize(c, paint);
   }
 
-  // ── C3: the cover art over the still lifes. A click or a drag drops a few live cells, as on the site's home page,
-  // and the Game of Life takes over until the grid is still again. ──
+  // ── C3: three tiles, then a landscape of them packed as the cover is, clear of the note. The button takes away one
+  // cell, a click or a drag drops a few, and the Game of Life takes over until the grid is still again. A reset packs a
+  // new landscape, with another mix of levels. ──
+  const pal = decodeMosaic(mosaicData as MosaicJson);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c3')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas')!, view = 216, cell = DESIGN / view;
-    const base = stillMosaic(tiles, 13, 8, 3, 20261002, 0.02), art = { ...base, g: base.g.slice() };
-    let life = new ActiveLife(art.W, art.H), down = false;
-    const reset = () => { art.g.set(base.g); life = new ActiveLife(art.W, art.H); };
-    const paint = () => { const st = stage(c); if (st) drawCells(st.ctx, art, 0, 0, cell, st.w, st.h, st.t.ink); };
-    const run = ticker(s, 12, () => life.step(art.g) === 0, paint);
-    // the button takes away the live cell nearest the middle of the picture
+    const c = s.querySelector<HTMLCanvasElement>('[data-cover-art]')!, W = 216, H = 126, cell = DESIGN / W, SEED = 20261002;
+    const NOTE = { x: 96, y: 1080 - 80 - 130, w: 1000, h: 130 }; // the note's box in design pixels (see the style)
+    const nx0 = NOTE.x / cell - 2, ny0 = NOTE.y / cell - 2, nx1 = (NOTE.x + NOTE.w) / cell + 2, ny1 = (NOTE.y + NOTE.h) / cell + 2;
+    const gap = (x: number, y: number) => Math.hypot(Math.max(nx0 - x, 0, x - nx1), Math.max(ny0 - y, 0, y - ny1));
+    let base: Packed, live: Uint8Array, life: ActiveLife, down = false;
+    const bg = getComputedStyle(c).getPropertyValue('--bg').trim();
+    const m: Mosaic = { W, H, M: 0, PW: W, PH: H, ground: new Uint8Array(W * H), live: new Uint8Array(W * H), field: bg, grounds: pal.grounds, inks: pal.inks };
+    const draw = mosaicPainter(m, '#0c2448', bg);
+    const build = (seed: number) => {
+      const rnd = makeRng(seed), big = noise(W, H, 44, rnd), small = noise(W, H, 15, rnd), lean = rnd() * 0.1 - 0.05;
+      // hills rising to the right, the sea let in round the note, and no tile on the note itself
+      const z = (x: number, y: number) => 0.6 * big(x, y) + 0.3 * small(x, y) + 0.2 * (x / W) - 0.8 * Math.exp(-gap(x, y) / 16);
+      base = pack(tiles, W, H, z, { 5: 0.66 + lean, 4: 0.56 + lean, 3: 0.46 + lean, 1: 0.34 }, seed, (x, y) => gap(x, y) > 0);
+      m.ground = base.ground;
+    };
+    const reset = () => { live = base.g.slice(); life = new ActiveLife(W, H); };
+    const paint = () => {
+      const st = stage(c); if (!st) return;
+      draw(st.ctx, live, 0, 0, W * cell, H * cell);
+      // cells that wander behind the note are faded, so it stays readable
+      st.ctx.globalAlpha = 0.72; st.ctx.fillStyle = bg;
+      st.ctx.beginPath(); st.ctx.roundRect(NOTE.x - 16, NOTE.y - 12, NOTE.w + 32, NOTE.h + 24, 24); st.ctx.fill();
+      st.ctx.globalAlpha = 1;
+    };
+    const run = ticker(s, 12, () => life.step(live) === 0, paint);
+    // the button takes away the live cell nearest a point in the hills
     const kick = () => {
-      const cx = view / 2, cy = (view * 9) / 32;
+      const cx = 0.64 * W, cy = 0.4 * H;
       let best = -1, bd = Infinity;
-      for (let i = 0; i < art.W * art.H; i++) if (art.g[i]) { const d = (i % art.W - cx) ** 2 + (Math.floor(i / art.W) - cy) ** 2; if (d < bd) { bd = d; best = i; } }
-      if (best >= 0) { art.g[best] = 0; life.touch(best % art.W, Math.floor(best / art.W)); }
+      for (let i = 0; i < W * H; i++) if (live[i]) { const d = (i % W - cx) ** 2 + (Math.floor(i / W) - cy) ** 2; if (d < bd) { bd = d; best = i; } }
+      if (best >= 0) { live[best] = 0; life.touch(best % W, Math.floor(best / W)); }
     };
     const button = sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 2, {
       reset() { run.play(false); reset(); paint(); },
       play() { kick(); paint(); run.play(true); },
+      reroll() { build((Math.random() * 4294967296) >>> 0); },
     });
     const poke = (e: PointerEvent) => {
       const q = pointer(c, e), x = Math.floor(q.x / cell), y = Math.floor(q.y / cell);
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const xx = x + dx, yy = y + dy;
-        if (xx >= 0 && yy >= 0 && xx < art.W && yy < art.H && Math.random() < 0.6) art.g[yy * art.W + xx] = 1;
+        if (xx >= 0 && yy >= 0 && xx < W && yy < H && Math.random() < 0.6) live[yy * W + xx] = 1;
       }
       life.touch(x, y); paint(); button(true);
       if (!run.playing) run.play(true);
@@ -244,7 +334,38 @@ const still = [
     c.addEventListener('pointermove', (e) => { if (down) poke(e); });
     c.addEventListener('pointerup', () => { down = false; });
     c.addEventListener('pointercancel', () => { down = false; });
-    slide(s, { enter() { reset(); }, leave() { run.play(false); } });
+    slide(s, { enter() { build(SEED); reset(); }, leave() { run.play(false); } });
+    build(SEED); reset();
     onSize(c, paint);
+  }
+
+  // ── C4: three Life-like rules, each from its own start and with its own button (builds 1–3) ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.c4')) {
+    const N = 108, RULES: Record<string, [string, string]> = { maze: ['3', '12345'], life: ['3', '23'], replicator: ['1357', '1357'] };
+    const shared = randomLife(N, N, 0.4, makeRng(1984));
+    const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
+    const grids = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-grid]')).map((c, k) => {
+      const [b, sv] = RULES[c.dataset.grid!], B = bits(b), S = bits(sv);
+      const x = { first: shared, g: shared.slice(), out: new Uint8Array(N * N), ras: new Raster(N, N) };
+      const paint = () => {
+        const st = stage(c); if (!st) return;
+        const on = parse(st.t.ink), off = parse(st.t.panel);
+        for (let i = 0; i < N * N; i++) x.ras.set(i, x.g[i] ? on : off);
+        x.ras.flush(); x.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
+      };
+      // stops by itself once nothing changes (Maze freezes)
+      const run = ticker(c, 6, () => { const n = stepLifeLike(x.g, N, N, x.out, B, S); [x.g, x.out] = [x.out, x.g]; return n === 0; }, paint);
+      sim(btns[k], 1 + k, {
+        reset() { run.play(false); x.g = x.first.slice(); paint(); },
+        play() { run.play(true); },
+        reroll() { x.first = randomLife(N, N, 0.4, fresh()); },
+      });
+      onSize(c, paint);
+      return { x, run };
+    });
+    slide(s, {
+      enter() { for (const { x } of grids) x.first = shared; },
+      leave() { for (const { run } of grids) run.play(false); },
+    });
   }
 </script>

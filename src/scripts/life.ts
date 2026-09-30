@@ -25,6 +25,24 @@ export function glider(g: Uint8Array, W: number, H: number, x: number, y: number
   for (const [dx, dy] of [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]]) g[((y + dy + H) % H) * W + ((x + dx + W) % W)] = 1;
 }
 
+/** Sets the live cells of a run-length encoded pattern (b dead, o alive, $ next row) with its top-left corner at (x0, y0). */
+export function putRle(rle: string, g: Uint8Array, W: number, x0: number, y0: number): void {
+  let x = 0, y = 0, n = '';
+  for (const ch of rle) {
+    if (ch >= '0' && ch <= '9') { n += ch; continue; }
+    const k = n ? +n : 1; n = '';
+    if (ch === 'b') x += k;
+    else if (ch === 'o') { for (let i = 0; i < k; i++) g[(y0 + y) * W + x0 + x + i] = 1; x += k; }
+    else if (ch === '$') { y += k; x = 0; }
+  }
+}
+
+/** Bill Gosper's glider gun (36 × 9), firing a glider down and to the right every 30 generations, and the eater that
+ * swallows them all when its top-left corner sits 74 cells right of and 60 below the gun's. */
+export const GOSPER_GUN = '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!';
+export const EATER = '2o$obo$2bo$2b2o!';
+export const EATER_AT = [74, 60] as const;
+
 /** A fair coin per cell, weighted. */
 export function randomLife(W: number, H: number, rho: number, rnd: () => number): Uint8Array {
   const g = new Uint8Array(W * H);

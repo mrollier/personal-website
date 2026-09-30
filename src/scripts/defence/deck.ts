@@ -5,6 +5,8 @@
 // clicker keys in the capture phase, so no widget (a focused range input in Firefox) can swallow PageDown or PageUp.
 // Escape leaves fullscreen but not the deck, which stays full-window until `f` or `q`.
 
+import { makeRng } from '../net';
+
 export type How = 'next' | 'prev' | 'jump';
 export type SlideApi = {
   /** Bring the slide to build state b (0 … builds): `next` animates the step, `prev` and `jump` snap to it. */
@@ -20,17 +22,25 @@ export type SlideApi = {
 };
 
 const apis = new WeakMap<Element, SlideApi>();
+/** A fresh random generator, for a start that should differ every time. */
+export const fresh = () => makeRng((Math.random() * 4294967296) >>> 0);
+
 /** Register what a slide does on its builds. Its script calls this once for its <section>. */
 export function slide(el: Element, api: SlideApi): void { apis.set(el, api); }
 export const buildOf = (el: Element) => +((el as HTMLElement).dataset.at ?? 0);
 
-export type SimApi = { /** back to the first frame, paused */ reset(): void; /** run from where it is */ play(): void };
+export type SimApi = {
+  /** back to the first frame, paused */ reset(): void;
+  /** run from where it is */ play(): void;
+  /** draw a new random first frame, for the reset that follows (a random start only; a fixed pattern leaves it out) */ reroll?(): void;
+};
 type Sim = { ks: number[]; api: SimApi; show(run: boolean): void };
 const sims = new WeakMap<Element, Sim[]>();
 /** A simulation that waits for a trigger. On the build before a trigger build k it sits on its first frame under a
  * ▶ button; the step to k with Next starts it and the button turns into ↺. Clicking ↺ puts it back on its first
  * frame, and when k is the current build also steps the slide back to k − 1, so the next press starts it again;
- * clicking ▶ starts it. Arriving by a jump never starts it. Several trigger builds run it again from a new first
+ * clicking ▶ starts it. A reset by hand (↺, or stepping back off the trigger build) first calls `reroll`, so a random
+ * start is a new one every time; arriving by a jump keeps the start it has. Arriving by a jump never starts it. Several trigger builds run it again from a new first
  * frame, which the slide's own `set` chooses. `btn` is a <SimButton/> on the slide. Returns the button's setter, for a
  * simulation that something else can start too (a click on the picture). */
 export function sim(btn: HTMLButtonElement, k: number | number[], api: SimApi): (run: boolean) => void {
@@ -43,13 +53,16 @@ export function sim(btn: HTMLButtonElement, k: number | number[], api: SimApi): 
     const at = buildOf(s), run = !!btn.dataset.run;
     if (!run && ks.includes(at + 1)) s.dispatchEvent(new CustomEvent('deck:step', { detail: 1 }));
     else if (run && ks.includes(at)) s.dispatchEvent(new CustomEvent('deck:step', { detail: -1 }));
-    else if (run) { api.reset(); show(false); } else { api.play(); show(true); }
+    else if (run) { api.reroll?.(); api.reset(); show(false); } else { api.play(); show(true); }
   });
   return show;
 }
 function simsTo(s: HTMLElement, from: number, b: number, how: How) {
   for (const x of sims.get(s) ?? []) {
-    if (how === 'jump' || !x.ks.some((k) => k <= b) || x.ks.includes(b + 1)) { x.api.reset(); x.show(false); }
+    if (how === 'jump' || !x.ks.some((k) => k <= b) || x.ks.includes(b + 1)) {
+      if (how === 'prev' && from === b + 1 && x.ks.includes(from)) x.api.reroll?.();
+      x.api.reset(); x.show(false);
+    }
     else if (how === 'next' && x.ks.includes(b) && from === b - 1) { x.api.play(); x.show(true); }
     else if (how === 'prev') x.show(true);
   }

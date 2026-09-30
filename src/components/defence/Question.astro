@@ -1,32 +1,10 @@
 ---
-// D1–D3: one recipe gives order, something complex and chaotic-looking noise; nature does it too (a flock, a brain); the
-// rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
+// D2–D3: nature uses the same recipe (a flock, a brain); the rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
-const three = [
-  { id: 'vote', label: 'order' },
-  { id: 'life', label: 'complex?' },
-  { id: 'parity', label: 'chaotic-looking' },
-];
 const RULE = 54;
 const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (RULE >> n) & 1 }));
 ---
-<Slide label="One recipe, three outcomes" builds={1} class="d1">
-  <h2>One recipe, three outcomes</h2>
-  <p>The same random start. Only the rule differs.</p>
-  <div class="three">
-    {three.map((g) => (
-      <figure>
-        <canvas data-grid={g.id} aria-label={`a grid of cells: ${g.label}`}></canvas>
-        <figcaption>{g.label}</figcaption>
-      </figure>
-    ))}
-    <SimButton class="d1-btn" />
-  </div>
-  <p slot="say">Three grids start from the same random pattern and differ only in their rule. On the left, every cell copies what most of its block does: patches form and freeze. In the middle, the Game of Life: something that is hard to name, which people like to call complex. On the right, every cell takes the parity of its neighbours: it looks like noise, but this rule is linear and can be solved exactly. Looking chaotic is not the same as being unpredictable.</p>
-  <p slot="say">“Complex” has no agreed definition, and “the edge of order and chaos” is an intuition rather than a law. Tonight the word is used loosely.</p>
-</Slide>
-
 <Slide label="Nature does this too: a flock" builds={2} class="d2 d2-flock">
   <h2>Nature does this too</h2>
   <div class="d2-row">
@@ -104,11 +82,6 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
 </Slide>
 
 <style>
-  .three { display: flex; justify-content: space-between; position: relative; }
-  .three figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(12 * var(--u)); }
-  .three canvas { width: calc(560 * var(--u)); height: calc(560 * var(--u)); }
-  .three figcaption { font-size: calc(42 * var(--u)); }
-  .three :global(.d1-btn) { right: calc(-80 * var(--u)); bottom: calc(80 * var(--u)); }
 
   .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
   .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
@@ -140,54 +113,10 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
 <script>
   import { slide, sim } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
-  import { stepLife, randomLife } from '../../scripts/life';
-  import { stepGrid } from '../../scripts/grid';
   import { makeRng } from '../../scripts/net';
   import { evolve, seedRow } from '../../scripts/eca';
   import { flock, stepFlock } from '../../scripts/defence/boids';
   import { brain, fire, outline, FOLDS, BOX } from '../../scripts/defence/brain';
-  import { Raster } from '../../scripts/raster';
-  import { parse } from '../../scripts/palette';
-
-  /** Each cell takes the majority of its 3 × 3 block, itself included: domains that freeze. */
-  function vote(g: Uint8Array, W: number, H: number): Uint8Array {
-    const out = new Uint8Array(W * H);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      let s = 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += g[((y + dy + H) % H) * W + ((x + dx + W) % W)];
-      out[y * W + x] = s >= 5 ? 1 : 0;
-    }
-    return out;
-  }
-
-  // ── D1: three grids from one start, started at build 1; the key r draws another start ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.d1')) {
-    const N = 108;
-    let start = randomLife(N, N, 0.5, makeRng(1984));
-    const rules: Record<string, (g: Uint8Array) => Uint8Array> = {
-      vote: (g) => vote(g, N, N),
-      life: (g) => { const o = new Uint8Array(N * N); stepLife(g, N, N, o); return o; },
-      parity: (g) => stepGrid(g, N, N, 'vn', false),
-    };
-    const grids = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-grid]')).map((c) => ({ c, f: rules[c.dataset.grid!], g: start.slice(), ras: new Raster(N, N) }));
-    const reset = () => { for (const x of grids) x.g = start.slice(); };
-    const paint = () => {
-      for (const x of grids) {
-        const st = stage(x.c); if (!st) continue;
-        const on = parse(st.t.ink), off = parse(st.t.panel);
-        for (let i = 0; i < N * N; i++) x.ras.set(i, x.g[i] ? on : off);
-        x.ras.flush(); x.ras.blit(st.ctx, { x: 0, y: 0, w: st.w, h: st.h });
-      }
-    };
-    const run = ticker(s, 4, () => { for (const x of grids) x.g = x.f(x.g); }, paint);
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
-    slide(s, {
-      enter() { start = randomLife(N, N, 0.5, makeRng(1984)); reset(); },
-      leave() { run.play(false); },
-      key(k) { if (k !== 'r' && k !== 'R') return false; start = randomLife(N, N, 0.5, makeRng((Math.random() * 4294967296) >>> 0)); reset(); paint(); return true; },
-    });
-    for (const x of grids) onSize(x.c, paint);
-  }
 
   /** A clip beside a simulation: the same ▶/↺ button, started by its own build. */
   function clip(s: HTMLElement, k: number) {
@@ -200,7 +129,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d2-flock')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.boids')!;
     const W = 832, H = 586, BIRDS = 100;
-    let f = flock(BIRDS, W, H, makeRng(1987)), avoid: { x: number; y: number } | null = null;
+    let f = flock(BIRDS, W, H, makeRng(1987)), seed = 1987, avoid: { x: number; y: number } | null = null;
     const paintFlock = () => {
       const st = stage(c); if (!st) return;
       const { ctx, t } = st, k = st.w / W;
@@ -219,7 +148,11 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     c.addEventListener('pointermove', at);
     c.addEventListener('pointerdown', at);
     c.addEventListener('pointerleave', () => { avoid = null; });
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { birds.play(false); f = flock(BIRDS, W, H, makeRng(1987)); avoid = null; paintFlock(); }, play() { birds.play(true); } });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { birds.play(false); f = flock(BIRDS, W, H, makeRng(seed)); avoid = null; paintFlock(); },
+      play() { birds.play(true); },
+      reroll() { seed = (Math.random() * 4294967296) >>> 0; },
+    });
     clip(s, 2);
     slide(s, { leave() { birds.play(false); } });
     onSize(c, paintFlock);
@@ -230,9 +163,9 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     const b = s.querySelector<HTMLCanvasElement>('canvas.brain')!;
     // the brain: 0 resting, 1 firing, 2–3 recovering; `glow` fades each neuron after it fired
     const net = brain(260, 28, 6, 12, makeRng(3)), poly = outline(), REST = 3;
-    let st0 = new Uint8Array(net.n), st1 = new Uint8Array(net.n), rnd = makeRng(9);
+    let st0 = new Uint8Array(net.n), st1 = new Uint8Array(net.n), rnd = makeRng(9), seed = 9;
     const glow = new Float32Array(net.n);
-    const warm = () => { st0.fill(0); glow.fill(0); rnd = makeRng(9); for (let t = 0; t < 40; t++) { fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; } };
+    const warm = () => { st0.fill(0); glow.fill(0); rnd = makeRng(seed); for (let t = 0; t < 40; t++) { fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; } };
     const paintBrain = () => {
       const st = stage(b); if (!st) return;
       const { ctx, t } = st, k = Math.min(st.w / BOX.w, st.h / BOX.h) * 0.96, ox = (st.w - BOX.w * k) / 2, oy = (st.h - BOX.h * k) / 2;
@@ -264,7 +197,11 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
       for (let i = 0; i < net.n; i++) glow[i] *= 0.9;
       if (now - last >= 160) { last = now; fire(net, st0, st1, 0.25, REST, 0.003, rnd); [st0, st1] = [st1, st0]; for (let i = 0; i < net.n; i++) if (st0[i] === 1) glow[i] = 1; }
     }, paintBrain);
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { neurons.play(false); warm(); paintBrain(); }, play() { neurons.play(true); } });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { neurons.play(false); warm(); paintBrain(); },
+      play() { neurons.play(true); },
+      reroll() { seed = (Math.random() * 4294967296) >>> 0; },
+    });
     clip(s, 2);
     slide(s, { leave() { neurons.play(false); } });
     warm();

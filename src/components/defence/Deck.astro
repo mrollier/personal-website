@@ -21,9 +21,9 @@ const page = mode === 'page';
 // until: when the block should be over, for the rehearsal clock (key t)
 const blocks = [
   { id: 'opening', name: 'Opening', until: '0:30', C: Opening, intro: 'The title, over a landscape of still lifes in the style of the book’s cover.' },
-  { id: 'be-a-cell', name: 'Be a cell', until: '5:00', C: BeACell, intro: 'A game to show what a cell does: for five rounds the room is a cellular automaton, everyone following one rule about their two neighbours, and it turns out to be rule 90.' },
-  { id: 'automata', name: 'Cellular automata', until: '8:00', C: Automata, intro: 'From one rule to all 256 rules of a row of cells, then to the Game of Life and the still lifes the cover is made of.' },
-  { id: 'question', name: 'The question', until: '11:30', C: Question, intro: 'The same recipe gives order, chaotic-looking noise and something in between, in automata and in nature. The research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use?' },
+  { id: 'experiment', name: 'An experiment', until: '5:00', C: BeACell, intro: 'A cold start: for five rounds the room follows one rule about two neighbours each, and only afterwards sees what it computed: the parity rule, and a cellular automaton.' },
+  { id: 'automata', name: 'Cellular automata', until: '9:00', C: Automata, intro: 'From the parity rule to all 256 elementary rules of a row of cells; the Game of Life in two dimensions, the machines it can build and the still lifes the cover is made of; and the Life-like rules around it, which again behave in very different ways.' },
+  { id: 'question', name: 'The question', until: '11:30', C: Question, intro: 'Nature uses the same recipe, in a flock of starlings and in a young retina: simple local rules, rich behaviour. The research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use?' },
   { id: 'map', name: 'The thesis map', until: '12:30', C: ThesisMap, intro: 'The four parts of the thesis, where they were published, and which part answers which half of the question. The map then runs along the bottom of the slides.' },
   { id: 'genotype', name: 'Reading the rule', until: '21:30', C: Genotype, intro: 'From two neighbours in a row to contacts anywhere in a network; the Game of Life as a rule on shares; two numbers that read a rule before it runs; and how they narrow 262,144 rules down to 27 candidates for synchronisation without a single simulation.' },
   { id: 'which-network', name: 'Which network?', until: '26:00', C: WhichNetwork, intro: 'Run one rule on a network and the pattern it draws gives the network away. Why some rules are better detectives than others: jaggedness. And what consensus-seeking rules are good at instead.' },
@@ -63,7 +63,8 @@ const blocks = [
 )}
 <script>
   import { mountDeck } from '../../scripts/defence/deck';
-  document.querySelectorAll<HTMLElement>('[data-deck]').forEach(mountDeck);
+  import { sprigs } from '../../scripts/defence/sprig';
+  document.querySelectorAll<HTMLElement>('[data-deck]').forEach((d) => { mountDeck(d); sprigs(d); });
 
   // The hash picks the tab (a tab's id or the id of anything inside one); leaving the deck opens the tab it ended on.
   const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('.tabs [role="tab"]'));

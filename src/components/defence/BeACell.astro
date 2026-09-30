@@ -1,20 +1,23 @@
 ---
-// B1–B4: the room plays rule 90 with its hands, then sees what it computed. The game is a device to show what a
-// cell does; after B4 the talk speaks of cells, and people come back only once, as the stubborn person.
+// B1–B4: a cold start. The room plays rule 90 with its hands before anything is explained, and only then sees what it
+// computed. After B4 the talk speaks of cells, and people come back only once, as the stubborn person.
 import Slide from './Slide.astro';
 import RulePanels from './RulePanels.astro';
 import SimButton from './SimButton.astro';
 ---
-<Slide label="Be a cell: the rule" builds={1}>
-  <h2>Be a cell</h2>
-  <p class="lede">For five rounds, each of you is a cell. Pick two people near you, and keep them. Ignore your own hand.</p>
-  <RulePanels />
-  <p class="steps" data-b="1"><b>Look</b> → <b>Decide</b> → <b>3 · 2 · 1</b> → <b>Switch</b></p>
-  <p slot="say">The talk starts with a game. For five rounds, everyone in the room is a cell. You pick two people near you, your neighbours, and each round you look only at their hands. If exactly one of them has a hand up, yours goes up; if none or both do, yours goes down. Your own hand does not count, and neither does which neighbour is which: only how many are up.</p>
-  <p slot="say">Everybody first looks and decides, and only moves on “switch”. That keeps the whole room in step, as the cells of a cellular automaton are.</p>
+<Slide label="A small experiment: the rule">
+  <h2>A small experiment</h2>
+  <ol class="do">
+    <li><b>1</b> Pick two people near you</li>
+    <li><b>2</b> Ignore your own hand</li>
+    <li><b>3</b> Wait for the signal</li>
+  </ol>
+  <div class="col center grow"><RulePanels width={400} /></div>
+  <p slot="say">The talk starts cold, with a small experiment in participatory science: nothing is explained yet. Everyone picks two people near them and keeps them for the whole game. Each round you look only at their hands: if exactly one of them has a hand up, yours goes up; if none or both do, yours goes down. Your own hand does not count, and neither does which of the two is which: only how many are up.</p>
+  <p slot="say">Everybody first looks and decides, and only moves on the signal. That keeps the whole room in step.</p>
 </Slide>
 
-<Slide label="Be a cell: the start">
+<Slide label="A small experiment: the start">
   <div class="col center grow">
     <svg class="b2-hand" viewBox="0 0 100 130" aria-hidden="true"><use href="#hand-up" class="up" width="100" height="130" /></svg>
     <p class="big">Hands up if you were born in the <b>first six months</b> of the year</p>
@@ -23,7 +26,7 @@ import SimButton from './SimButton.astro';
   <p slot="say">The start is random, but in a way everyone can check for themselves: hands up if you were born between January and June.</p>
 </Slide>
 
-<Slide label="Be a cell: the rounds" builds={7} class="rounds">
+<Slide label="A small experiment: the rounds" builds={7} class="rounds">
   <div class="col center grow r-top">
     <p class="r-label" data-round>Practice 1</p>
     <p class="r-count" data-count aria-live="polite"></p>
@@ -33,25 +36,24 @@ import SimButton from './SimButton.astro';
   <p slot="say">Two practice rounds, then back to the start and five real rounds. Each click starts a three-second countdown, which the room says out loud: three, two, one, switch. The rule stays on screen the whole time. Nothing on screen shows the pattern the room makes: the room itself is the computer.</p>
 </Slide>
 
-<Slide label="What you just did" builds={4} class="r90">
-  <div class="row grow r90-row">
-    <div class="r90-box">
-      <canvas class="r90-canvas" aria-label="Rule 90 drawn row by row: the start on top, each round below"></canvas>
-      <SimButton class="r90-btn" />
-    </div>
-    <div class="col r90-side">
-      <h2>What you just did</h2>
-      <p>Top row: the start.<br />Each row below: the next round.</p>
-      <p data-b="2">One hand up in the middle, same rule.</p>
-      <p class="big" data-b="4">Nobody saw the whole. Everybody followed the same simple, local rule.</p>
-    </div>
+<Slide label="You just simulated the parity rule" builds={4} class="r90">
+  <h2>You just simulated the parity rule!</h2>
+  <div class="r90-box">
+    <canvas class="r90-canvas" aria-label="The parity rule drawn row by row: the start on top, each round one row lower"></canvas>
+    <SimButton class="r90-btn" />
   </div>
-  <p slot="say">This is what a row of cells following one rule does, drawn round by round: the start on top, each round one row lower. The rule the room played is known as rule 90. From a random start, like tonight’s, it makes a jumble of triangles; from a single raised hand it draws a Sierpiński triangle.</p>
+  <p class="big r90-end" data-b="4">Nobody saw the whole. Everybody followed the same simple, local rule.</p>
+  <p slot="say">That was the parity rule: your hand goes up when an odd number of your neighbours have theirs up. This is what a row of cells following it does, drawn round by round: space runs to the right, time runs down, each round one row lower. From a random start, like tonight’s, it makes a jumble of triangles; from a single raised hand in the middle it draws a Sierpiński triangle. The reset button draws a new random start.</p>
   <p slot="say">Nobody saw the whole pattern; everyone only followed a simple, local rule. That is a cellular automaton, and that was the game: from here on, the cells are squares on a screen.</p>
 </Slide>
 
 <style>
-  .steps { font-size: calc(48 * var(--u)); text-align: center; }
+  .do { list-style: none; padding: 0; display: flex; flex-direction: row; justify-content: center; gap: calc(72 * var(--u)); font-size: calc(42 * var(--u)); margin: calc(10 * var(--u)) 0 calc(20 * var(--u)); }
+  .do li { display: flex; align-items: center; gap: calc(16 * var(--u)); white-space: nowrap; }
+  .do b {
+    flex: none; width: calc(62 * var(--u)); height: calc(62 * var(--u)); border-radius: 50%; display: inline-grid; place-items: center;
+    background: var(--ink); color: var(--sun); font-size: calc(36 * var(--u));
+  }
 
   .b2-hand { width: calc(150 * var(--u)); }
   .months { font-size: calc(56 * var(--u)); color: var(--accent); }
@@ -60,17 +62,16 @@ import SimButton from './SimButton.astro';
   .r-top { gap: calc(12 * var(--u)); }
   .r-count { font-size: calc(260 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
   .r-count.sw { color: var(--accent); font-size: calc(200 * var(--u)); }
-  .r-note { font-size: calc(40 * var(--u)); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; }
+  .r-note { font-size: calc(40 * var(--u)); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; text-wrap: balance; }
 
-  .r90-row { align-items: center; gap: calc(56 * var(--u)); }
-  .r90-box { position: relative; flex: none; }
-  .r90-canvas { width: calc(1140 * var(--u)); height: calc(556 * var(--u)); }
-  .r90-box :global(.r90-btn) { right: calc(-24 * var(--u)); bottom: calc(-20 * var(--u)); }
-  .r90-side { flex: 1; }
+  .r90-box { position: relative; align-self: center; flex: 1; min-height: 0; display: flex; align-items: center; }
+  .r90-canvas { width: calc(1400 * var(--u)); height: calc(728 * var(--u)); }
+  .r90-box :global(.r90-btn) { right: calc(-24 * var(--u)); bottom: calc(-4 * var(--u)); }
+  .r90-end { text-align: center; font-size: calc(50 * var(--u)); }
 </style>
 
 <script>
-  import { slide, sim, type How } from '../../scripts/defence/deck';
+  import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, text } from '../../scripts/defence/stage';
   import { evolve, seedRow } from '../../scripts/eca';
   import { makeRng } from '../../scripts/net';
@@ -83,14 +84,14 @@ import SimButton from './SimButton.astro';
     let animate = true, timer = 0, left = 0, target = 0;
     const show = (b: number) => { round.textContent = names[b]; note.textContent = notes[b]; count.textContent = ''; count.classList.remove('sw'); };
     const stopCount = () => { clearTimeout(timer); timer = 0; };
-    // 3 · 2 · 1 · SWITCH over three seconds, then the next round's name
+    // 3 · 2 · 1 · SWITCH over three seconds; SWITCH stays up for two, then the next round's name
     function countdown(b: number) {
       stopCount(); target = b; left = 3;
       note.textContent = ''; count.classList.remove('sw'); count.textContent = '3';
       const tick = () => {
         left--;
         if (left > 0) { count.textContent = String(left); timer = window.setTimeout(tick, 750); }
-        else if (left === 0) { count.textContent = 'SWITCH'; count.classList.add('sw'); timer = window.setTimeout(tick, 900); }
+        else if (left === 0) { count.textContent = 'SWITCH'; count.classList.add('sw'); timer = window.setTimeout(tick, 2000); }
         else { timer = 0; show(target); }
       };
       timer = window.setTimeout(tick, 750);
@@ -105,21 +106,33 @@ import SimButton from './SimButton.astro';
     show(0);
   }
 
-  // ── B4: rule 90 grows downward, from the room's random start (builds 0–1) and then from one raised hand (2–3) ──
+  // ── B4: the parity rule (rule 90) grows downward, from a random start (builds 0–1) and then from one raised hand
+  // (2–3); a reset by hand draws a new random start ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.r90')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas')!;
-    const W = 81, T = 40;
-    const random = evolve(seedRow(W, 'random', makeRng(1990)), 90, T), single = evolve(seedRow(W, 'seed'), 90, T);
+    const W = 81, T = 40, CELL = 16, LEFT = 104, TOP = 68;
+    let random = evolve(seedRow(W, 'random', makeRng(1990)), 90, T);
+    const single = evolve(seedRow(W, 'seed'), 90, T);
     let rows = random, shown = 1;
+    // an arrow from (x0, y0) to (x1, y1) with its head at the end
+    function arrow(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
+      const a = Math.atan2(y1 - y0, x1 - x0);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.moveTo(x1 - 20 * Math.cos(a - 0.5), y1 - 20 * Math.sin(a - 0.5)); ctx.lineTo(x1, y1); ctx.lineTo(x1 - 20 * Math.cos(a + 0.5), y1 - 20 * Math.sin(a + 0.5));
+      ctx.stroke();
+    }
     function paint() {
       const st = stage(c); if (!st) return;
-      const { ctx, w, h, t } = st, left = 150, cell = Math.floor(Math.min((w - left) / W, (h - 60) / (T + 1))), top = 44;
-      ctx.fillStyle = t.panel; ctx.fillRect(left, top, cell * W, cell * (T + 1));
+      const { ctx, t } = st;
+      ctx.fillStyle = t.panel; ctx.fillRect(LEFT, TOP, CELL * W, CELL * (T + 1));
       ctx.fillStyle = t.ink;
-      for (let y = 0; y < shown; y++) for (let x = 0; x < W; x++) if (rows[y][x]) ctx.fillRect(left + x * cell, top + y * cell, cell, cell);
-      const f = { color: t.muted, font: t.mono, size: 30 };
-      text(ctx, 'start', left - 18, top + cell * 0.8, { ...f, align: 'right' });
-      for (const r of [10, 20, 30, 40]) text(ctx, `round ${r}`, left - 18, top + cell * (r + 0.8), { ...f, align: 'right', size: 26 });
+      for (let y = 0; y < shown; y++) for (let x = 0; x < W; x++) if (rows[y][x]) ctx.fillRect(LEFT + x * CELL, TOP + y * CELL, CELL, CELL);
+      ctx.strokeStyle = t.muted; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      arrow(ctx, LEFT, TOP - 34, LEFT + 250, TOP - 34);
+      arrow(ctx, LEFT - 40, TOP, LEFT - 40, TOP + 250);
+      const f = { color: t.muted, font: t.sans, size: 34 };
+      text(ctx, 'space', LEFT + 268, TOP - 34, { ...f, base: 'middle' });
+      text(ctx, 'time', LEFT - 40, TOP + 290, { ...f, align: 'center', base: 'middle' });
     }
     const run = ticker(c, 12, () => { if (shown >= rows.length) return true; shown++; }, paint);
     slide(s, {
@@ -127,7 +140,11 @@ import SimButton from './SimButton.astro';
       enter() { rows = random; shown = 1; },
       leave() { run.play(false); },
     });
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [1, 3], { reset() { run.play(false); shown = 1; paint(); }, play() { run.play(true); } });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [1, 3], {
+      reset() { run.play(false); shown = 1; paint(); },
+      play() { run.play(true); },
+      reroll() { const was = rows === random; random = evolve(seedRow(W, 'random', fresh()), 90, T); if (was) rows = random; },
+    });
     onSize(c, paint);
   }
 </script>

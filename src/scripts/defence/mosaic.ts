@@ -19,14 +19,15 @@ export function decodeMosaic(j: MosaicJson): Mosaic {
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 
 /** Paints the page window of `live` (a PW × PH torus) one pixel a cell into a bitmap, and the bitmap onto `ctx` at
- * (x, y, w, h) without smoothing, so every cell is a square. A live cell takes its level's ink, or `ink` on the field. */
-export function mosaicPainter(m: Mosaic, ink: string): (ctx: CanvasRenderingContext2D, live: Uint8Array, x: number, y: number, w: number, h: number) => void {
+ * (x, y, w, h) without smoothing, so every cell is a square. A live cell takes its level's ink, or `ink` on the field;
+ * a dead cell on the field takes `field` (the slide's own background, which is paler than the cover's apricot). */
+export function mosaicPainter(m: Mosaic, ink: string, field = m.field): (ctx: CanvasRenderingContext2D, live: Uint8Array, x: number, y: number, w: number, h: number) => void {
   const off = document.createElement('canvas');
   off.width = m.W; off.height = m.H;
   const octx = off.getContext('2d')!, img = octx.createImageData(m.W, m.H), px = new Uint32Array(img.data.buffer);
   // colours as little-endian RGBA words: [field, grounds 1–7] when dead, [ink, inks 1–7] when alive
   const word = (h: string) => { const [r, g, b] = rgb(h); return (255 << 24) | (b << 16) | (g << 8) | r; };
-  const dead = [m.field, ...m.grounds].map(word), alive = [ink, ...m.inks].map(word);
+  const dead = [field, ...m.grounds].map(word), alive = [ink, ...m.inks].map(word);
   return (ctx, live, x, y, w, h) => {
     for (let r = 0; r < m.H; r++) {
       const src = (r + m.M) * m.PW + m.M, dst = r * m.W;

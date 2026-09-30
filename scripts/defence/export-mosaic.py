@@ -2,7 +2,10 @@
 
 Packed with the cover's own code (game-of-life-mosaics/studies/cover/cover.py): tiles of levels 7 down to 2, then
 ponds, on the pond lattice, levels rising with the distance from the shore. The coast sits in the bottom-right corner
-and breaks up into islands towards the title, whose box stays clear. As on the cover, the page is packed with a margin
+and breaks up into islands towards the text. What stays clear is the text itself: every line and logo of the title
+slide and of the closing slide at each of its builds, as measured in the browser (scripts/defence/title-boxes.json,
+in design pixels of the 1920 × 1080 slide), grown by a few cells; the sea is let in round it by a soft dip in the
+terrain, so the coast follows the terrain's own noise instead of a box. As on the cover, the page is packed with a margin
 of MARGIN cells on a torus and cut at the trim, so tiles run off the edges; the whole padded torus is a still life
 (checked), and the deck runs the Game of Life on all of it while showing the page.
 
@@ -20,13 +23,26 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy import ndimage as ndi
 
 SITE = Path(__file__).resolve().parents[2]
 MOSAICS = SITE.parent / "game-of-life-mosaics"
 sys.path.insert(0, str(MOSAICS / "studies" / "cover"))
 import cover as C  # noqa: E402  (puts the repository's src and studies on the path itself)
 
-W, H, SEED, TARGET = 288, 162, 20261002, 0.32  # 16:9 page, multiples of 6; 1920 / 288 = 6.67 design pixels a cell
+W, H, SEED, TARGET = 288, 162, 20261002, 0.46  # 16:9 page, multiples of 6; 1920 / 288 = 6.67 design pixels a cell
+BOXES = json.loads((SITE / "scripts" / "defence" / "title-boxes.json").read_text())
+GROW, DIP, REACH = 4, 0.8, 6  # cells kept clear round the text; depth and reach (cells) of the dip in the terrain
+
+
+def keep_clear(M):
+    """The padded page's cells under the text and logos, grown by GROW."""
+    px, m = 1920 / W, np.zeros((H + 2 * M, W + 2 * M), bool)
+    for x, y, w, h in BOXES["title"] + BOXES["closing"]:
+        x0, y0 = int(x / px) + M - GROW, int(y / px) + M - GROW
+        x1, y1 = int(np.ceil((x + w) / px)) + M + GROW, int(np.ceil((y + h) / px)) + M + GROW
+        m[max(0, y0):y1, max(0, x0):x1] = True
+    return m
 
 
 def design(seed):
@@ -36,12 +52,13 @@ def design(seed):
     try:
         c = C.Cover(seed)
         x, y = (C.XX - M) / W, (C.YY - M) / H                    # page coordinates, 0..1 on the page
-        w = (0.95 * x + 0.75 * y - 0.95) / 0.55                 # 1 in the bottom-right corner, 0 towards the title
-        title = (x < 0.60) & (y < 0.80)                          # the title's box, kept clear
+        w = (0.95 * x + 0.75 * y - 0.95) / 0.55                 # 1 in the bottom-right corner, 0 towards the text
+        keep = keep_clear(M)
         # a drowned coast, as on the front cover: hills rising towards the corner, valleys running up towards the
-        # title, the sea let in to a level
+        # text, the terrain dipping round the text, the sea let in to a level
         T = C.terrain(c.rng, w, -140, gain=2.2, vdepth=1.5, vwidth=0.3, along=70, across=18)
-        land = C.flood(np.where(title, -9, T), TARGET, smooth=4) & ~title
+        T = T - DIP * np.exp(-ndi.distance_transform_edt(~keep) / REACH)
+        land = C.flood(np.where(keep, -9, T), TARGET, smooth=4) & ~keep
         c.fill(land, C.shore_field(c.rng, land, scale=6, base=2.2))
         lab, ok = c.labels(), c.verify()
         placed = dict(sorted(c.placed.items()))

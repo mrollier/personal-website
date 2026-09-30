@@ -136,7 +136,7 @@ const beyond = [
 </style>
 
 <script>
-  import { slide, sim, type How } from '../../scripts/defence/deck';
+  import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { pattern } from '../../scripts/defence/plot';
   import { decodeMosaic, mosaicPainter, type MosaicJson } from '../../scripts/defence/mosaic';
@@ -144,7 +144,7 @@ const beyond = [
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
-  import { toyNet, startSeed } from '../../scripts/defence/toy';
+  import { toyNet } from '../../scripts/defence/toy';
   import { parse, mix, css } from '../../scripts/palette';
   import mosaicData from '../../data/defence/mosaic.json';
   import sync from '../../data/defence/sync.json';
@@ -166,7 +166,7 @@ const beyond = [
     let a = new Uint8Array(N), b = new Uint8Array(N), a2 = new Uint8Array(N), b2 = new Uint8Array(N), ticks = 0;
     return {
       rate: 4,
-      reset() { a = randomState(N, 0.5, makeRng(5)); b = a.slice(); b[flip] ^= 1; ticks = 0; },
+      reset() { a = randomState(N, 0.5, fresh()); b = a.slice(); b[flip] ^= 1; ticks = 0; }, // a new start every loop
       advance() { step(a, net, LIFE, a2); step(b, net, LIFE, b2); [a, a2] = [a2, a]; [b, b2] = [b2, b]; if (++ticks > 60) this.reset(); },
       paint(st) { cells(st, side, side, (x, y) => { const i = y * side + x; return a[i] !== b[i] ? st.t.danger : a[i] ? st.t.ink : null; }); },
     } satisfies Act;
@@ -199,7 +199,7 @@ const beyond = [
     return {
       rate: 8,
       reset() {
-        st0 = nets.map((net, c) => randomState(net.n, 0.5, makeRng(startSeed(c, 0)))); out = nets.map((net) => new Uint8Array(net.n)); hist = nets.map(() => []);
+        st0 = nets.map((net) => randomState(net.n, 0.5, fresh())); out = nets.map((net) => new Uint8Array(net.n)); hist = nets.map(() => []);
         for (let k = 0; k < L; k++) this.advance();
       },
       advance() { nets.forEach((net, c) => { hist[c].push(st0[c].slice()); if (hist[c].length > L) hist[c].shift(); step(st0[c], net, rule, out[c]); [st0[c], out[c]] = [out[c], st0[c]]; }); },
@@ -276,9 +276,11 @@ const beyond = [
     // the forest-fire automaton: 0 bare, 1 tree, 2 burning, 3 burnt; a burning cell sets each neighbouring tree alight
     // with probability 0.7, and burns out in one round. A wind from the left makes it spread faster that way.
     const W = 52, H = 52, trees = new Uint8Array(W * H);
-    { const rnd = makeRng(2026); for (let i = 0; i < W * H; i++) trees[i] = rnd() < 0.72 ? 1 : 0; }
+    let seed = 2026;
+    const plant = () => { const r = makeRng(seed); for (let i = 0; i < W * H; i++) trees[i] = r() < 0.72 ? 1 : 0; };
+    plant();
     let g = trees.slice(), rnd = makeRng(7), rounds = 0;
-    const light = () => { g = trees.slice(); rnd = makeRng(7); rounds = 0; for (let y = 22; y < 30; y++) g[y * W + 1] = 2; };
+    const light = () => { g = trees.slice(); rnd = makeRng(seed + 7); rounds = 0; for (let y = 22; y < 30; y++) g[y * W + 1] = 2; };
     const advance = () => {
       const out = g.slice(); let burning = 0;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -299,7 +301,11 @@ const beyond = [
     };
     const run = ticker(s, 8, advance, paintFire);
     light();
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); light(); paintFire(); }, play() { run.play(true); } });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { run.play(false); light(); paintFire(); },
+      play() { run.play(true); },
+      reroll() { seed = (Math.random() * 4294967296) >>> 0; plant(); },
+    });
     slide(s, { leave() { run.play(false); } });
     onSize(fireC, paintFire);
 
@@ -330,7 +336,7 @@ const beyond = [
   let flip = -1, best = Infinity;
   for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) { const i = (y + m.M) * m.PW + x + m.M; if (m.live[i]) { const d = (x - 0.8 * m.W) ** 2 + (y - 0.5 * m.H) ** 2; if (d < best) { best = d; flip = i; } } }
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448');
+    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448', getComputedStyle(c).getPropertyValue('--bg').trim());
     let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0;
     const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; };
     const paint = () => { const st = stage(c); if (st) draw(st.ctx, live, 0, 0, st.w, st.h); };

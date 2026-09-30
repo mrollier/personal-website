@@ -1,13 +1,13 @@
 ---
 // Rule 90 as the room plays it: how many of your two neighbours have a hand up (0, 1 or 2; which one does not
-// matter), and what your hand does next. Large on the rule slide, small on the rounds slide, so nobody has to
+// matter), and what your hand does next. The picture says it all, so no words under it. Large on the rule slide, small on the rounds slide, so nobody has to
 // remember the rule during a countdown. `width` is one panel's width in design pixels.
 type Props = { width?: number };
 const { width = 360 } = Astro.props;
 const panels = [
-  { up: 0, out: 0, then: 'hand down' },
-  { up: 1, out: 1, then: 'hand up' },
-  { up: 2, out: 0, then: 'hand down' },
+  { up: 0, out: 0 },
+  { up: 1, out: 1 },
+  { up: 2, out: 0 },
 ];
 const who = (up: boolean) => (up ? '#hand-up' : '#hand-down');
 const cls = (up: boolean) => (up ? 'up' : 'down');
@@ -23,7 +23,6 @@ const cls = (up: boolean) => (up ? 'up' : 'down');
         <path d="M150 178 V224 M132 206 L150 226 L168 206" class="arrow" />
         <use href={who(!!p.out)} class={`${cls(!!p.out)} you`} x="100" y="244" width="100" height="130" />
       </svg>
-      <figcaption>→ <b>{p.then}</b></figcaption>
     </figure>
   ))}
 </div>
@@ -38,5 +37,4 @@ const cls = (up: boolean) => (up ? 'up' : 'down');
   .panel .you.down { stroke: var(--accent); }
   .panel .you.up { fill: var(--accent); stroke: var(--accent); }
   .panel .arrow { fill: none; stroke: var(--muted); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
-  .panel figcaption { font-size: calc(var(--pw) * 0.1 * var(--u)); text-align: center; line-height: 1.25; }
 </style>

@@ -1,28 +1,44 @@
 ---
-// A1: the title over the cover's landscape, static: the multi-level still-life mosaic of src/data/defence/mosaic.json.
+// A1: the title over the cover's landscape, static: the multi-level still-life mosaic of src/data/defence/mosaic.json,
+// whose coast keeps clear of the text and the logos (scripts/defence/export-mosaic.py reads their boxes).
 import Slide from './Slide.astro';
+const logos = [
+  { src: 'ugent', alt: 'Ghent University', h: 128 },
+  { src: 'fbe', alt: 'Faculty of Bioscience Engineering', h: 58 },
+  { src: 'usp', alt: 'University of São Paulo', h: 66 },
+  { src: 'bionamix', alt: 'BionamiX', h: 66 },
+];
 ---
-<Slide label="Title">
+<Slide label="Title" class="a1">
   <canvas class="art" data-title-art aria-hidden="true"></canvas>
-  <div class="t">
+  <div class="t" data-keep-clear>
     <h1>The rich landscape of iterated simplicity</h1>
-    <p class="sub">cellular automata and network automata</p>
+    <p class="sub">Cellular automata and network automata</p>
     <p class="who">Michiel Rollier</p>
     <p class="when">Public PhD defence · Friday 2 October 2026</p>
     <p class="fine">Supervisors: Prof. Dr. Ir. Jan M. Baetens · Prof. Dr. Odemir M. Bruno · Dr. Aisling Daly</p>
-    <p class="fine">Joint PhD · Ghent University, Faculty of Bioscience Engineering · University of São Paulo, São Carlos Institute of Physics</p>
+    <p class="fine">Joint PhD · Ghent University · University of São Paulo</p>
   </div>
-  <p slot="say">The title of the thesis, over a landscape in the style of its cover. The picture is not explained yet: within ten minutes the room will know what it is, and it comes back on the last slide.</p>
+  <div class="logos" data-keep-clear>
+    {logos.map((l) => <img src={`/demos/defence/logos/${l.src}.webp`} alt={l.alt} style={`height: calc(${l.h} * var(--u))`} />)}
+  </div>
+  <p slot="say">The title of the thesis, over a landscape in the style of its cover. It is the result of a five-year joint PhD at <a href="https://www.bionamix.ugent.be/">BionamiX</a> (Faculty of Bioscience Engineering, Ghent University, under Jan M. Baetens) and the Scientific Computing Group (São Carlos Institute of Physics, University of São Paulo, under Odemir M. Bruno). More on the <a href="https://michielrollier.be/research/">research page</a> and on <a href="https://orcid.org/0000-0001-8467-734X">ORCID</a>.</p>
+  <p slot="say">The picture is not explained yet: within ten minutes the room will know what it is, and it comes back on the last slide.</p>
 </Slide>
 
 <style>
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .t { position: relative; width: calc(1040 * var(--u)); margin-top: calc(120 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
-  h1 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; font-size: calc(84 * var(--u)); margin: 0; }
-  .sub { font-size: calc(46 * var(--u)); margin-bottom: calc(50 * var(--u)); }
+  .t { position: relative; width: fit-content; max-width: calc(1100 * var(--u)); margin-top: calc(92 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  h1 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.01em; line-height: 1.08; font-size: calc(84 * var(--u)); margin: 0; max-width: calc(1040 * var(--u)); }
+  .sub { font-size: calc(46 * var(--u)); margin-bottom: calc(44 * var(--u)); }
   .who { font-size: calc(52 * var(--u)); font-weight: 600; }
   .when { font-size: calc(38 * var(--u)); }
-  .fine { font-size: calc(26 * var(--u)); color: var(--muted); max-width: calc(900 * var(--u)); }
+  .fine { font-size: calc(26 * var(--u)); color: var(--muted); white-space: nowrap; }
+  .logos {
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(64 * var(--u));
+    display: flex; align-items: center; gap: calc(56 * var(--u));
+  }
+  .logos img { display: block; width: auto; }
 </style>
 
 <script>
@@ -31,7 +47,7 @@ import Slide from './Slide.astro';
   import data from '../../data/defence/mosaic.json';
   const m = decodeMosaic(data as MosaicJson);
   for (const c of document.querySelectorAll<HTMLCanvasElement>('[data-title-art]')) {
-    const paint = mosaicPainter(m, '#0C2448');
+    const paint = mosaicPainter(m, '#0C2448', getComputedStyle(c).getPropertyValue('--bg').trim());
     onSize(c, () => { const st = stage(c); if (st) paint(st.ctx, m.live, 0, 0, st.w, st.h); });
   }
 </script>

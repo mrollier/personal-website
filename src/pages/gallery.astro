@@ -12,13 +12,21 @@ const postcards: Piece[] = [
 const prints: Piece[] = [
   { id: 'jury-print-paraty', title: 'Paraty Mirim, land and sea', text: 'Land and sea both packed with tiles: the level rises with the altitude on land and with the distance from the shore at sea. Seven shades of terracotta on land, seven of denim at sea.', size: 'A3', cells: '720 × 1008 cells of 0.42 mm', w: 2807, h: 3970, pdf: 'print-paraty-A3.pdf', kb: 2775 },
 ];
-const all = [...postcards, ...prints];
+// The landscape dome comes last, so it spans a whole row in both the three- and the two-column grid.
+const posters: Piece[] = [
+  { id: 'sacred-mandala-gold', title: 'Mandala in gold', text: 'After a photograph of a Himalayan mandala thangka in green and gold: the big tiles fill its calm fields, the small ones trace the busy parts.', size: 'A2', cells: '1008 × 1422 cells of 0.42 mm', w: 3970, h: 5614, pdf: 'poster-mandala-gold-A2.pdf', kb: 3661 },
+  { id: 'sacred-mandala-blue', title: 'Mandala in lapis', text: 'After a photograph of a mandala thangka in red and lapis blue, each tile one pane of colour between seams of dark lead.', size: 'A2', cells: '1008 × 1422 cells of 0.42 mm', w: 3970, h: 5614, pdf: 'poster-mandala-blue-A2.pdf', kb: 3585 },
+  { id: 'sacred-mandala-dark', title: 'Mandala in vermilion', text: 'After a photograph of a thangka in black and vermilion: its figures are not symmetric, so they dissolve into fields of colour.', size: 'A2', cells: '1008 × 1422 cells of 0.42 mm', w: 3970, h: 5614, pdf: 'poster-mandala-dark-A2.pdf', kb: 4188 },
+  { id: 'sacred-tilework', title: 'Tilework', text: 'After a photograph of a panel of Persian tilework with black grout, mirrored left to right and top to bottom.', size: 'A2', cells: '1008 × 1422 cells of 0.42 mm', w: 3970, h: 5614, pdf: 'poster-tilework-A2.pdf', kb: 3891 },
+  { id: 'sacred-dome', title: 'Star dome', text: 'After a photograph of the 16-fold star dome of a Persian ceiling: one wedge of the star, mirrored round the circle, with turquoise seams.', size: 'A2, landscape', cells: '1422 × 1008 cells of 0.42 mm', w: 5614, h: 3970, pdf: 'poster-dome-A2.pdf', kb: 4526 },
+];
+const all = [...postcards, ...prints, ...posters];
 const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} kB`);
 ---
-<Base title="Gallery" description="Mosaics built from Game of Life still lifes: five postcards and an A3 print, with print-quality PDFs." wide>
+<Base title="Gallery" description="Mosaics built from Game of Life still lifes: postcards, an A3 print and A2 posters, with print-quality PDFs." wide>
   <div class="measure">
     <h1>Gallery</h1>
-    <p>Mosaics built entirely from Game of Life still lifes: every cell is alive or dead, and every live cell keeps living forever. They were made as handouts for my PhD defence on 2 October 2026, five postcards for the guests and an A3 print for the jury.</p>
+    <p>Mosaics built entirely from Game of Life still lifes: every cell is alive or dead, and every live cell keeps living forever. The postcards and the A3 print were handouts for my PhD defence on 2 October 2026, for the guests and for the jury. The A2 posters are after photographs of sacred geometry: each is one still life, packed with the tiles of my thesis cover and exactly symmetric.</p>
     <p>Click a piece to see it large, and click again to zoom in on the cells. The PDFs are the vector print files, with 3 mm bleed. Make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
   </div>
 
@@ -40,6 +48,20 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
   <ul class="gallery single">
     {prints.map((p) => (
       <li>
+        <button type="button" class="thumb" data-id={p.id} aria-label={`View ${p.title} large`}>
+          <img src={`/gallery/${p.id}.webp`} alt={p.title} width={p.w} height={p.h} loading="lazy" decoding="async" />
+        </button>
+        <b>{p.title}</b>
+        <span class="text">{p.text}</span>
+        <span class="meta">{p.size} · {p.cells} · <a href={`/gallery/${p.pdf}`} download>PDF, {mb(p.kb)}</a></span>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Posters</h2>
+  <ul class="gallery">
+    {posters.map((p) => (
+      <li class:list={[p.w > p.h && 'landscape']}>
         <button type="button" class="thumb" data-id={p.id} aria-label={`View ${p.title} large`}>
           <img src={`/gallery/${p.id}.webp`} alt={p.title} width={p.w} height={p.h} loading="lazy" decoding="async" />
         </button>
@@ -80,6 +102,7 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
   .gallery b { font-family: var(--mono); font-weight: 600; }
   .gallery .text { color: var(--ink); line-height: 1.45; }
   .gallery .meta { color: var(--muted); font-size: 0.82rem; font-family: var(--mono); }
+  .gallery .meta a { white-space: nowrap; }
   @media (max-width: 700px) {
     .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 1rem; }
   }

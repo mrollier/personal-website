@@ -27,7 +27,7 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
   <div class="measure">
     <h1>Gallery</h1>
     <p>Mosaics built entirely from Game of Life still lifes: every cell is alive or dead, and every live cell keeps living forever. The postcards and the A3 print were handouts for my PhD defence on 2 October 2026, for the guests and for the jury. The A2 posters are after photographs of sacred geometry: each is one still life, packed with the tiles of my thesis cover and exactly symmetric.</p>
-    <p>Click a piece to see it large, and click again to zoom in on the cells. The PDFs are the vector print files, with 3 mm bleed. Make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
+    <p>Click a piece to see it large, and click again to zoom in on the cells; on a phone, pinch or double-tap, and swipe to the next piece. The PDFs are the vector print files, with 3 mm bleed. Make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
   </div>
 
   <h2>Postcards</h2>
@@ -73,7 +73,7 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
   </ul>
 
   <dialog class="viewer" aria-label="Mosaic viewer">
-    <div class="stage"><img alt="" /></div>
+    <div class="stage"><div class="track">{[0, 1, 2].map(() => <div class="slide"><img alt="" draggable="false" /></div>)}</div></div>
     <div class="bar">
       <span class="cap"></span>
       <button type="button" data-go="-1" aria-label="Previous">←</button>
@@ -83,7 +83,7 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
       <button type="button" class="close" aria-label="Close">✕</button>
     </div>
   </dialog>
-  <script type="application/json" id="gallery-data" set:html={JSON.stringify(all.map(({ id, title, pdf }) => ({ id, title, pdf })))} />
+  <script type="application/json" id="gallery-data" set:html={JSON.stringify(all.map(({ id, title, pdf, w, h }) => ({ id, title, pdf, w, h })))} />
 </Base>
 
 <style>
@@ -114,15 +114,17 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
     width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
     background: #0d0e10; color: #e8e9e6;
   }
-  .viewer[open] { display: flex; flex-direction: column; }
+  .viewer[open] { display: flex; flex-direction: column; overscroll-behavior: contain; }
   .viewer::backdrop { background: #0d0e10; }
-  .stage { flex: 1; min-height: 0; overflow: auto; display: grid; place-items: center; }
-  .stage img { max-width: calc(100vw - 2rem); max-height: calc(100dvh - 4.5rem); cursor: zoom-in; image-rendering: auto; }
-  .viewer.zoomed .stage { place-items: start; }
-  .viewer.zoomed .stage img { max-width: none; max-height: none; cursor: zoom-out; image-rendering: pixelated; }
+  /* three slides side by side (previous, current, next), the current one in view; the script sizes and places each image */
+  .stage { flex: 1; min-height: 0; position: relative; overflow: hidden; touch-action: none; cursor: zoom-in; user-select: none; -webkit-user-select: none; }
+  .viewer.zoomed .stage { cursor: grab; }
+  .track { position: absolute; inset: 0; display: flex; transform: translateX(-100%); }
+  .slide { position: relative; flex: none; width: 100%; height: 100%; overflow: hidden; }
+  .slide img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; -webkit-user-drag: none; }
   .bar {
     display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem;
-    font-family: var(--mono); font-size: 0.85rem; border-top: 1px solid #2a2d33;
+    font-family: var(--mono); font-size: 0.85rem; border-top: 1px solid #2a2d33; touch-action: manipulation;
   }
   .bar .cap { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar button, .bar a {
@@ -133,55 +135,198 @@ const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb}
 </style>
 
 <script>
-  type Item = { id: string; title: string; pdf: string };
+  // The viewer: three slides side by side (previous, current, next), so a swipe drags the neighbours into view. The
+  // current image zooms and pans by pinching, double-tapping and dragging on a touchscreen; by clicking, dragging, a
+  // trackpad pinch and the wheel with a mouse. Zoom is a scale s ≥ 1 over the fitted size, up to 2 CSS pixels per image
+  // pixel (8 per cell), with the image's centre shifted by (tx, ty); the image is laid out at that size, not scaled with
+  // a transform, so the browser draws the cells sharp. A swipe down closes the viewer.
+  type Item = { id: string; title: string; pdf: string; w: number; h: number };
   const items: Item[] = JSON.parse(document.getElementById('gallery-data')!.textContent!);
   const dlg = document.querySelector<HTMLDialogElement>('.viewer')!;
-  const stage = dlg.querySelector<HTMLDivElement>('.stage')!;
-  const img = stage.querySelector('img')!;
+  const stage = dlg.querySelector<HTMLDivElement>('.stage')!, track = stage.querySelector<HTMLDivElement>('.track')!;
   const cap = dlg.querySelector<HTMLSpanElement>('.cap')!;
   const dl = dlg.querySelector<HTMLAnchorElement>('.dl')!;
   const zoomBtn = dlg.querySelector<HTMLButtonElement>('.zoom')!;
-  let at = 0;
+  let slides = Array.from(track.children) as HTMLElement[]; // previous, current, next
+  const imgOf = (el: HTMLElement) => el.querySelector('img')!;
+  const mod = (i: number) => (i + items.length) % items.length;
+  // at: the current piece; s, tx, ty: its zoom; off: the track dragged sideways; drop: the image dragged down, to close
+  let at = 0, s = 1, tx = 0, ty = 0, off = 0, drop = 0;
 
-  const show = (i: number) => {
-    at = (i + items.length) % items.length;
-    const it = items[at];
-    setZoom(false);
-    img.src = `/gallery/${it.id}.webp`;
-    img.alt = it.title;
-    cap.textContent = it.title;
-    dl.href = `/gallery/${it.pdf}`;
+  /** The fitted size of a piece in the stage, with a margin. */
+  const fit = (it: Item) => {
+    const W = stage.clientWidth, H = stage.clientHeight, f = Math.max(1e-3, Math.min((W - 32) / it.w, (H - 16) / it.h));
+    return { f, w: it.w * f, h: it.h * f, W, H };
   };
-  // Zoomed, each image pixel is 2 CSS pixels: 8 px per cell. The clicked point stays under the pointer.
-  const setZoom = (on: boolean, x = 0.5, y = 0.5, cx?: number, cy?: number) => {
-    dlg.classList.toggle('zoomed', on);
-    zoomBtn.textContent = on ? 'Fit' : 'Zoom';
-    img.style.width = on ? `${img.naturalWidth * 2}px` : '';
-    if (on) {
-      const r = stage.getBoundingClientRect();
-      stage.scrollLeft = x * img.offsetWidth - (cx ?? r.width / 2);
-      stage.scrollTop = y * img.offsetHeight - (cy ?? r.height / 2);
+  const maxS = () => Math.max(1, 2 / fit(items[at]).f);
+  const zoomed = () => s > 1.01;
+
+  function place(el: HTMLElement, i: number, z = 1, x = 0, y = 0) {
+    const it = items[mod(i)], g = fit(it), img = imgOf(el), w = g.w * z, h = g.h * z;
+    img.style.width = `${w}px`; img.style.height = `${h}px`;
+    img.style.transform = `translate(${(g.W - w) / 2 + x}px, ${(g.H - h) / 2 + y}px)`;
+    img.style.imageRendering = (w / it.w) * devicePixelRatio >= 2 ? 'pixelated' : 'auto';
+  }
+  function render() {
+    track.style.transform = `translateX(calc(-100% + ${off}px))`;
+    place(slides[0], at - 1); place(slides[1], at, s, tx, ty + drop); place(slides[2], at + 1);
+    imgOf(slides[1]).style.opacity = drop ? String(Math.max(0.3, 1 - Math.abs(drop) / 400)) : '';
+    dlg.classList.toggle('zoomed', zoomed());
+    zoomBtn.textContent = zoomed() ? 'Fit' : 'Zoom';
+  }
+  function load() {
+    slides.forEach((el, k) => {
+      const it = items[mod(at + k - 1)], img = imgOf(el), src = `/gallery/${it.id}.webp`;
+      if (img.getAttribute('src') !== src) img.src = src;
+      img.alt = k === 1 ? it.title : '';
+    });
+    cap.textContent = items[at].title;
+    dl.href = `/gallery/${items[at].pdf}`;
+  }
+  /** Keep a zoomed image over the stage: no empty band at an edge while it is larger than the stage. */
+  function clamp() {
+    const g = fit(items[at]), mx = Math.max(0, (g.w * s - g.W) / 2), my = Math.max(0, (g.h * s - g.H) / 2);
+    tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+  }
+  /** Zoom to z with the stage point (qx, qy) staying put. */
+  function zoomAt(z: number, qx: number, qy: number) {
+    const g = fit(items[at]), k = z / s;
+    tx = qx - g.W / 2 - k * (qx - g.W / 2 - tx); ty = qy - g.H / 2 - k * (qy - g.H / 2 - ty); s = z;
+  }
+
+  // one animation at a time; a new one first finishes the old one, so a step to the next piece is never lost
+  type State = { s: number; tx: number; ty: number; off: number; drop: number };
+  let anim = 0, finish: (() => void) | null = null;
+  function settle() { cancelAnimationFrame(anim); const f = finish; finish = null; f?.(); }
+  function animate(to: Partial<State>, ms = 240, done?: () => void) {
+    settle();
+    const from: State = { s, tx, ty, off, drop }, goal: State = { ...from, ...to }, t0 = performance.now();
+    const set = (u: number) => { s = from.s + (goal.s - from.s) * u; tx = from.tx + (goal.tx - from.tx) * u; ty = from.ty + (goal.ty - from.ty) * u; off = from.off + (goal.off - from.off) * u; drop = from.drop + (goal.drop - from.drop) * u; };
+    finish = () => { set(1); render(); done?.(); };
+    const step = (now: number) => {
+      const u = Math.min(1, (now - t0) / ms);
+      if (u >= 1) { const f = finish; finish = null; f?.(); return; }
+      set(1 - (1 - u) ** 3); render(); anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  }
+  /** Animate the zoom to z about the stage point (qx, qy); z = 1 fits the piece again. */
+  function zoomTo(z: number, qx: number, qy: number) {
+    const keep = { s, tx, ty };
+    if (z <= 1) { s = 1; tx = 0; ty = 0; } else { zoomAt(z, qx, qy); clamp(); }
+    const goal = { s, tx, ty };
+    ({ s, tx, ty } = keep);
+    animate(goal);
+  }
+  const centre = () => [stage.clientWidth / 2, stage.clientHeight / 2] as const;
+  function toggleZoom(z: number, qx = centre()[0], qy = centre()[1]) { zoomTo(zoomed() ? 1 : z, qx, qy); }
+
+  /** Slide to the next (1) or previous (−1) piece. The slides rotate, so no image is loaded twice. */
+  function go(dir: 1 | -1) {
+    settle();
+    if (zoomed()) { s = 1; tx = 0; ty = 0; render(); }
+    animate({ off: -dir * stage.clientWidth }, 260, () => {
+      at = mod(at + dir);
+      if (dir > 0) { track.append(slides[0]); slides.push(slides.shift()!); } else { track.prepend(slides[2]); slides.unshift(slides.pop()!); }
+      off = 0; s = 1; tx = 0; ty = 0; load(); render();
+    });
+  }
+  function open(i: number) {
+    settle();
+    at = mod(i); s = 1; tx = 0; ty = 0; off = 0; drop = 0;
+    load(); dlg.showModal(); render();
+  }
+
+  // ── pointers: one finger (or the mouse) swipes, pans, or taps; two fingers pinch ──
+  const pts = new Map<number, { x: number; y: number }>();
+  let mode: '' | 'wait' | 'pan' | 'swipe' | 'drop' | 'pinch' = '';
+  let x0 = 0, y0 = 0, t0 = 0, s0 = 1, tx0 = 0, ty0 = 0, d0 = 1, mx0 = 0, my0 = 0, lastTap = { t: 0, x: 0, y: 0 };
+  const rel = (e: { clientX: number; clientY: number }) => { const r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const one = (p: { x: number; y: number }, t: number) => { x0 = p.x; y0 = p.y; t0 = t; tx0 = tx; ty0 = ty; };
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    stage.setPointerCapture(e.pointerId);
+    settle();
+    const p = rel(e);
+    pts.set(e.pointerId, p);
+    if (pts.size === 1) { one(p, e.timeStamp); mode = 'wait'; }
+    else if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      d0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; mx0 = (a.x + b.x) / 2; my0 = (a.y + b.y) / 2; s0 = s; tx0 = tx; ty0 = ty;
+      off = 0; drop = 0; mode = 'pinch'; render();
+    }
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    const p = rel(e), dx = p.x - x0, dy = p.y - y0;
+    pts.set(e.pointerId, p);
+    if (mode === 'wait' && Math.hypot(dx, dy) > 8) mode = zoomed() ? 'pan' : Math.abs(dx) >= Math.abs(dy) ? 'swipe' : 'drop';
+    if (mode === 'pan') { tx = tx0 + dx; ty = ty0 + dy; clamp(); }
+    else if (mode === 'swipe') off = dx;
+    else if (mode === 'drop') drop = dy;
+    else if (mode === 'pinch' && pts.size >= 2) {
+      // zoom about where the fingers started, then move with them; a little beyond the limits, which spring back on release
+      const [a, b] = [...pts.values()], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const z = Math.min(maxS() * 1.25, Math.max(0.6, (s0 * Math.hypot(a.x - b.x, a.y - b.y)) / d0));
+      s = s0; tx = tx0; ty = ty0; zoomAt(z, mx0, my0); tx += mx - mx0; ty += my - my0;
+    }
+    else return;
+    render();
+  });
+  const end = (e: PointerEvent) => {
+    if (!pts.delete(e.pointerId)) return;
+    if (mode === 'pinch' || mode === 'pan') {
+      // after a pinch the finger left behind pans; when the last one lifts, the zoom springs back within its limits
+      if (pts.size === 1) { const [p] = pts.values(); one(p, e.timeStamp); mode = 'pan'; return; }
+      if (pts.size) return;
+      mode = '';
+      if (s < 1) zoomTo(1, 0, 0);
+      else if (s > maxS()) zoomTo(maxS(), mx0, my0);
+      else { const keep = { tx, ty }; clamp(); const goal = { tx, ty }; ({ tx, ty } = keep); if (goal.tx !== tx || goal.ty !== ty) animate(goal); }
+      return;
+    }
+    if (pts.size) return;
+    const p = rel(e), dx = p.x - x0, dy = p.y - y0, dt = Math.max(1, e.timeStamp - t0), m = mode;
+    mode = '';
+    if (m === 'swipe') {
+      if (e.type === 'pointerup' && (Math.abs(dx) > stage.clientWidth * 0.18 || (Math.abs(dx) > 30 && Math.abs(dx) / dt > 0.4))) go(dx < 0 ? 1 : -1);
+      else animate({ off: 0 });
+    } else if (m === 'drop') {
+      if (e.type === 'pointerup' && (Math.abs(dy) > 120 || (Math.abs(dy) > 40 && Math.abs(dy) / dt > 0.5))) dlg.close();
+      else animate({ drop: 0 });
+    } else if (m === 'wait' && e.type === 'pointerup' && dt < 400) {
+      // a click zooms in on the cells at once; on a touchscreen it takes a double tap, to a closer look
+      if (e.pointerType === 'mouse') return toggleZoom(maxS(), p.x, p.y);
+      const now = performance.now();
+      if (now - lastTap.t < 330 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 40) { lastTap.t = 0; toggleZoom(Math.min(maxS(), 4), p.x, p.y); }
+      else lastTap = { t: now, x: p.x, y: p.y };
     }
   };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  // a trackpad pinch arrives as the wheel with Ctrl; the plain wheel pans a zoomed image
+  stage.addEventListener('wheel', (e) => {
+    e.preventDefault(); settle();
+    const p = rel(e);
+    if (e.ctrlKey) { const z = Math.min(maxS(), Math.max(1, s * Math.exp(-e.deltaY * 0.01))); zoomAt(z, p.x, p.y); if (z === 1) { tx = 0; ty = 0; } }
+    else if (zoomed()) { tx -= e.deltaX; ty -= e.deltaY; }
+    else return;
+    clamp(); render();
+  }, { passive: false });
+  stage.addEventListener('gesturestart', (e) => e.preventDefault()); // Safari: no page zoom inside the viewer
 
   document.querySelectorAll<HTMLButtonElement>('.thumb').forEach((b) =>
-    b.addEventListener('click', () => {
-      show(items.findIndex((it) => it.id === b.dataset.id));
-      dlg.showModal();
-    }),
+    b.addEventListener('click', () => open(items.findIndex((it) => it.id === b.dataset.id))),
   );
-  img.addEventListener('click', (e) => {
-    if (dlg.classList.contains('zoomed')) return setZoom(false);
-    const r = img.getBoundingClientRect();
-    const s = stage.getBoundingClientRect();
-    setZoom(true, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, e.clientX - s.left, e.clientY - s.top);
-  });
-  zoomBtn.addEventListener('click', () => setZoom(!dlg.classList.contains('zoomed')));
-  dlg.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => show(at + Number(b.dataset.go))));
+  zoomBtn.addEventListener('click', () => toggleZoom(maxS()));
+  dlg.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go) as 1 | -1)));
   dlg.querySelector('.close')!.addEventListener('click', () => dlg.close());
+  dlg.addEventListener('close', () => { settle(); pts.clear(); mode = ''; s = 1; tx = 0; ty = 0; off = 0; drop = 0; });
   dlg.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') show(at - 1);
-    else if (e.key === 'ArrowRight') show(at + 1);
+    if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
     else if (e.key === 'z') zoomBtn.click();
   });
+  addEventListener('resize', () => { if (dlg.open) { clamp(); render(); } });
 </script>

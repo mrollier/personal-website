@@ -1,8 +1,164 @@
 ---
 import Base from '../layouts/Base.astro';
+// Images are the fronts rendered with 4 pixels per cell and the bleed trimmed, lossless; the PDFs are the print files (postcards: the front only).
+type Piece = { id: string; title: string; text: string; size: string; cells: string; w: number; h: number; pdf: string; kb: number };
+const postcards: Piece[] = [
+  { id: 'conway', title: 'John Conway', text: 'Level-3 tiles on an automaton in UGent yellow and blue, the recipe of the mosaic in the project README.', size: 'A6', cells: '528 × 732 cells of 0.21 mm', w: 1984, h: 2797, pdf: 'postcard-conway.pdf', kb: 571 },
+  { id: 'paraty', title: 'Paraty Mirim', text: 'The coast from my thesis cover, with tiles in the sea.', size: 'A6', cells: '264 × 366 cells of 0.42 mm', w: 993, h: 1400, pdf: 'postcard-paraty.pdf', kb: 201 },
+  { id: 'liquid-vortex', title: 'Liquid light: vortex', text: 'Stained glass: the whole card packed with tiles of levels 1 to 7 in dark lead, coloured from a swirling dye field.', size: 'A6', cells: '264 × 366 cells of 0.42 mm', w: 993, h: 1400, pdf: 'postcard-liquid-vortex.pdf', kb: 412 },
+  { id: 'liquid-cathedral', title: 'Liquid light: cathedral', text: 'The same stained glass, coloured from a dye field of bubbles in cathedral colours.', size: 'A6', cells: '264 × 366 cells of 0.42 mm', w: 993, h: 1400, pdf: 'postcard-liquid-cathedral.pdf', kb: 424 },
+  { id: 'dragon', title: 'The Belfry dragon', text: 'The gilded dragon on top of the Ghent Belfry, tiles of levels 1 to 4, each in one gold, on a night-blue automaton.', size: 'A6, landscape', cells: '366 × 264 cells of 0.42 mm', w: 1400, h: 993, pdf: 'postcard-dragon.pdf', kb: 145 },
+];
+const prints: Piece[] = [
+  { id: 'jury-print-paraty', title: 'Paraty Mirim, land and sea', text: 'Land and sea both packed with tiles: the level rises with the altitude on land and with the distance from the shore at sea. Seven shades of terracotta on land, seven of denim at sea.', size: 'A3', cells: '720 × 1008 cells of 0.42 mm', w: 2807, h: 3970, pdf: 'print-paraty-A3.pdf', kb: 2775 },
+];
+const all = [...postcards, ...prints];
+const mb = (kb: number) => (kb >= 1000 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} kB`);
 ---
-<Base title="Gallery" description="Mosaics built from Game of Life still lifes. Under construction.">
-  <h1>Gallery</h1>
-  <p>Under construction. Mosaics built from Game of Life still lifes will go here.</p>
-  <p>Meanwhile, make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
+<Base title="Gallery" description="Mosaics built from Game of Life still lifes: five postcards and an A3 print, with print-quality PDFs." wide>
+  <div class="measure">
+    <h1>Gallery</h1>
+    <p>Mosaics built entirely from Game of Life still lifes: every cell is alive or dead, and every live cell keeps living forever. They were made as handouts for my PhD defence on 2 October 2026, five postcards for the guests and an A3 print for the jury.</p>
+    <p>Click a piece to see it large, and click again to zoom in on the cells. The PDFs are the vector print files, with 3 mm bleed. Make your own with the <a href="https://huggingface.co/spaces/mrollier/game-of-life-mosaics">mosaic app</a>.</p>
+  </div>
+
+  <h2>Postcards</h2>
+  <ul class="gallery">
+    {postcards.map((p) => (
+      <li class:list={[p.w > p.h && 'landscape']}>
+        <button type="button" class="thumb" data-id={p.id} aria-label={`View ${p.title} large`}>
+          <img src={`/gallery/${p.id}.webp`} alt={p.title} width={p.w} height={p.h} loading="lazy" decoding="async" />
+        </button>
+        <b>{p.title}</b>
+        <span class="text">{p.text}</span>
+        <span class="meta">{p.size} · {p.cells} · <a href={`/gallery/${p.pdf}`} download>PDF, {mb(p.kb)}</a></span>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Prints</h2>
+  <ul class="gallery single">
+    {prints.map((p) => (
+      <li>
+        <button type="button" class="thumb" data-id={p.id} aria-label={`View ${p.title} large`}>
+          <img src={`/gallery/${p.id}.webp`} alt={p.title} width={p.w} height={p.h} loading="lazy" decoding="async" />
+        </button>
+        <b>{p.title}</b>
+        <span class="text">{p.text}</span>
+        <span class="meta">{p.size} · {p.cells} · <a href={`/gallery/${p.pdf}`} download>PDF, {mb(p.kb)}</a></span>
+      </li>
+    ))}
+  </ul>
+
+  <dialog class="viewer" aria-label="Mosaic viewer">
+    <div class="stage"><img alt="" /></div>
+    <div class="bar">
+      <span class="cap"></span>
+      <button type="button" data-go="-1" aria-label="Previous">←</button>
+      <button type="button" data-go="1" aria-label="Next">→</button>
+      <button type="button" class="zoom">Zoom</button>
+      <a class="dl" download>PDF</a>
+      <button type="button" class="close" aria-label="Close">✕</button>
+    </div>
+  </dialog>
+  <script type="application/json" id="gallery-data" set:html={JSON.stringify(all.map(({ id, title, pdf }) => ({ id, title, pdf })))} />
 </Base>
+
+<style>
+  .gallery {
+    list-style: none; margin: 0 0 2rem; padding: 0;
+    display: grid; gap: 2rem 1.5rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .gallery li { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.9rem; }
+  .gallery li.landscape { grid-column: span 2; }
+  .gallery.single { grid-template-columns: minmax(0, 560px); }
+  .thumb { all: unset; cursor: zoom-in; display: block; margin-bottom: 0.4rem; line-height: 0; }
+  .thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .thumb img { width: 100%; box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 14px rgb(0 0 0 / 0.1); transition: transform 0.15s; }
+  .thumb:hover img { transform: translateY(-2px); }
+  .gallery b { font-family: var(--mono); font-weight: 600; }
+  .gallery .text { color: var(--ink); line-height: 1.45; }
+  .gallery .meta { color: var(--muted); font-size: 0.82rem; font-family: var(--mono); }
+  @media (max-width: 700px) {
+    .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 1rem; }
+  }
+  @media (max-width: 480px) {
+    .gallery .text { display: none; }
+  }
+
+  .viewer {
+    width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+    background: #0d0e10; color: #e8e9e6;
+  }
+  .viewer[open] { display: flex; flex-direction: column; }
+  .viewer::backdrop { background: #0d0e10; }
+  .stage { flex: 1; min-height: 0; overflow: auto; display: grid; place-items: center; }
+  .stage img { max-width: calc(100vw - 2rem); max-height: calc(100dvh - 4.5rem); cursor: zoom-in; image-rendering: auto; }
+  .viewer.zoomed .stage { place-items: start; }
+  .viewer.zoomed .stage img { max-width: none; max-height: none; cursor: zoom-out; image-rendering: pixelated; }
+  .bar {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem;
+    font-family: var(--mono); font-size: 0.85rem; border-top: 1px solid #2a2d33;
+  }
+  .bar .cap { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar button, .bar a {
+    font: inherit; color: inherit; background: none; border: 1px solid #3a3e45;
+    padding: 0.15em 0.7em; cursor: pointer; text-decoration: none;
+  }
+  .bar button:hover, .bar a:hover { border-color: #9a9ea6; }
+</style>
+
+<script>
+  type Item = { id: string; title: string; pdf: string };
+  const items: Item[] = JSON.parse(document.getElementById('gallery-data')!.textContent!);
+  const dlg = document.querySelector<HTMLDialogElement>('.viewer')!;
+  const stage = dlg.querySelector<HTMLDivElement>('.stage')!;
+  const img = stage.querySelector('img')!;
+  const cap = dlg.querySelector<HTMLSpanElement>('.cap')!;
+  const dl = dlg.querySelector<HTMLAnchorElement>('.dl')!;
+  const zoomBtn = dlg.querySelector<HTMLButtonElement>('.zoom')!;
+  let at = 0;
+
+  const show = (i: number) => {
+    at = (i + items.length) % items.length;
+    const it = items[at];
+    setZoom(false);
+    img.src = `/gallery/${it.id}.webp`;
+    img.alt = it.title;
+    cap.textContent = it.title;
+    dl.href = `/gallery/${it.pdf}`;
+  };
+  // Zoomed, each image pixel is 2 CSS pixels: 8 px per cell. The clicked point stays under the pointer.
+  const setZoom = (on: boolean, x = 0.5, y = 0.5, cx?: number, cy?: number) => {
+    dlg.classList.toggle('zoomed', on);
+    zoomBtn.textContent = on ? 'Fit' : 'Zoom';
+    img.style.width = on ? `${img.naturalWidth * 2}px` : '';
+    if (on) {
+      const r = stage.getBoundingClientRect();
+      stage.scrollLeft = x * img.offsetWidth - (cx ?? r.width / 2);
+      stage.scrollTop = y * img.offsetHeight - (cy ?? r.height / 2);
+    }
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('.thumb').forEach((b) =>
+    b.addEventListener('click', () => {
+      show(items.findIndex((it) => it.id === b.dataset.id));
+      dlg.showModal();
+    }),
+  );
+  img.addEventListener('click', (e) => {
+    if (dlg.classList.contains('zoomed')) return setZoom(false);
+    const r = img.getBoundingClientRect();
+    const s = stage.getBoundingClientRect();
+    setZoom(true, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, e.clientX - s.left, e.clientY - s.top);
+  });
+  zoomBtn.addEventListener('click', () => setZoom(!dlg.classList.contains('zoomed')));
+  dlg.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => show(at + Number(b.dataset.go))));
+  dlg.querySelector('.close')!.addEventListener('click', () => dlg.close());
+  dlg.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') show(at - 1);
+    else if (e.key === 'ArrowRight') show(at + 1);
+    else if (e.key === 'z') zoomBtn.click();
+  });
+</script>

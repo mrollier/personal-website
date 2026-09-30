@@ -2,8 +2,10 @@
 // The paper's phone data (Proximus) and per-arrondissement hospital admissions are confidential, so this takes
 // only public stand-ins: the 2011 census commuting matrix and the weekly excess deaths of 2020 per arrondissement
 // from the UGentBiomath/COVID19-Model repository (pinned commit), the arrondissement borders from the same
-// repository, simplified with mapshaper, and Sciensano's public daily hospital admissions per province.
+// repository, simplified with mapshaper, Sciensano's public daily hospital admissions per province, and its public
+// confirmed cases per municipality.
 // Run: node scripts/export-mobility.mjs   (needs the network and npx; writes two files in src/data/)
+// Sciensano's server is slow (the case files are 90 MB): SCIENSANO=http://localhost:8000 reads a local copy instead.
 import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -11,7 +13,8 @@ import { join } from 'node:path';
 
 const SHA = '0f73a0ff05a83e570e3e863297e76e09568e3ffa';
 const REPO = `https://raw.githubusercontent.com/UGentBiomath/COVID19-Model/${SHA}/data/covid19_DTM`;
-const HOSP = 'https://epistat.sciensano.be/Data/COVID19BE_HOSP.csv';
+const SCIENSANO = process.env.SCIENSANO ?? 'https://epistat.sciensano.be/Data';
+const HOSP = `${SCIENSANO}/COVID19BE_HOSP.csv`;
 
 // Names as in Table A.1 of the paper: Dutch in Flanders, French in Wallonia, English for Brussels.
 const NAMES = {
@@ -60,9 +63,43 @@ for (const r of hosp.slice(1)) {
   if (d >= 0 && d < days && p >= 0 && r[iN] !== 'NA') admissions[d][p] += +r[iN];
 }
 
+// Confirmed cases per arrondissement and week, the weeks of the excess deaths. Sciensano publishes cases per
+// municipality and day, but a day with 1 to 4 cases only as "<5". Its exact totals per province and day are public
+// too, so what a province's "<5" days add up to is known: the total minus the exact counts. That remainder is spread
+// evenly over the province's "<5" municipalities, each kept between 1 and 4.
+const wk0 = Date.parse(excess.start), WEEKS = excess.values.length;
+const total = new Map(); // date|province → exact cases
+for (const r of csv(await (await get(`${SCIENSANO}/COVID19BE_CASES_AGESEX.csv`)).text()).slice(1)) {
+  const p = PROV.findIndex(([, k]) => k === r[1]), k = `${r[0]}|${p}`;
+  if (p >= 0) total.set(k, (total.get(k) ?? 0) + +r[r.length - 1]);
+}
+const cases = Array.from({ length: WEEKS }, () => new Array(arr.length).fill(0));
+const day = new Map(); // date|province → { w, exact, masked: arrondissement of each "<5" municipality, −1 if unknown }
+for (const r of csv(await (await get(`${SCIENSANO}/COVID19BE_CASES_MUNI.csv`)).text()).slice(1)) {
+  const w = Math.floor((Date.parse(r[1]) - wk0) / (7 * 864e5));
+  if (!(w >= 0 && w < WEEKS)) continue;
+  const a = r[0] === 'NA' ? -1 : order.indexOf(String(Math.floor(+r[0] / 1000) * 1000));
+  if (a < 0 && r[0] !== 'NA') throw new Error(`municipality ${r[0]}`);
+  const p = a >= 0 ? arr[a].prov : PROV.findIndex(([, k]) => k === r[6]);
+  if (p < 0) continue;
+  const k = `${r[1]}|${p}`, c = r[r.length - 1];
+  if (!day.has(k)) day.set(k, { w, exact: 0, masked: [] });
+  const e = day.get(k);
+  if (c === '<5') e.masked.push(a); else { e.exact += +c; if (a >= 0) cases[w][a] += +c; }
+}
+let off = 0;
+for (const [k, e] of day) {
+  if (!e.masked.length) continue;
+  const each = ((total.get(k) ?? 0) - e.exact) / e.masked.length;
+  if (each < 1 || each > 4) off++;
+  for (const a of e.masked) if (a >= 0) cases[e.w][a] += Math.min(4, Math.max(1, each));
+}
+console.log(`cases: ${day.size} province-days, ${off} of them with a "<5" share outside 1 to 4`);
+
 writeFileSync('src/data/mobility.json', JSON.stringify({
-  source: { repo: `UGentBiomath/COVID19-Model@${SHA.slice(0, 7)}`, hosp: HOSP },
-  prov: PROV.map(([name]) => name), arr, commute, excess, hosp: { start: '2020-03-01', values: admissions },
+  source: { repo: `UGentBiomath/COVID19-Model@${SHA.slice(0, 7)}`, sciensano: 'https://epistat.sciensano.be/Data' },
+  prov: PROV.map(([name]) => name), arr, commute, excess, cases: { start: excess.start, values: cases.map((r) => r.map(Math.round)) },
+  hosp: { start: '2020-03-01', values: admissions },
 }));
 
 // Borders: simplified with shared arcs so neighbours still meet, then as SVG paths in km on the Belgian Lambert 2008 grid.

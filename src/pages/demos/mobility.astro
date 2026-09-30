@@ -4,6 +4,7 @@ import SpreadTimeline from '../../components/SpreadTimeline.astro';
 import SpreadMap from '../../components/SpreadMap.astro';
 import SpreadSmooth from '../../components/SpreadSmooth.astro';
 import SpreadLags from '../../components/SpreadLags.astro';
+import Tex from '../../components/Tex.astro';
 import { getCollection } from 'astro:content';
 // The papers this page is built on live in the publications collection, so their links stay in one place.
 const pubs = (await getCollection('publications')).map((p) => p.data);
@@ -15,12 +16,21 @@ const arxiv = paper?.url ?? 'https://arxiv.org/abs/2202.11528';
 const modelDoi = `https://doi.org/${model?.doi ?? '10.1016/j.apm.2023.06.027'}`;
 const nationalDoi = `https://doi.org/${national?.doi ?? '10.1016/j.epidem.2021.100505'}`;
 const repo = 'https://github.com/UGentBiomath/COVID19-Model';
+// One tab per step of the argument; the hash picks the tab, so a step can be linked.
+const tabs = [
+  { id: 'waves', name: 'Two waves' },
+  { id: 'trips', name: 'Fewer trips' },
+  { id: 'outbreak', name: 'First outbreaks' },
+  { id: 'noise', name: 'Noisy curves' },
+  { id: 'ahead', name: 'Ahead or behind' },
+  { id: 'verdict', name: 'Verdict' },
+];
 ---
 <Base title="Where the virus travelled" description="How the movement of people across Belgium's 43 arrondissements shaped the spread of SARS-CoV-2 in 2020: live maps, spline fits and lag analyses from my Mathematical Biosciences paper, on public data." wide>
   <div class="measure">
     <h1>Where the virus travelled</h1>
     <p>
-      In the spring of 2020 our research group in Ghent built a model of the covid-19 epidemic in Belgium, to tell
+      In the spring of 2020 our research group in Ghent built a model of the COVID-19 epidemic in Belgium, to tell
       policymakers where the hospital numbers were heading. It followed people through ten stages of infection and
       nine age groups, but it treated the country as one well-stirred pot. For China, France or Italy that would
       have been a serious omission: there, how people moved between regions explained much of how the first wave
@@ -29,214 +39,374 @@ const repo = 'https://github.com/UGentBiomath/COVID19-Model';
       Does it matter where Belgians travel, or does the virus reach every corner at once anyway?
     </p>
     <p>
-      Before building a spatial model we went looking for an answer in the data. The result is
-      a <a href={doi}>paper</a> with Gisele Miranda and Jenna Vergeynst, who share the first authorship with me, and
-      Joris Meys, Tijs Alleman and Jan Baetens. It works at the level of Belgium's 43 arrondissements and asks three
-      things in turn: did people move less when the virus was around, do the local epidemic curves show an order in
-      which the virus arrived, and does that order follow the way the arrondissements are connected?
+      Before building a spatial model we went looking for an answer in the data, in
+      a <a href={doi}>paper</a> with Gisele Miranda, Jenna Vergeynst, Joris Meys, Tijs Alleman and Jan Baetens. Its
+      answer, in one sentence:
+    </p>
+    <p class="claim">
+      In the early stage of the epidemic, the movement of people and the spread of the virus were strongly
+      correlated; once the virus had spread across the country, the correlation weakened.
     </p>
     <p>
-      A word on the data first. The paper rests on phone data from Proximus, which measured how long the residents of
-      every arrondissement spent in every other one, day by day; on hospital admissions per arrondissement from
-      Sciensano; and on deaths per arrondissement from Statbel. The first two are confidential. So everything below
-      runs on public stand-ins, named wherever they are used: commuting from the 2011 census in place of the phone
-      data, and Sciensano's public admissions per province in place of those per arrondissement. The deaths are the
-      real ones. The numbers on this page are computed in your browser from those public data; where I quote the
-      paper, I say so.
+      Arrondissements well connected to the first outbreaks saw the most excess deaths five to six weeks later; by May,
+      where the virus had started no longer predicted where it struck. Over all pairs of arrondissements, the better
+      connected ones had hospital curves of more similar shape, running roughly in step, though that link is weak. The
+      tabs below build this up the way the paper does, on Belgium's 43 arrondissements: did people move less when the
+      virus was around, did the virus follow the connections to the first outbreaks, and do the local epidemic curves
+      show an order and a shape that follow the connections too?
     </p>
-
-    <h2 id="waves">Two waves</h2>
     <p>
-      Belgium's first confirmed case was a person repatriated from Wuhan in early February 2020, who infected nobody.
-      The virus arrived for real with holidaymakers coming home from northern Italy after the half-term break at the
-      end of February. By early March it was spreading, on 18 March the country went into lockdown, and two days
-      later the borders closed to all but essential travel. A second wave followed in the autumn.
+      A word on the data. The paper rests on phone data from Proximus, hospital admissions per arrondissement from
+      Sciensano and deaths per arrondissement from Statbel. The first two are confidential, so this page runs on public
+      stand-ins, named where they are used: commuting from the 2011 census for the phone data, Sciensano's admissions
+      per province for those per arrondissement, and, as a second view, its confirmed cases per municipality. The
+      deaths are the real ones. Everything is computed in your browser; where I quote the paper, I say so.
     </p>
   </div>
-  <SpreadTimeline />
-  <div class="measure">
-    <p>
-      The paper cuts 2020 into two waves with the same dates for every arrondissement. The first starts on 1 March,
-      with the first confirmed cases, rises until the national peak of admissions on 28 March and falls until the
-      summer holidays begin on 1 July. The second starts when the schools reopen on 1 September, rises until
-      30 October and falls until the end of the year. Each wave has a rising and a falling part. With the borders
-      closed for much of this time Belgium was close to an island, which lets the analysis ignore travel abroad.
-    </p>
 
-    <h2 id="trips">Fewer trips</h2>
-    <p>
-      The phone data come as a <em>staytime</em>: P<sup>gh</sup>(t) is the total time the residents of
-      arrondissement g spent in arrondissement h on day t. Add up the time spent outside the home arrondissement and
-      divide by the number of residents. Before the pandemic, from 20 to 28 February, the typical arrondissement
-      spent about two and a half hours per resident per day elsewhere. While admissions rose in the first wave that
-      fell to about two; while they fell, under lockdown, to about one and a half. The second wave started close to
-      the old level and dropped again once the second lockdown came. (These are the medians of the paper's
-      figure 5, read off by eye.) People moved less when the virus was around, which surprises nobody, but it
-      is a useful check that the phone data measure what they should.
-    </p>
-    <p>
-      To compare arrondissements pair by pair, the paper condenses the staytimes into a <em>connectivity
-      index</em>, CI<sup>gh</sup> = ln[ (1/Δt) Σ<sub>t</sub> ( P<sup>gh</sup>(t) + P<sup>hg</sup>(t) ) ]: the
-      average daily time the residents of g spend in h plus the reverse, on a log scale. It is symmetric, and on
-      purpose not per head, so an arrondissement with many people is well connected. The analyses below all use
-      rank correlations, so only the order of the index matters. Here the phone data are replaced by commuting:
-      the logarithm of the number of people who live in one arrondissement and work in the other, both ways, from
-      the 2011 census. Commuting is the backbone of the phone data too, but it knows nothing about 2020: it stays
-      the same before, during and after a lockdown.
-    </p>
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Steps">
+      <ul role="tablist" aria-orientation="vertical">
+        {tabs.map((t, i) => <li><a role="tab" id={`tab-${t.id}`} href={`#${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="panels">
 
-    <h2 id="outbreak">Connected to the first outbreaks</h2>
-    <p>
-      Sciensano placed the first clusters of infections in the southwest of Limburg, in the arrondissements of
-      Tongeren and Hasselt, and in the Borinage around Mons. If the virus travelled with people, then arrondissements
-      strongly connected to those clusters should have been hit harder, some weeks later, than poorly connected
-      ones. The paper measures "hit" by excess deaths: the deaths in each week of 2020 compared with the average
-      over the ten years before, in percent. Excess deaths need no test and no convention about which death counts
-      as a covid death, which makes them about the least arguable measure there is.
-    </p>
-  </div>
-  <SpreadMap />
-  <div class="measure">
-    <p>
-      On the left, how many people commute between Tongeren (hatched) and each other arrondissement; on the right,
-      the excess deaths in the week of 15 April. The two maps share a pattern: the northeast of the country, around
-      and west of Tongeren, is dark on both. The scatter puts one against the other, and Spearman's ρ measures how well
-      the two rankings agree: 1 for the same order, 0 for no relation, −1 for the reverse. For Tongeren in mid-April
-      it is 0.73 on these public data; the paper found 0.63 with the phone data, and 0.59 for Hasselt. The curve on
-      the right shows ρ week by week. It climbs above the chance band two to three weeks into March, stays there
-      through April and falls away in May. From then on the virus is everywhere, and where it started no longer
-      predicts where people die.
-    </p>
-    <p>
-      Press play and watch the excess deaths spread over the country and fade. Then try Mons: its connections predict
-      much less, in the paper as here, although Sciensano counted it among the first clusters. Its admissions tell
-      the opposite story: in the paper they run ahead of nearly every other arrondissement, by up to 6.3 ± 1.3 days
-      on Namur, where Tongeren and Hasselt do not stand out. Any other arrondissement can be picked too, by clicking
-      it on either map. With 53 weeks on the curve, the odd week crosses the band by
-      chance alone; what counts is a run of weeks in a row, in spring.
-    </p>
-    <p>
-      In France the corresponding effect of the first large outbreak, in the Haut-Rhin, faded within two weeks of the
-      lockdown. In Belgium it lasted about four weeks longer. The paper suggests two reasons: no single large
-      spreading event started the Belgian epidemic, so the excess deaths built up gradually, and in a country this
-      connected the best- and worst-connected arrondissements differ less than they do in France.
-    </p>
+      <section role="tabpanel" id="waves" aria-labelledby="tab-waves" tabindex="0">
+      <div class="measure">
+        <h2>Two waves</h2>
+        <p>
+          Belgium's first confirmed case was a person repatriated from Wuhan in early February 2020, who infected nobody.
+          The virus arrived for real with holidaymakers coming home from northern Italy after the half-term break at the
+          end of February. By early March it was spreading, on 18 March the country went into lockdown, and two days
+          later the borders closed to all but essential travel. A second wave followed in the autumn.
+        </p>
+      </div>
+      <SpreadTimeline />
+      <div class="measure">
+        <p>
+          The paper cuts 2020 into two waves with the same dates for every arrondissement. The first starts on 1 March,
+          with the first confirmed cases, rises until the national peak of admissions on 28 March and falls until the
+          summer holidays begin on 1 July. The second starts when the schools reopen on 1 September, rises until
+          30 October and falls until the end of the year. Each wave has a rising and a falling part. With the borders
+          closed for much of this time Belgium was close to an island, which lets the analysis ignore travel abroad.
+        </p>
+      </div>
+      </section>
 
-    <h2 id="noise">Reading a noisy curve</h2>
-    <p>
-      The second half of the paper compares the epidemic curves of the arrondissements themselves: which ran ahead,
-      and which had the same shape. Daily admissions in an arrondissement are noisy, from weekday effects and from
-      plain chance, and a small arrondissement may see nobody for days and then three patients at once. Comparing
-      such curves directly would mostly compare noise. So each curve is first smoothed with a generalised additive
-      mixed model: the logarithm of the expected number of admissions is a spline in time, penalised against
-      wiggling, and the counts may scatter more widely around it than pure chance would make them (overdispersion),
-      by an amount estimated from the data. The best fit is one curve. But the fit comes with an uncertainty on its
-      coefficients, and drawing 100 sets of coefficients from that uncertainty gives 100 curves: a fan as wide as the
-      data are unsure. Every result further down is computed on all 100 and reported as a mean and a spread.
-    </p>
-  </div>
-  <SpreadSmooth />
-  <div class="measure">
-    <p>
-      On top, Brussels-Capital: 1.2 million people and a clean curve, where the 100 fits are almost one line. Below,
-      Diksmuide: 52 000 people. Its admissions are confidential, so the figure keeps each patient admitted in
-      West-Vlaanderen with the probability that they lived in Diksmuide, which gives counts with the noise of a
-      population that size. The dots are now mostly zeros and single patients, the fan opens up, and the date of the
-      peak is uncertain by days. Near the ends of the window, where a stray patient or two carry the whole fit, the
-      fan can flare up: that is the model admitting how little it knows there. "New sample" draws another
-      Diksmuide; any province or arrondissement can go in either panel. This is why the paper stops at arrondissements: for the 581 municipalities most curves would
-      look like this one or worse.
-    </p>
-    <p>
-      The fit here is the paper's without one refinement. Its model also lets the random deviations of neighbouring
-      days correlate, a first-order autoregressive term, which makes the fans somewhat wider than these. The spline
-      has about one basis function per week, as in the paper, and the weight of the penalty is chosen by generalised
-      cross-validation.
-    </p>
+      <section role="tabpanel" id="trips" aria-labelledby="tab-trips" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Fewer trips</h2>
+        <p>
+          The phone data come as a <em>staytime</em>: <Tex tex="P^{gh}(t)" /> is the total time the residents of
+          arrondissement <Tex tex="g" /> spent in arrondissement <Tex tex="h" /> on day <Tex tex="t" />. Add up the time
+          spent outside the home arrondissement over a period of <Tex tex="\Delta t" /> days and divide by the
+          number of residents <Tex tex="N^g" /> to get the outward mobility of <Tex tex="g" />:
+        </p>
+        <Tex block tex="m^g = \frac{1}{\Delta t}\,\frac{1}{N^g} \sum_{t} \sum_{h \neq g} P^{gh}(t)." />
+        <p>
+          Before the pandemic, from 20 to 28 February, the typical arrondissement
+          spent about two and a half hours per resident per day elsewhere. While admissions rose in the first wave that
+          fell to about two; while they fell, under lockdown, to about one and a half. The second wave started close to
+          the old level and dropped again once the second lockdown came. (These are the medians of the paper's
+          figure 5, read off by eye.) People moved less when the virus was around, which surprises nobody, but it
+          is a useful check that the phone data measure what they should.
+        </p>
+        <p>
+          To compare arrondissements pair by pair, the paper condenses the staytimes into a <em>connectivity
+          index</em>:
+        </p>
+        <Tex block tex="\mathrm{CI}^{gh} = \ln\left[\frac{1}{\Delta t} \sum_{t \,\in\, \text{wave}} \bigl(P^{gh}(t) + P^{hg}(t)\bigr)\right]," />
+        <p>
+          the average daily time the residents of <Tex tex="g" /> spend in <Tex tex="h" /> plus the reverse, on a log
+          scale. It is symmetric, and on purpose not per head, so an arrondissement with many people is well connected.
+          The analyses that follow all use rank correlations, so only the order of the index matters. Here the phone
+          data are replaced by commuting. With <Tex tex="M^{gh}" /> the number of people who live in <Tex tex="g" /> and
+          work in <Tex tex="h" />, from the 2011 census, this page uses
+        </p>
+        <Tex block tex="\mathrm{CI}^{gh} = \ln\bigl(M^{gh} + M^{hg}\bigr)." />
+        <p>
+          Commuting is the backbone of the phone data too, but it knows nothing about 2020: it stays the same before,
+          during and after a lockdown.
+        </p>
+      </div>
+      </section>
 
-    <h2 id="ahead">Ahead or behind</h2>
-    <p>
-      Two tools compare the smoothed curves pair by pair. <em>Time-lagged cross-correlation</em> first rescales both
-      curves to zero mean and unit spread, then slides one along the other and asks at which shift they overlap best:
-      the k that maximises C(k) = Σ<sub>t</sub> s<sup>g</sup>(t + k) s<sup>h</sup>(t). A negative k means g runs ahead
-      of h. <em>Dynamic time warping</em> then lines the two curves up at that shift and measures the difference in
-      shape that is left: it may stretch and squeeze one curve in time to match the other as closely as possible,
-      and reports the average gap that remains. The first gives a number of days; the second has no unit, and
-      smaller means more alike.
-    </p>
-  </div>
-  <SpreadLags />
-  <div class="measure">
-    <p>
-      With the paper's data these are heatmaps of 43 by 43 arrondissements; with the public data they are 11 by 11,
-      one row and column per province, with Brussels as the eleventh. Click a cell to see its pair. Drag along the
-      cross-correlation strip or use the slider to slide the second curve over the first, "best shift" jumps to the
-      top of C(k), and "warping" draws which day of one curve the time warping matches to which day of the other.
-    </p>
-    <p>
-      The paper's findings on timing survive the coarser data. In the first wave the provinces run within about a
-      day of each other, with Namur trailing, as it does in the paper. In the second the lags roughly double, with
-      Brussels and Liège clearly ahead and West-Vlaanderen and Limburg behind, much as the paper found for their
-      arrondissements; it confirmed that the lags grew with a one-sided Wilcoxon signed-rank test (p &lt; 0.001).
-      The shapes, too, differ more in the second wave: switch the colouring to DTW and flip between the waves.
-    </p>
-    <p>
-      The line under the figure brings the two halves together, as the paper's figure 11 does: over all pairs, does
-      a stronger connection go with a shorter lag and a more similar shape? Over its 903 pairs of arrondissements
-      the paper found both correlations negative, as expected, but weak: −0.15 for the lags and −0.31 for the shapes
-      in the first wave. The provinces tell the same story, if less sharply for the lags: between provinces those
-      are small, often under a day, and leave little to rank. Connection is one influence on how the
-      virus moved, but far from the only one: why people travel, how many stops they make and the short trips within
-      an arrondissement, none of which these data see, all matter too.
-    </p>
+      <section role="tabpanel" id="outbreak" aria-labelledby="tab-outbreak" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Connected to the first outbreaks</h2>
+        <p>
+          Sciensano placed the first clusters of infections in the southwest of Limburg, in the arrondissements of
+          Tongeren and Hasselt, and in the Borinage around Mons. If the virus travelled with people, then arrondissements
+          strongly connected to those clusters should have been hit harder, some weeks later, than poorly connected
+          ones. The paper measures "hit" by excess deaths: the deaths <Tex tex="D^g(w)" /> in arrondissement <Tex tex="g" /> in week <Tex tex="w" /> of 2020, compared with the average over the same week of the ten years
+          before,
+        </p>
+        <Tex block tex="\begin{gathered} \mathrm{ED}^g(w) = \frac{D^g_{2020}(w) - \bar D^g(w)}{\bar D^g(w)} \times 100\%, \\ \bar D^g(w) = \frac{1}{10} \sum_{y=2010}^{2019} D^g_y(w). \end{gathered}" />
+        <p>
+          Excess deaths need no test and no convention about which death counts as a COVID-19 death, which makes them
+          about the least arguable measure there is. How well connection to an outbreak arrondissement <Tex tex="s" />
+          predicts them is measured with Spearman's rank correlation over the 42 other arrondissements, week by week:
+        </p>
+        <Tex block tex="\rho_s(w) = \operatorname{corr}_{g \neq s}\bigl(\operatorname{rank} \mathrm{CI}^{sg},\ \operatorname{rank} \mathrm{ED}^g(w)\bigr)." />
+        <p>
+          It is 1 when the two rankings agree, 0 when they are unrelated and −1 when one is the reverse of the other.
+        </p>
+      </div>
+      <SpreadMap />
+      <div class="measure">
+        <p>
+          On the left, how many people commute between Tongeren (hatched) and each other arrondissement; on the right,
+          the excess deaths in the week of 15 April. The two maps share a pattern: the northeast of the country, around
+          and west of Tongeren, is dark on both. The scatter puts one against the other. For Tongeren in mid-April <Tex tex="\rho" /> is 0.73 on these public data; the paper found 0.63 with the phone data, and 0.59 for Hasselt. The curve on
+          the right shows <Tex tex="\rho" /> week by week. It climbs above the chance band two to three weeks into March, stays there
+          through April and falls away in May. From then on the virus is everywhere, and where it started no longer
+          predicts where people die.
+        </p>
+        <p>
+          Press play and watch the excess deaths spread over the country and fade. Then try Mons: its connections predict
+          much less, in the paper as here, although Sciensano counted it among the first clusters. Its admissions tell
+          the opposite story: in the paper they run ahead of nearly every other arrondissement, by up to 6.3 ± 1.3 days
+          on Namur, where Tongeren and Hasselt do not stand out. Any other arrondissement can be picked too, by clicking
+          it on either map. With 53 weeks on the curve, the odd week crosses the band by
+          chance alone; what counts is a run of weeks in a row, in spring.
+        </p>
+        <p>
+          In France the corresponding effect of the first large outbreak, in the Haut-Rhin, faded within two weeks of the
+          lockdown. In Belgium it lasted about four weeks longer. The paper suggests two reasons: no single large
+          spreading event started the Belgian epidemic, so the excess deaths built up gradually, and in a country this
+          connected the best- and worst-connected arrondissements differ less than they do in France.
+        </p>
+        <p>
+          Hospital admissions per arrondissement are not public, but confirmed cases per municipality are: switch the
+          outcome to see them. Sciensano publishes a day with one to four cases only as "&lt;5", but its exact totals
+          per province and day are public too, so the page spreads what a province's "&lt;5" days add up to evenly over
+          them. The chart of <Tex tex="\rho" /> always shows both outcomes, the one on the map as the solid line. The
+          paper left cases out because they depend on how much was tested, and the two curves show both why and what
+          cases would have added. Until mid-March, cases per head were highest in the arrondissements best connected
+          to Tongeren and Hasselt, with <Tex tex="\rho" /> about 0.6, some three weeks before the deaths show the same
+          pattern. On 11 March testing was restricted to hospital patients and health workers with symptoms. From then
+          on a case said less about where the virus circulated than about who was admitted or worked in care, and <Tex tex="\rho" /> collapses; after that it wanders in and out of the chance band. For Tongeren it even
+          turns negative in the autumn: the second wave hit Wallonia and Brussels hardest, and Limburg least.
+        </p>
+      </div>
+      </section>
 
-    <h2 id="verdict">What it adds up to</h2>
-    <p>
-      Early in the epidemic there is a clear link between where Belgians travelled and where the virus went, and it
-      fades once the virus is everywhere. That suggested a model for Belgium would gain from knowing about mobility,
-      above all in the early phase of an epidemic, so we built one: a <a href={modelDoi}>spatially explicit version</a> of
-      our model, run on the same phone data, for the provinces and the arrondissements. Its verdict is modest in the
-      way this analysis foreshadows: once the virus had spread, travel between provinces barely changed the course
-      of the epidemic, and cutting social contact did far more than restricting movement.
-    </p>
-    <p>
-      Two caveats about this page. Commuting in 2011 is not movement in 2020: it misses shopping, visits and the
-      school run, and it cannot drop during a lockdown the way the phone data did. And the provinces average away
-      most of the geography the paper was about. Where the public data agree with the paper, as they mostly do, that
-      is reassuring; where they differ, these are the data I would doubt first.
-    </p>
+      <section role="tabpanel" id="noise" aria-labelledby="tab-noise" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Reading a noisy curve</h2>
+        <p>
+          The second half of the paper compares the epidemic curves of the arrondissements themselves: which ran ahead,
+          and which had the same shape. Daily admissions in an arrondissement are noisy, from weekday effects and from
+          plain chance, and a small arrondissement may see nobody for days and then three patients at once. Comparing
+          such curves directly would mostly compare noise. So each curve is first smoothed with a generalised additive
+          mixed model. The logarithm of the expected number of admissions <Tex tex="y(t)" /> on day <Tex tex="t" /> is a
+          sum of <Tex tex="k" /> smooth bumps, B-splines <Tex tex="B_j(t)" />, about one per week, and the counts may
+          scatter more widely around it than pure chance would make them (overdispersion, <Tex tex="\phi > 1" />):
+        </p>
+        <Tex block tex="\begin{gathered} \log \mathbb{E}\,y(t) = \sum_{j=1}^{k} \beta_j B_j(t), \\ \operatorname{Var} y(t) = \phi\,\mathbb{E}\,y(t). \end{gathered}" />
+        <p>
+          The coefficients are fitted with a penalty against wiggling: with <Tex tex="\mathcal{D}(\beta)" /> the
+          deviance, the misfit to the counts,
+        </p>
+        <Tex block tex="\hat\beta = \arg\min_{\beta} \Bigl[\, \mathcal{D}(\beta) + \lambda \sum_{j} \bigl(\beta_{j+1} - 2\beta_j + \beta_{j-1}\bigr)^2 \Bigr]." />
+        <p>
+          The best fit <Tex tex="\hat\beta" /> is one curve. But it comes with an uncertainty, a covariance matrix <Tex tex="\hat V" /> that grows with <Tex tex="\phi" />, and drawing
+        </p>
+        <Tex block tex="\beta^{(r)} \sim \mathcal{N}\bigl(\hat\beta,\ \hat V\bigr), \qquad r = 1, \dots, 100," />
+        <p>
+          gives 100 curves: a fan as wide as the data are unsure. Every result from here on is computed on all 100 and
+          reported as a mean and a spread.
+        </p>
+      </div>
+      <SpreadSmooth />
+      <div class="measure">
+        <p>
+          On top, Brussels-Capital: 1.2 million people and a clean curve, where the 100 fits are almost one line. Below,
+          Diksmuide: 52 000 people. Its admissions are confidential, so the figure keeps each patient admitted in
+          West-Vlaanderen with the probability that they lived in Diksmuide, which gives counts with the noise of a
+          population that size. The dots are now mostly zeros and single patients, the fan opens up, and the date of the
+          peak is uncertain by days. Near the ends of the window, where a stray patient or two carry the whole fit, the
+          fan can flare up: that is the model admitting how little it knows there. "New sample" draws another
+          Diksmuide; any province or arrondissement can go in either panel. This is why the paper stops at arrondissements: for the 581 municipalities most curves would
+          look like this one or worse.
+        </p>
+        <p>
+          The fit here is the paper's without one refinement. Its model also lets the random deviations of neighbouring
+          days correlate, a first-order autoregressive term, which makes the fans somewhat wider than these. The spline
+          has about one basis function per week, as in the paper, and the weight <Tex tex="\lambda" /> of the penalty is
+          chosen by generalised cross-validation.
+        </p>
+      </div>
+      </section>
 
-    <h2 id="reading">Read more</h2>
-    <ul class="pubs">
-      <li>
-        <a href={doi}>Mobility and the spatial spread of SARS-CoV-2 in Belgium</a>
-        <div class="meta"><strong>M. Rollier</strong>, G. H. B. Miranda, J. Vergeynst, J. Meys, T. W. Alleman, the Belgian Collaborative Group on COVID-19 Hospital Surveillance, J. M. Baetens</div>
-        <div class="meta">Mathematical Biosciences 360, 108957, 2023 · <a href={arxiv}>preprint</a></div>
-      </li>
-      <li>
-        <a href={modelDoi}>A stochastic mobility-driven spatially explicit SEIQRD COVID-19 model with VOCs, seasonality, and vaccines</a>
-        <div class="meta">T. W. Alleman, <strong>M. Rollier</strong>, J. Vergeynst, J. M. Baetens, Applied Mathematical Modelling 123, 2023. The spatial model this analysis led to.</div>
-      </li>
-      <li>
-        <a href={nationalDoi}>Assessing the effects of non-pharmaceutical interventions on SARS-CoV-2 transmission in Belgium</a>
-        <div class="meta">T. W. Alleman et al., Epidemics 37, 2021. The national model that came first.</div>
-      </li>
-      <li>
-        <a href="https://doi.org/10.2760/61847">How human mobility explains the initial spread of COVID-19</a>
-        <div class="meta">S. M. Iacus et al., Joint Research Centre, 2020. The French and Italian analysis the connectivity index comes from.</div>
-      </li>
-      <li>
-        <a href={repo}>UGentBiomath/COVID19-Model</a>
-        <div class="meta">The code of the group's models, with the public data used on this page: the census commuting matrix, the weekly excess deaths of 2020 and the arrondissement borders.</div>
-      </li>
-    </ul>
-    <p class="meta">
-      Public data: hospital admissions per province from Sciensano (epistat.sciensano.be), weekly excess deaths per
-      arrondissement and the 2011 commuting matrix as prepared in the repository above, borders simplified with
-      mapshaper. Keys once a figure has focus: space plays the
-      weeks, the arrows step through them or shift the curve, r resets, n draws a new sample, 1 and 2 pick a wave,
-      b jumps to the best shift, w shows the warping, f goes fullscreen. The address bar follows the settings, so a
-      view can be linked.
-    </p>
+      <section role="tabpanel" id="ahead" aria-labelledby="tab-ahead" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Ahead or behind</h2>
+        <p>
+          Two tools compare the smoothed curves pair by pair. Both first rescale the curves to zero mean and unit spread, <Tex tex="s^g(t)" /> and <Tex tex="s^h(t)" />. <em>Time-lagged cross-correlation</em> then slides one along the
+          other and asks at which shift <Tex tex="k" />, in days, they overlap best:
+        </p>
+        <Tex block tex="\begin{gathered} C^{gh}(k) = \sum_{t \,\in\, \text{wave}} s^g(t + k)\, s^h(t), \\ \mathrm{TLCC}^{gh} = \arg\max_{k}\, C^{gh}(k). \end{gathered}" />
+        <p>
+          A negative lag means <Tex tex="g" /> runs ahead of <Tex tex="h" />. <em>Dynamic time warping</em> then lines
+          the two curves up at that shift and measures the difference in shape that is left. It may stretch and squeeze
+          one curve in time to match the other as closely as possible, and reports the average gap that remains:
+        </p>
+        <Tex block tex="\mathrm{DTW}^{gh} = \frac{1}{2n} \min_{\pi} \sum_{(i,j) \,\in\, \pi} w_{ij}\, \bigl|s^g(i) - s^h(j)\bigr|." />
+        <p>
+          Here <Tex tex="n" /> is the number of days the shifted curves overlap, and <Tex tex="\pi" /> runs over the
+          ways of matching the days of one curve to those of the other in order, from the first day to the last; a step
+          forward in both curves at once counts twice (<Tex tex="w_{ij} = 2" />), a step in one of them once. The lag is
+          a number of days; the DTW distance has no unit, and smaller means more alike.
+        </p>
+      </div>
+      <SpreadLags />
+      <div class="measure">
+        <p>
+          With the paper's data these are heatmaps of 43 by 43 arrondissements; with the public data they are 11 by 11,
+          one row and column per province, with Brussels as the eleventh. Click a cell to see its pair. Drag along the
+          cross-correlation strip or use the slider to slide the second curve over the first, "best shift" jumps to the
+          top of <Tex tex="C(k)" />, and "warping" draws which day of one curve the time warping matches to which day of the other.
+        </p>
+        <p>
+          The paper's findings on timing survive the coarser data. In the first wave the provinces run within about a
+          day of each other, with Namur trailing, as it does in the paper. In the second the lags roughly double, with
+          Brussels and Liège clearly ahead and West-Vlaanderen and Limburg behind, much as the paper found for their
+          arrondissements; it confirmed that the lags grew with a one-sided Wilcoxon signed-rank test (p &lt; 0.001).
+          The shapes, too, differ more in the second wave: switch the colouring to DTW and flip between the waves.
+        </p>
+        <p>
+          The line under the figure brings the two halves together, as the paper's figure 11 does: over all pairs, does
+          a stronger connection go with a shorter lag and a more similar shape? Over its 903 pairs of arrondissements
+          the paper found both correlations negative, as expected, but weak: −0.15 for the lags and −0.31 for the shapes
+          in the first wave. The provinces tell the same story, if less sharply for the lags: between provinces those
+          are small, often under a day, and leave little to rank. Connection is one influence on how the
+          virus moved, but far from the only one: why people travel, how many stops they make and the short trips within
+          an arrondissement, none of which these data see, all matter too.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="verdict" aria-labelledby="tab-verdict" tabindex="0" hidden>
+      <div class="measure">
+        <h2>What it adds up to</h2>
+        <p>
+          The three steps build up to the paper's main conclusion:
+        </p>
+        <p class="claim">
+          In the early stage of the epidemic, the movement of people and the spread of the virus were strongly
+          correlated; once the virus had spread across the country, the correlation weakened.
+        </p>
+        <p>
+          People moved less while the virus was around, so the phone data measure what they should. Connection to the
+          first outbreaks, in Tongeren and Hasselt, predicted where the excess deaths would be highest five to six weeks
+          later, and stopped predicting anything by May. Over all pairs of arrondissements, a stronger connection went
+          with hospital curves of more similar shape that ran more nearly in step, but only weakly: other factors,
+          beyond what these data see, cloud a clean correlation. None of this proves that travel carried the virus; it
+          shows that the data look the way they would if it did, early on.
+        </p>
+        <p>
+          It also says what a model of the epidemic in Belgium should contain: a notion of mobility, above all for the
+          early stage, before the virus has spread evenly through the country. So we built one: a <a href={modelDoi}>spatially explicit version</a> of
+          our model, run on the same phone data, for the provinces and the arrondissements. Its verdict is modest in the
+          way this analysis foreshadows: once the virus had spread, travel between provinces barely changed the course
+          of the epidemic, and cutting social contact did far more than restricting movement.
+        </p>
+        <p>
+          Two caveats about this page. Commuting in 2011 is not movement in 2020: it misses shopping, visits and the
+          school run, and it cannot drop during a lockdown the way the phone data did. And the provinces average away
+          most of the geography the paper was about. Where the public data agree with the paper, as they mostly do, that
+          is reassuring; where they differ, these are the data I would doubt first.
+        </p>
+
+        <h2>Read more</h2>
+        <ul class="pubs">
+          <li>
+            <a href={doi}>Mobility and the spatial spread of SARS-CoV-2 in Belgium</a>
+            <div class="meta"><strong>M. Rollier</strong>, G. H. B. Miranda, J. Vergeynst, J. Meys, T. W. Alleman, the Belgian Collaborative Group on COVID-19 Hospital Surveillance, J. M. Baetens</div>
+            <div class="meta">Mathematical Biosciences 360, 108957, 2023 · <a href={arxiv}>preprint</a></div>
+          </li>
+          <li>
+            <a href={modelDoi}>A stochastic mobility-driven spatially explicit SEIQRD COVID-19 model with VOCs, seasonality, and vaccines</a>
+            <div class="meta">T. W. Alleman, <strong>M. Rollier</strong>, J. Vergeynst, J. M. Baetens, Applied Mathematical Modelling 123, 2023. The spatial model this analysis led to.</div>
+          </li>
+          <li>
+            <a href={nationalDoi}>Assessing the effects of non-pharmaceutical interventions on SARS-CoV-2 transmission in Belgium</a>
+            <div class="meta">T. W. Alleman et al., Epidemics 37, 2021. The national model that came first.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.2760/61847">How human mobility explains the initial spread of COVID-19</a>
+            <div class="meta">S. M. Iacus et al., Joint Research Centre, 2020. The French and Italian analysis the connectivity index comes from.</div>
+          </li>
+          <li>
+            <a href={repo}>UGentBiomath/COVID19-Model</a>
+            <div class="meta">The code of the group's models, with the public data used on this page: the census commuting matrix, the weekly excess deaths of 2020 and the arrondissement borders.</div>
+          </li>
+        </ul>
+        <p class="meta">
+          Public data: hospital admissions per province and confirmed cases per municipality from Sciensano
+          (epistat.sciensano.be), weekly excess deaths per
+          arrondissement and the 2011 commuting matrix as prepared in the repository above, borders simplified with
+          mapshaper. Keys once a figure has focus: space plays the
+          weeks, the arrows step through them or shift the curve, m switches between deaths and cases, r resets, n draws a new sample, 1 and 2 pick a wave,
+          b jumps to the best shift, w shows the warping, f goes fullscreen. The address bar follows the settings, so a
+          view can be linked.
+        </p>
+      </div>
+      </section>
+
+    </div>
   </div>
 </Base>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .panels { min-width: 0; }
+  [role="tabpanel"]:focus { outline: none; }
+  [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
+  .claim { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 1rem; font-size: 1.1rem; font-weight: 600; }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>
+
+<script>
+  // The hash picks the tab: a tab's own id, or the id of anything inside a tab. Arrow keys walk the list.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+  const box = document.querySelector<HTMLElement>('.tabbed')!;
+
+  function show(id: string, scroll: boolean) {
+    let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+    if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+    if (i < 0) i = 0;
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+    // an anchor inside a tab scrolls to it; a tab change only scrolls back up when the reader was deep in the previous one
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+  }
+  const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  document.querySelector('[role="tablist"]')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+  });
+</script>

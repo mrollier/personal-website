@@ -55,5 +55,12 @@ assert.equal(data.arr.length, 43); assert.equal(data.commute.length, 43 * 43);
 const n = 43, src = data.arr.findIndex((a) => a.nis === 73000), others = [...Array(n).keys()].filter((i) => i !== src);
 const ci = others.map((h) => connectivity(data.commute, n, src, h)), ed = others.map((h) => data.excess.values[15][h]);
 near(spearman(ci, ed), 0.7308721120501681, 1e-12, 'Tongeren, 15 April');
+// The cases, with the "<5" days filled in: Belgium's 2020 total (Sciensano reported about 650 000 by early January
+// 2021), and connection to Tongeren against cases per head in the week of 4 March.
+assert.equal(data.cases.values.length, data.excess.values.length);
+const total = data.cases.values.flat().reduce((a, b) => a + b, 0);
+assert.ok(total > 630e3 && total < 660e3, `cases in 2020: ${total}`);
+const inc = others.map((h) => data.cases.values[9][h] / data.arr[h].pop);
+near(spearman(ci, inc), 0.5971922289437858, 1e-12, 'Tongeren, cases, 4 March');
 
 console.log('mobility ok');

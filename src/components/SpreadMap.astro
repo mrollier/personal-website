@@ -1,7 +1,8 @@
 ---
 // Fig. 10 of the mobility paper on public data: pick an arrondissement (a first-outbreak one by default) and see,
 // side by side, how strongly every other arrondissement is connected to it by commuting (2011 census) and its excess
-// deaths in a chosen week of 2020; underneath, the one plotted against the other with Spearman's ρ, and ρ week by week.
+// deaths in a chosen week of 2020, or, as a second view the paper left out, its confirmed cases; underneath, the one
+// plotted against the other with Spearman's ρ, and ρ week by week for both.
 // Self-contained with src/scripts/{mobility,stats,figure}.ts and src/data/{mobility,belgium-arrondissements}.json.
 import shapes from '../data/belgium-arrondissements.json';
 import data from '../data/mobility.json';
@@ -11,7 +12,7 @@ const groups = data.prov.map((name, p) => ({ name, arr: data.arr.filter((a) => a
 const vb = `-3 -3 ${shapes.w + 6} ${shapes.h + 6}`;
 const maps = [
   { kind: 'ci', label: 'Map of the arrondissements coloured by how many people commute between each and the chosen one' },
-  { kind: 'ed', label: 'Map of the arrondissements coloured by excess deaths in the chosen week' },
+  { kind: 'ed', label: 'Map of the arrondissements coloured by excess deaths or confirmed cases in the chosen week' },
 ];
 ---
 <figure class="fig" id="first-outbreak" data-spread-map data-source={source} data-week={week} tabindex="-1">
@@ -23,6 +24,11 @@ const maps = [
     <button name="q" type="button" value="73000">Tongeren</button>
     <button name="q" type="button" value="71000">Hasselt</button>
     <button name="q" type="button" value="53000">Mons</button>
+  </div>
+  <div class="controls" role="group" aria-label="Outcome">
+    <span class="head">outcome</span>
+    <button name="m" type="button" value="ed">excess deaths</button>
+    <button name="m" type="button" value="cases">confirmed cases</button>
   </div>
   <div class="controls" role="group" aria-label="Week">
     <button name="play" type="button" aria-pressed="false">play</button>
@@ -39,21 +45,24 @@ const maps = [
             <pattern id={`hatch-${kind}`} patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
               <line x1="0" y1="0" x2="0" y2="4" class="hatch" />
             </pattern>
+            <!-- outlines are clipped to their own arrondissement, so a border it shares (all of Brussels's, for Halle-Vilvoorde) is drawn on its side only -->
+            <clipPath id={`clip-src-${kind}`}><path class="src" d="" /></clipPath>
+            <clipPath id={`clip-hov-${kind}`}><path class="hov" d="" /></clipPath>
           </defs>
           {shapes.paths.map((d, i) => <path d={d} data-i={i} />)}
-          <path class="src" d="" fill={`url(#hatch-${kind})`} />
-          <path class="hov" d="" />
+          <path class="src" d="" fill={`url(#hatch-${kind})`} clip-path={`url(#clip-src-${kind})`} />
+          <path class="hov" d="" clip-path={`url(#clip-hov-${kind})`} />
         </svg>
         <div class="legend"><span class="lo" data-lo={kind}></span><span class={`bar ${kind}`}></span><span class="hi" data-hi={kind}></span></div>
       </div>
     ))}
     <div class="pane">
       <div class="title" data-title="scatter"></div>
-      <svg class="chart" data-chart="scatter" viewBox="0 0 400 250" role="img" aria-label="Scatter of connection against excess deaths"></svg>
+      <svg class="chart" data-chart="scatter" viewBox="0 0 400 250" role="img" aria-label="Scatter of connection against the chosen outcome"></svg>
     </div>
     <div class="pane">
       <div class="title" data-title="rho"></div>
-      <svg class="chart" data-chart="rho" viewBox="0 0 400 250" role="img" aria-label="Spearman's rho between connection and excess deaths, week by week through 2020"></svg>
+      <svg class="chart" data-chart="rho" viewBox="0 0 400 250" role="img" aria-label="Spearman's rho between connection and excess deaths, and between connection and confirmed cases, week by week through 2020"></svg>
     </div>
   </div>
   <output name="status" class="status" aria-live="polite"></output>
@@ -72,8 +81,8 @@ const maps = [
   .chart { background: var(--panel); border: 1px solid var(--line); }
   .choro { background: var(--panel); border: 1px solid var(--line); }
   .choro path[data-i] { stroke: var(--bg); stroke-width: 1; vector-effect: non-scaling-stroke; cursor: pointer; }
-  .choro .src { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .choro .hov { fill: none; stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .choro .src { stroke: var(--ink); stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .choro .hov { fill: var(--ink); fill-opacity: 0.3; stroke: var(--ink); stroke-width: 4; vector-effect: non-scaling-stroke; pointer-events: none; }
   .hatch { stroke: var(--ink); stroke-width: 1; }
   .legend { display: flex; align-items: center; gap: 0.5rem; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
   .bar { flex: 1; height: 0.6rem; max-width: 14rem; }
@@ -89,6 +98,7 @@ const maps = [
   .chart :global(.dot) { fill: var(--accent); stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
   .chart :global(.dot.on) { fill: var(--ink); }
   .chart :global(.rho) { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+  .chart :global(.rho.alt) { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 3; }
   .chart :global(.pt) { fill: var(--accent); }
   .chart :global(.now) { stroke: var(--ink); }
   .chart :global(.nowdot) { fill: var(--ink); stroke: var(--panel); stroke-width: 2; }
@@ -133,14 +143,19 @@ const maps = [
   import { loop, fullscreen, urlState, keys } from '../scripts/figure';
 
   const N = data.arr.length, WEEKS = data.excess.values.length, ED = data.excess.values;
+  // Confirmed cases per 100 000 inhabitants, the second outcome.
+  const CASES = data.cases.values.map((row) => row.map((v, i) => (v / data.arr[i].pop) * 1e5));
+  type M = 'ed' | 'cases';
+  const OUT: Record<M, number[][]> = { ed: ED, cases: CASES };
   const day0 = Date.parse(data.excess.start);
   const weekName = (w: number) => new Date(day0 + w * 7 * 864e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const CI = Array.from({ length: N }, (_, g) => Array.from({ length: N }, (_, h) => (g === h ? NaN : connectivity(data.commute, N, g, h))));
   // The paper's peak correlations, Proximus mobility, week of 15 April (Fig. 10), for comparison.
   const PAPER: Record<number, number> = { 73000: 0.63, 71000: 0.59 };
   const CRIT = 0.304; // |ρ| at p = 0.05, two-sided, for the 42 other arrondissements
-  const Y_LO = -40, Y_HI = 120; // excess deaths axis, %; the data span −30 to +109
   const nf = new Intl.NumberFormat('en-GB');
+  /** The next of 1, 2, 5, 10, 20, … at or above x. */
+  const nice = (x: number) => { const e = 10 ** Math.floor(Math.log10(Math.max(x, 1))), f = x / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e; };
 
   /** Sequential ramp from a tint of the page to the hue to ink, as CSS, so it follows the theme by itself. */
   const ramp = (hue: string, t: number) => {
@@ -148,23 +163,24 @@ const maps = [
     return t < 0.6 ? `color-mix(in oklab, var(${hue}) ${Math.round(8 + (t / 0.6) * 92)}%, var(--bg))`
       : `color-mix(in oklab, var(--ink) ${Math.round(((t - 0.6) / 0.4) * 55)}%, var(${hue}))`;
   };
-  const rhoCache = new Map<number, number[]>();
-  const rhoSeries = (g: number) => {
-    if (!rhoCache.has(g)) {
+  const rhoCache = new Map<string, number[]>();
+  const rhoSeries = (g: number, m: M) => {
+    const k = m + g;
+    if (!rhoCache.has(k)) {
       const others = [...Array(N).keys()].filter((h) => h !== g), x = others.map((h) => CI[g][h]);
-      rhoCache.set(g, ED.map((row) => spearman(x, others.map((h) => row[h]))));
+      rhoCache.set(k, OUT[m].map((row) => spearman(x, others.map((h) => row[h]))));
     }
-    return rhoCache.get(g)!;
+    return rhoCache.get(k)!;
   };
 
   document.querySelectorAll<HTMLElement>('[data-spread-map]').forEach(mount);
 
   function mount(el: HTMLElement) {
     const $ = <T extends Element = HTMLElement>(s: string) => el.querySelector<T>(s)!;
-    const url = urlState('map', { src: el.dataset.source!, week: el.dataset.week! });
+    const url = urlState('map', { src: el.dataset.source!, week: el.dataset.week!, m: 'ed' });
     const idx = (nis: string | number) => { const i = data.arr.findIndex((a) => a.nis === +nis); return i < 0 ? data.arr.findIndex((a) => a.nis === +el.dataset.source!) : i; };
     const clampW = (w: number) => (Number.isFinite(w) ? Math.max(0, Math.min(WEEKS - 1, Math.round(w))) : +el.dataset.week!);
-    let src = idx(url.get('src')), week = clampW(+url.get('week')), hover: number | null = null;
+    let src = idx(url.get('src')), week = clampW(+url.get('week')), m: M = url.get('m') === 'cases' ? 'cases' : 'ed', hover: number | null = null;
 
     const sel = $<HTMLSelectElement>('select[name="src"]'), wk = $<HTMLInputElement>('input[name="week"]'), wv = $<HTMLOutputElement>('output[name="wv"]');
     const playBtn = $<HTMLButtonElement>('button[name="play"]'), status = $<HTMLOutputElement>('output[name="status"]'), tip = $<HTMLDivElement>('.tip');
@@ -174,43 +190,51 @@ const maps = [
     const name = (i: number) => data.arr[i].name;
     const both = (g: number, h: number) => data.commute[g * N + h] + data.commute[h * N + g];
     const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v)}%`;
+    const per = (v: number) => `${nf.format(Math.round(v))} per 100 000`;
+    const rf = (r: number) => (Number.isNaN(r) ? '–' : r.toFixed(2)); // NaN: no cases anywhere yet
+    /** The outcome axis: excess deaths on a fixed scale, cases up to this week's highest. */
+    const axis = () => {
+      if (m === 'ed') return { lo: -40, hi: 120, step: 40, fmt: pct }; // the data span −30 to +109
+      const hi = nice(Math.max(...CASES[week]));
+      return { lo: 0, hi, step: hi / 5, fmt: (v: number) => nf.format(v) };
+    };
 
     // --- the two maps -------------------------------------------------------------------------------------------
     function paintMaps() {
-      const row = CI[src], vals = row.filter((v) => !Number.isNaN(v)), lo = Math.min(...vals), hi = Math.max(...vals);
+      const row = CI[src], vals = row.filter((v) => !Number.isNaN(v)), lo = Math.min(...vals), hi = Math.max(...vals), top = axis().hi;
       for (let i = 0; i < N; i++) {
         paths.ci[i].style.fill = i === src ? 'var(--bg)' : ramp('--accent', (row[i] - lo) / (hi - lo));
-        paths.ed[i].style.fill = ramp('--danger', ED[week][i] / 100);
+        paths.ed[i].style.fill = ramp('--danger', m === 'ed' ? ED[week][i] / 100 : CASES[week][i] / top);
       }
-      for (const k of ['ci', 'ed'] as const) svgs[k].querySelector('.src')!.setAttribute('d', paths[k][src].getAttribute('d')!);
+      for (const k of ['ci', 'ed'] as const) svgs[k].querySelectorAll('.src').forEach((p) => p.setAttribute('d', paths[k][src].getAttribute('d')!));
       $('[data-lo="ci"]').textContent = nf.format(Math.round(Math.exp(lo)));
       $('[data-hi="ci"]').textContent = `${nf.format(Math.round(Math.exp(hi)))} commuters`;
-      $('[data-lo="ed"]').textContent = '≤ 0%';
-      $('[data-hi="ed"]').textContent = '≥ +100% excess deaths';
+      $('[data-lo="ed"]').textContent = m === 'ed' ? '≤ 0%' : '0';
+      $('[data-hi="ed"]').textContent = m === 'ed' ? '≥ +100% excess deaths' : `${nf.format(top)} cases per 100 000`;
       $('[data-title="ci"]').innerHTML = `commuters to and from <b>${name(src)}</b> (hatched), 2011 census`;
-      $('[data-title="ed"]').innerHTML = `excess deaths, week of <b>${weekName(week)}</b> 2020`;
+      $('[data-title="ed"]').innerHTML = `${m === 'ed' ? 'excess deaths' : 'confirmed cases per 100 000'}, week of <b>${weekName(week)}</b> 2020`;
     }
 
-    // --- scatter: connection against excess deaths this week -------------------------------------------------------
+    // --- scatter: connection against the outcome this week --------------------------------------------------------
     const S = { x0: 46, x1: 388, y0: 14, y1: 212 };
     let dots: SVGCircleElement[] = [];
     function paintScatter() {
       const others = [...Array(N).keys()].filter((h) => h !== src), xs = others.map((h) => CI[src][h]);
-      const lo = Math.floor(Math.min(...xs)), hi = Math.ceil(Math.max(...xs));
-      const X = (v: number) => S.x0 + ((v - lo) / (hi - lo)) * (S.x1 - S.x0), Y = (v: number) => S.y1 - ((Math.max(Y_LO, Math.min(Y_HI, v)) - Y_LO) / (Y_HI - Y_LO)) * (S.y1 - S.y0);
+      const lo = Math.floor(Math.min(...xs)), hi = Math.ceil(Math.max(...xs)), ax = axis(), row = OUT[m][week];
+      const X = (v: number) => S.x0 + ((v - lo) / (hi - lo)) * (S.x1 - S.x0), Y = (v: number) => S.y1 - ((Math.max(ax.lo, Math.min(ax.hi, v)) - ax.lo) / (ax.hi - ax.lo)) * (S.y1 - S.y0);
       let s = '';
-      for (let v = Y_LO; v <= Y_HI; v += 40) s += `<line class="${v ? 'grid' : 'base'}" x1="${S.x0}" x2="${S.x1}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${S.x0 - 5}" y="${Y(v) + 4}" text-anchor="end">${pct(v)}</text>`;
+      for (let v = ax.lo; v <= ax.hi + 1e-9; v += ax.step) s += `<line class="${v ? 'grid' : 'base'}" x1="${S.x0}" x2="${S.x1}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${S.x0 - 5}" y="${Y(v) + 4}" text-anchor="end">${ax.fmt(v)}</text>`;
       for (let e = Math.ceil(lo / Math.LN10); e <= hi / Math.LN10; e++) {
         const x = X(e * Math.LN10);
         s += `<line class="grid" x1="${x}" x2="${x}" y1="${S.y0}" y2="${S.y1}"/><text x="${x}" y="${S.y1 + 14}" text-anchor="middle">${nf.format(10 ** e)}</text>`;
       }
       s += `<text x="${S.x1}" y="${S.y1 + 30}" text-anchor="end">commuters both ways, log scale: CI = ln(commuters)</text>`;
-      const r = spearman(xs, others.map((h) => ED[week][h]));
-      s += `<text class="strong" x="${S.x0 + 8}" y="${S.y0 + 16}">ρ = ${r.toFixed(2)}</text>`;
+      const r = spearman(xs, others.map((h) => row[h]));
+      s += `<text class="strong" x="${S.x0 + 8}" y="${S.y0 + 16}">ρ = ${rf(r)}</text>`;
       const top = [...others].sort((a, b) => CI[src][b] - CI[src][a]).slice(0, 2);
       let labels = ''; // after the dots, so no dot covers a name
       for (const h of others) {
-        const x = X(CI[src][h]), y = Y(ED[week][h]);
+        const x = X(CI[src][h]), y = Y(row[h]);
         s += `<circle class="dot" data-i="${h}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5"/>`;
         if (top.includes(h)) labels += `<text class="lab" x="${(x - 7).toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="end">${name(h)}</text>`;
       }
@@ -224,7 +248,7 @@ const maps = [
     const PX = (w: number) => P.x0 + (w / (WEEKS - 1)) * (P.x1 - P.x0), PY = (v: number) => P.y1 - ((v - RLO) / (RHI - RLO)) * (P.y1 - P.y0);
     const dayToWeek = (m: number, d: number) => (Date.UTC(2020, m - 1, d) - day0) / (7 * 864e5);
     function paintRho() {
-      const rs = rhoSeries(src);
+      const rs = rhoSeries(src, m), other: M = m === 'ed' ? 'cases' : 'ed', ro = rhoSeries(src, other);
       let s = '';
       for (const [a, b, label] of [[dayToWeek(3, 1), dayToWeek(7, 1), 'wave 1'], [dayToWeek(9, 1), dayToWeek(12, 31), 'wave 2']] as [number, number, string][])
         s += `<rect class="band" x="${PX(a)}" y="${P.y0}" width="${PX(b) - PX(a)}" height="${P.y1 - P.y0}"/><text x="${(PX(a) + PX(b)) / 2}" y="${P.y1 - 6}" text-anchor="middle">${label}</text>`;
@@ -235,8 +259,15 @@ const maps = [
         const w = dayToWeek(m, 1);
         s += `<text x="${PX(w)}" y="${P.y1 + 14}" text-anchor="middle">${'JFMAMJJASOND'[m - 1]}</text>`;
       }
-      s += `<path class="rho" d="M${rs.map((v, w) => `${PX(w).toFixed(1)} ${PY(v).toFixed(1)}`).join('L')}"/>`;
-      s += `<line class="now" x1="${PX(week)}" x2="${PX(week)}" y1="${P.y0}" y2="${P.y1}"/><circle class="nowdot" cx="${PX(week)}" cy="${PY(rs[week])}" r="5"/>`;
+      const line = (r: number[]) => r.map((v, w) => (Number.isNaN(v) ? '' : `${w && !Number.isNaN(r[w - 1]) ? 'L' : 'M'}${PX(w).toFixed(1)} ${PY(v).toFixed(1)}`)).join('');
+      s += `<path class="rho alt" d="${line(ro)}"/><path class="rho" d="${line(rs)}"/>`;
+      // each curve named at its spring peak
+      for (const [r, mm] of [[rs, m], [ro, other]] as [number[], M][]) {
+        const w = r.slice(0, 22).reduce((b, v, i) => (!Number.isNaN(v) && (b < 0 || v > r[b]) ? i : b), -1);
+        if (w >= 0) s += `<text class="lab" x="${PX(w) - 6}" y="${PY(r[w]) - 6}" text-anchor="end">${mm === 'ed' ? 'deaths' : 'cases'}</text>`;
+      }
+      s += `<line class="now" x1="${PX(week)}" x2="${PX(week)}" y1="${P.y0}" y2="${P.y1}"/>`;
+      if (!Number.isNaN(rs[week])) s += `<circle class="nowdot" cx="${PX(week)}" cy="${PY(rs[week])}" r="5"/>`;
       const paper = PAPER[data.arr[src].nis];
       if (paper !== undefined) {
         const x = PX(15), y = PY(paper);
@@ -250,7 +281,7 @@ const maps = [
 
     // --- hover: the same arrondissement lit on both maps and in the scatter -----------------------------------------
     function paintHover() {
-      for (const k of ['ci', 'ed'] as const) svgs[k].querySelector('.hov')!.setAttribute('d', hover === null ? '' : paths[k][hover].getAttribute('d')!);
+      for (const k of ['ci', 'ed'] as const) svgs[k].querySelectorAll('.hov').forEach((p) => p.setAttribute('d', hover === null ? '' : paths[k][hover].getAttribute('d')!));
       for (const d of dots) d.classList.toggle('on', +d.dataset.i! === hover);
     }
     function showTip(e: PointerEvent, html: string) {
@@ -262,9 +293,10 @@ const maps = [
       tip.style.left = `${Math.max(0, x)}px`; tip.style.top = `${Math.max(0, y)}px`;
     }
     const hideTip = () => { tip.hidden = true; };
+    const outcomes = (i: number) => `week of ${weekName(week)}: excess deaths ${pct(ED[week][i])}, cases ${per(CASES[week][i])}`;
     const describe = (i: number) => i === src
-      ? `<b>${name(i)}</b>, the chosen one<br>excess deaths, week of ${weekName(week)}: ${pct(ED[week][i])}`
-      : `<b>${name(i)}</b><br>commuters to and from ${name(src)}: ${nf.format(both(src, i))} (CI ${CI[src][i].toFixed(1)})<br>excess deaths, week of ${weekName(week)}: ${pct(ED[week][i])}`;
+      ? `<b>${name(i)}</b>, the chosen one<br>${outcomes(i)}`
+      : `<b>${name(i)}</b><br>commuters to and from ${name(src)}: ${nf.format(both(src, i))} (CI ${CI[src][i].toFixed(1)})<br>${outcomes(i)}`;
     const onItem = (e: PointerEvent) => {
       const t = (e.target as Element).closest('[data-i]') as SVGElement | null;
       if (!t) { if (hover !== null) { hover = null; paintHover(); } hideTip(); return; }
@@ -285,7 +317,7 @@ const maps = [
       if (!(e.target as Element).classList.contains('hit')) return;
       const w = weekAt(e), cross = rho.querySelector('.cross')!;
       cross.setAttribute('x1', String(PX(w))); cross.setAttribute('x2', String(PX(w))); cross.setAttribute('visibility', 'visible');
-      showTip(e, `week of ${weekName(w)}: ρ = ${rhoSeries(src)[w].toFixed(2)}`);
+      showTip(e, `week of ${weekName(w)}<br>ρ = ${rf(rhoSeries(src, 'ed')[w])} with excess deaths<br>ρ = ${rf(rhoSeries(src, 'cases')[w])} with confirmed cases`);
     });
     rho.addEventListener('pointerleave', () => { rho.querySelector('.cross')?.setAttribute('visibility', 'hidden'); hideTip(); });
     rho.addEventListener('click', (e) => { if ((e.target as Element).classList.contains('hit')) setWeek(weekAt(e)); });
@@ -295,10 +327,14 @@ const maps = [
       paintMaps(); paintScatter(); paintRho(); paintHover();
       sel.value = String(data.arr[src].nis); wk.value = String(week); wv.value = weekName(week);
       for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="q"]')) b.setAttribute('aria-pressed', String(+b.value === data.arr[src].nis));
-      url.set('src', String(data.arr[src].nis)); url.set('week', String(week));
-      const r = rhoSeries(src)[week];
-      status.textContent = `Week of ${weekName(week)}: ranking the other 42 arrondissements by commuting to and from ${name(src)} and by excess deaths gives ρ = ${r.toFixed(2)}${Math.abs(r) > CRIT ? '' : ', no more than chance would give'}.`;
+      for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="m"]')) b.setAttribute('aria-pressed', String(b.value === m));
+      url.set('src', String(data.arr[src].nis)); url.set('week', String(week)); url.set('m', m);
+      const r = rhoSeries(src, m)[week];
+      status.textContent = Number.isNaN(r) ? `Week of ${weekName(week)}: no confirmed cases yet, so nothing to rank.`
+        : `Week of ${weekName(week)}: ranking the other 42 arrondissements by commuting to and from ${name(src)} and by ${m === 'ed' ? 'excess deaths' : 'confirmed cases per head'} gives ρ = ${r.toFixed(2)}${Math.abs(r) > CRIT ? '' : ', no more than chance would give'}.`;
     }
+    function setM(v: M) { if (v === m) return; m = v; paint(); }
+    for (const b of el.querySelectorAll<HTMLButtonElement>('button[name="m"]')) b.addEventListener('click', () => setM(b.value as M));
     function setSrc(i: number) { if (i === src) return; src = i; paint(); }
     function setWeek(w: number) { w = clampW(w); if (w === week) return; week = w; paint(); }
     sel.addEventListener('change', () => setSrc(idx(sel.value)));
@@ -313,11 +349,11 @@ const maps = [
     });
     lp.onchange = (on) => { playBtn.textContent = on ? 'pause' : 'play'; playBtn.setAttribute('aria-pressed', String(on)); if (on && week >= WEEKS - 1) setWeek(0); acc = 0; };
     playBtn.addEventListener('click', () => lp.play());
-    $('button[name="reset"]').addEventListener('click', () => { lp.play(false); src = idx(el.dataset.source!); week = +el.dataset.week!; paint(); });
+    $('button[name="reset"]').addEventListener('click', () => { lp.play(false); src = idx(el.dataset.source!); week = +el.dataset.week!; m = 'ed'; paint(); });
     const fs = fullscreen(el, $<HTMLButtonElement>('button[name="full"]'));
     keys(el, {
       ' ': () => lp.play(), ArrowRight: () => setWeek(week + 1), ArrowLeft: () => setWeek(week - 1),
-      r: () => $<HTMLButtonElement>('button[name="reset"]').click(), f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); },
+      r: () => $<HTMLButtonElement>('button[name="reset"]').click(), m: () => setM(m === 'ed' ? 'cases' : 'ed'), f: fs.toggle, Escape: () => { if (fs.on()) fs.toggle(); },
     });
     paint();
   }

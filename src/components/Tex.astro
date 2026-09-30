@@ -1,0 +1,19 @@
+---
+// LaTeX, typeset by KaTeX at build time: the reader gets markup, a stylesheet and only the fonts the formulas use,
+// no script. <Tex tex="…" /> sits in the text like $…$; <Tex block tex="…" /> gets a line of its own like $$…$$.
+// A formula KaTeX cannot parse fails the build.
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+type Props = { tex: string; block?: boolean };
+const { tex, block = false } = Astro.props;
+const html = katex.renderToString(tex, { displayMode: block, throwOnError: true });
+---
+{block ? <div class="tex" set:html={html} /> : <Fragment set:html={html} />}
+
+<style>
+  /* a long formula scrolls on its own on a phone instead of widening the page */
+  .tex { overflow-x: auto; overflow-y: hidden; }
+  @media (max-width: 500px) { .tex { font-size: 0.85em; } }
+  /* KaTeX's own 1.21em towers over the body font */
+  :global(.katex) { font-size: 1.1em; }
+</style>

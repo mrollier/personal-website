@@ -1,6 +1,6 @@
 ---
 // F5–F8: the synchronisation task, 262,144 rules narrowed to 27 by the genotype alone; among them, the best ones are
-// volatile (said intuitively, the numbers left off); the winner at work on a rewired grid; and the flip that turns a
+// sensitive (said intuitively, the numbers left off); the winner at work on a rewired grid; and the flip that turns a
 // synchroniser into a consensus-seeker.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
@@ -20,18 +20,18 @@ import SimButton from './SimButton.astro';
     </div>
   </div>
   <p class="cite">The global synchronisation task: R. Das, J. P. Crutchfield, M. Mitchell, J. E. Hanson, 1995</p>
-  <p slot="say">What can the two numbers do? A classic test for cellular automata is the global synchronisation task: starting from a random pattern, get every node to flash in step, all on, then all off, then all on again. No node can see the whole network, so this is hard for local rules.</p>
-  <p slot="say">Here are all 262,144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the mean-field curve keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
+  <p slot="say">What can the two curves do? A classic test for cellular automata is the global synchronisation task: starting from a random pattern, get every node to flash in step, all on, then all off, then all on again. No node can see the whole network, so this is hard for local rules.</p>
+  <p slot="say">Here are all 262,144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the average next density keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
 </Slide>
 
-<Slide label="We want volatile rules" builds={1} class="f6" ch={6}>
-  <h2>We want volatile rules</h2>
+<Slide label="We want sensitive rules" builds={1} class="f6" ch={6}>
+  <h2>We want sensitive rules</h2>
   <div class="row grow f6-row">
-    <canvas class="scatter" aria-label="The 27 candidates: how volatile they are against how fast they leave the mixed state"></canvas>
-    <p class="lede f6-side" data-b="1">Volatile: one neighbour more or less often changes what a node does next.</p>
+    <canvas class="scatter" aria-label="The 27 candidates: how sensitive they are against how unstable"></canvas>
+    <p class="lede f6-side" data-b="1">Sensitive: one neighbour more or less often changes what a node does next.</p>
   </div>
-  <p slot="say">Why does that one rule win? Each of the 27 candidates is a dot here: to the right, rules that leave the half-on, half-off state quickly; upwards, rules that are more volatile, whose output often changes when one neighbour changes. Ideally a rule would be both, but among the 27 you cannot have it all.</p>
-  <p slot="say">The winner is among the most volatile rules, though not the most volatile, and only moderately fast. A volatile rule does not freeze into patches that each keep their own rhythm, and that is what synchronisation needs. With only 27 rules this is an observation, not a law, but the same preference for volatile rules comes back later in the talk.</p>
+  <p slot="say">Why does that one rule win? Each of the 27 candidates is a dot here: to the right, more unstable rules, which leave the half-on, half-off state quickly (the red line on the density curve); upwards, more sensitive rules, whose output often changes when one neighbour changes (the red line on the defect curve). Ideally a rule would be both, but among the 27 you cannot have it all.</p>
+  <p slot="say">The winner is among the most sensitive rules, though not the most sensitive, and only moderately unstable. A sensitive rule does not freeze into patches that each keep their own rhythm, and that is what synchronisation needs. With only 27 rules this is an observation, not a law, but the same preference for sensitive rules comes back later in the talk.</p>
 </Slide>
 
 <Slide label="Watch it work" builds={3} class="f7" ch={6}>
@@ -58,15 +58,15 @@ import SimButton from './SimButton.astro';
 
 <Slide label="Flip it: consensus" builds={2} class="f8" ch={6}>
   <div class="row grow f8-row">
-    <canvas class="flip" aria-label="The mean-field curve of the synchroniser flipping into that of a consensus-seeker"></canvas>
+    <canvas class="flip" aria-label="The average next density of the synchroniser turning over into that of a consensus-seeker"></canvas>
     <div class="col f8-side">
       <h2>Flip it: consensus</h2>
       <p class="lede" data-b="1">Swap on and off in every answer: the network no longer flashes, it freezes, all on or all off. <b>Consensus-seeking rules.</b></p>
-      <p class="result" data-b="2"><b>Our result</b> Just as volatile, and the same conditions find a consensus-seeking rule for almost every kind of network.</p>
+      <p class="result" data-b="2"><b>Our result</b> Just as sensitive, and the same conditions find a consensus-seeking rule for almost every kind of network.</p>
     </div>
   </div>
   <p slot="say">One more trick. Swap on and off in every answer of the rule, and its curve turns over: instead of flipping the network back and forth, it pushes the network to one side, all on or all off. The network freezes into agreement. These are consensus-seeking rules: here, consensus only means that every node ends up the same, not that the initial majority wins.</p>
-  <p slot="say">The flipped rules are exactly as volatile as the synchronisers they came from, and the same conditions find a consensus-seeking rule for every kind of network in the thesis except the sparsest. They come back later, twice.</p>
+  <p slot="say">The flipped rules are exactly as sensitive as the synchronisers they came from, and the same conditions find a consensus-seeking rule for every kind of network in the thesis except the sparsest. They come back later, twice.</p>
 </Slide>
 
 <style>
@@ -134,14 +134,14 @@ import SimButton from './SimButton.astro';
     onSize(c, paint);
   }
 
-  // ── F6: the 27 candidates, volatility (Boolean sensitivity at eight neighbours) against how fast they leave the
-  // mixed state (the mean-field slope at ½), in words and without numbers ──
+  // ── F6: the 27 candidates, how sensitive (Boolean sensitivity at eight neighbours) against how unstable (the slope of
+  // the average next density at its unstable equilibrium, ½), in words and without numbers ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f6')) {
     const sc = s.querySelector<HTMLCanvasElement>('canvas')!;
     function paint() {
       const st = stage(sc); if (!st) return;
       const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 190, h: st.h - 110, x0: 0.9, x1: 2.6, y0: 0.5, y1: 7.5 };
-      axes(st, p, { xticks: [], yticks: [], xname: 'leaves half on, half off faster →', yname: 'more volatile →' });
+      axes(st, p, { xticks: [], yticks: [], xname: 'more unstable →', yname: 'more sensitive →' });
       for (const r of cands) dot(st, px(p, Math.abs(r.slope)), py(p, r.bs8), 10, t.muted);
       const mark = (B: number, S: number, text: string, color: string, dx: number, dy: number) => {
         const r = cands.find((c) => c.B === B && c.S === S)!, x = px(p, Math.abs(r.slope)), y = py(p, r.bs8);
@@ -218,7 +218,7 @@ import SimButton from './SimButton.astro';
     onSize(grid, paintGrid); onSize(trace, paintTrace);
   }
 
-  // ── F8: the synchroniser's mean-field curve turns over into the consensus-seeker's ──
+  // ── F8: the synchroniser's average next density turns over into the consensus-seeker's ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f8')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas')!;
     let u = 0, raf = 0;
@@ -227,7 +227,7 @@ import SimButton from './SimButton.astro';
       const st = stage(c); if (!st) return;
       const { t } = st, p: Plot = { x: 150, y: 30, w: st.w - 190, h: st.h - 160, x0: 0, x1: 1, y0: 0, y1: 1 };
       const ticks: [number, string][] = [[0, '0'], [0.5, '½'], [1, '1']];
-      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'share on now', yname: 'share on next round' });
+      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'density now', yname: 'density next' });
       curve(st, p, (x) => x, t.muted, 2, [10, 10]);
       if (u > 0) curve(st, p, f, t.line, 3);
       const e = u * u * (3 - 2 * u);

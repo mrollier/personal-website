@@ -10,7 +10,7 @@ import Automata from './Automata.astro';
 import Question from './Question.astro';
 import ThesisMap from './ThesisMap.astro';
 import Networks from './Networks.astro';
-import ReadingRules from './ReadingRules.astro';
+import Metrics from './Metrics.astro';
 import Needle from './Needle.astro';
 import WhichNetwork from './WhichNetwork.astro';
 import Stubborn from './Stubborn.astro';
@@ -28,7 +28,7 @@ const blocks = [
   { id: 'networks', name: 'Life on networks', until: '11:00', C: Networks, intro: 'From two neighbours in a row to contacts anywhere in a network, where some have three contacts and some ten; so the Game of Life becomes a rule on the share of neighbours that are on, and with it a rule for any network: the Life-like network automata, the first contribution of the thesis.' },
   { id: 'question', name: 'The question', until: '13:30', C: Question, intro: 'Nature uses the same recipe, in a flock of starlings and in a brain: simple local rules on a network, rich behaviour. The research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use?' },
   { id: 'map', name: 'The thesis map', until: '14:30', C: ThesisMap, intro: 'The four parts of the thesis and where they were published; which chapters answer which half of the question; and the four of them that then run along the bottom of the slides: getting to know the rules (metrics, synchronisation) and applying them (network classification, impact analysis).' },
-  { id: 'metrics', name: 'Metrics', until: '17:30', C: ReadingRules, intro: 'Two metrics that read a rule before it runs, its generosity and its volatility, and how well they predict what it does.' },
+  { id: 'metrics', name: 'Metrics', until: '17:30', C: Metrics, intro: 'Two curves read off a rule before it runs, the average next density and the average next defect, each with a start to drag, a cobweb showing where the network goes on average, and three rules to switch between; then the red line on each: how unstable the rule is, and how sensitive.' },
   { id: 'synchronisation', name: 'Synchronisation', until: '21:30', C: Needle, intro: 'How the two metrics narrow 262,144 rules down to 27 candidates for synchronisation without a single simulation; the best one at work; and its mirror image, which seeks consensus.' },
   { id: 'classification', name: 'Network classification', until: '26:00', C: WhichNetwork, intro: 'Run one rule on a network and the pattern it draws gives the network away. Why some rules are better detectives than others: jaggedness. And what consensus-seeking rules are good at instead.' },
   { id: 'impact', name: 'Impact analysis', until: '29:30', C: Stubborn, intro: 'Make one person stubborn and see whether the room follows: the dynamical importance of every node, found by simulation alone.' },

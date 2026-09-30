@@ -10,11 +10,11 @@ const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
 const answers = [
   { half: 'What links rule and behaviour?', items: [
-    { ch: 5, say: 'Two numbers read from the rule predict the behaviour, partly.' },
+    { ch: 5, say: 'Two curves read off the rule, worked out for Life-like network automata.' },
     { ch: 6, say: 'From 262,144 rules to 27 candidates, without a single simulation.' },
   ] },
   { half: 'Can we put that link to use?', items: [
-    { ch: 9, say: 'More jagged, volatile rules tend to tell networks apart better.' },
+    { ch: 9, say: 'More jagged, sensitive rules tend to tell networks apart better.' },
     { ch: 10, say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
   ] },
 ];
@@ -43,8 +43,8 @@ const beyond = [
     </div>
   </div>
   <p slot="say">Back to the research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? Four chapters answer it.</p>
-  <p slot="say">What links rule and behaviour: two numbers that can be read from a rule before running it, its generosity and its volatility, predict the behaviour partly, not completely (Chapter 5). They are enough to narrow 262,144 rules down to 27 candidates for the synchronisation task without a single simulation, and the best of them synchronises most partly rewired networks (Chapter 6).</p>
-  <p slot="say">Putting the link to use: more jagged, and so more volatile, rules tend to tell networks apart better, which makes jaggedness a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
+  <p slot="say">What links rule and behaviour: two curves that can be read off a rule before running it, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262,144 rules down to 27 candidates for the synchronisation task without a single simulation, and the best of them synchronises most partly rewired networks (Chapter 6).</p>
+  <p slot="say">Putting the link to use: more jagged, and so more sensitive, rules tend to tell networks apart better, which makes jaggedness a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
 </Slide>
 
 <Slide label="Beyond this thesis" builds={3} class="i2">
@@ -139,6 +139,7 @@ const beyond = [
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { pattern } from '../../scripts/defence/plot';
+  import { curveOf, box, draw, STEPS } from '../../scripts/defence/cobweb';
   import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
   import { spark } from '../../scripts/defence/cover';
   import { ActiveLife } from '../../scripts/life';
@@ -161,15 +162,15 @@ const beyond = [
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const f = fill(x, y); if (f) { ctx.fillStyle = f; ctx.fillRect(x0 + x * c, y0 + y * c, c, c); } }
   }
 
-  // 5. the twin run of slide F4: two copies of a network, one node flipped, the differences in red
-  const TWIN = (() => {
-    const side = 30, N = side * side, LIFE: Rule = { r: 9, B: 8, S: 12 }, net = lattice(side, 8, 0.05, makeRng(55)), flip = 15 * side + 15;
-    let a = new Uint8Array(N), b = new Uint8Array(N), a2 = new Uint8Array(N), b2 = new Uint8Array(N), ticks = 0;
+  // 5. the average next density of the Game of Life (slide F3), its cobweb drawn from one start after another
+  const WEB = (() => {
+    const f = curveOf({ r: 9, B: 8, S: 12 }, 'density'), starts = [0.5, 0.3, 0.85, 0.22, 0.65, 0.15];
+    let k = 0, done = 0, hold = 0;
     return {
-      rate: 4,
-      reset() { a = randomState(N, 0.5, fresh()); b = a.slice(); b[flip] ^= 1; ticks = 0; }, // a new start every loop
-      advance() { step(a, net, LIFE, a2); step(b, net, LIFE, b2); [a, a2] = [a2, a]; [b, b2] = [b2, b]; if (++ticks > 60) this.reset(); },
-      paint(st) { cells(st, side, side, (x, y) => { const i = y * side + x; return a[i] !== b[i] ? st.t.danger : a[i] ? st.t.ink : null; }); },
+      rate: 8,
+      reset() { k = 0; done = 0; hold = 0; },
+      advance() { if (done < STEPS) done = Math.min(STEPS, done + 0.25); else if (++hold > 12) { hold = 0; done = 0; k = (k + 1) % starts.length; } },
+      paint(st) { draw(st, box(st.w, st.h), { kind: 'density', f, start: starts[k], progress: done }); },
     } satisfies Act;
   })();
 
@@ -243,7 +244,7 @@ const beyond = [
     } satisfies Act;
   })();
 
-  const ACTS: Act[] = [TWIN, SYNC, DETECT, STUB], CHS = [5, 6, 9, 10];
+  const ACTS: Act[] = [WEB, SYNC, DETECT, STUB], CHS = [5, 6, 9, 10];
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i1')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-group li'));
     const tiles = Array.from(s.querySelectorAll<HTMLElement>('.ribbon .rch')), btn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;

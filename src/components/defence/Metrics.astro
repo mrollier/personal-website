@@ -1,0 +1,124 @@
+---
+// F3–F4: the two curves that read a rule before it runs, the average next density and the average next defect, each
+// with a start the reader drags and a cobweb of a few steps showing where the network goes on average; then one red
+// line: the tangent at the unstable equilibrium (how unstable) and at the origin (how sensitive). Three rules to switch
+// between, shared by both slides. Drawing in src/scripts/defence/cobweb.ts.
+import Slide from './Slide.astro';
+const rules = [
+  { id: 'life', name: 'Game of Life' },
+  { id: 'consensus', name: 'Consensus-seeking rule' },
+  { id: 'random', name: 'Random rule' },
+];
+const slides = [
+  { kind: 'density', title: 'The average next density', cls: 'f3', builds: 1, say: [
+    'Can we say something about a rule before we run it? Take a network in which some share of the nodes is on: its density, from all off on the left to all on on the right. What is the density one round later, on average? That is this curve, the average next density, worked out from the rule alone, as if every node had eight neighbours picked at random. Follow it step by step, up to the curve and across to the diagonal, and this cobweb shows where the network would go on average. On this page you can drag the start along the bottom, and switch between the Game of Life, a consensus-seeking rule and a random rule; each press on Random rule draws a new one.',
+    'Where the curve crosses the diagonal, the density stays put: an equilibrium. Some of them pull the network in, others push it away. The red line is the tangent at the unstable one: the steeper it is, the harder the network is pushed away. Its slope says how unstable a rule is. For the Game of Life it is 1.7, at a density of about a fifth; for the consensus-seeking rule it sits at one half, and many random rules have no unstable equilibrium at all. All of this is an approximation that ignores who is next to whom, which is why we still simulate.',
+  ], aria: 'The average next density of the chosen rule against the density now, with a cobweb from the start and the diagonal' },
+  { kind: 'defect', title: 'The average next defect', cls: 'f4', builds: 2, say: [
+    'The second curve asks the same question about differences. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one round later, on average? That is the average next defect, again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
+    'The red line is the tangent at the origin: how many nodes a single difference reaches in one round, on average. Its slope says how sensitive a rule is: above one, a single difference spreads; below one, it dies out. For the Game of Life it is about three, for the consensus-seeking rule more than six.',
+    'Our result: we worked out both curves for Life-like network automata, so that they can be read off any of the 262,144 rules before running it. They are what the filter on the next slide is made of.',
+  ], aria: 'The average next defect of the chosen rule against the defect now, with a cobweb from the start and the diagonal' },
+];
+---
+{slides.map((sl) => (
+  <Slide label={sl.title} builds={sl.builds} class={`${sl.cls} avg`} ch={5}>
+    <div class="row grow avg-row">
+      <div class="col avg-side">
+        <h2>{sl.title}</h2>
+        <div class="avg-rules" role="group" aria-label="Rule">
+          {rules.map((r, i) => <button type="button" class="ctl" data-rule={r.id} aria-pressed={i === 0 ? 'true' : 'false'}>{r.name}</button>)}
+        </div>
+        {sl.kind === 'defect' && <p class="result" data-b="2"><b>Our result</b> Both curves, worked out for Life-like network automata: ready to filter the rules.</p>}
+      </div>
+      <canvas class="plot" data-kind={sl.kind} aria-label={sl.aria}></canvas>
+    </div>
+    {sl.say.map((t) => <p slot="say">{t}</p>)}
+  </Slide>
+))}
+
+<style>
+  .avg-row { gap: calc(40 * var(--u)); align-items: stretch; }
+  .avg-side { width: calc(620 * var(--u)); flex: none; gap: calc(44 * var(--u)); justify-content: center; }
+  .avg-rules { display: flex; flex-direction: column; align-items: flex-start; gap: calc(16 * var(--u)); }
+  .avg-rules .ctl { font-size: calc(32 * var(--u)); padding: calc(14 * var(--u)) calc(26 * var(--u)); }
+  .avg-rules .ctl[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sun); }
+  .avg-side .result { font-size: calc(34 * var(--u)); }
+  .plot { flex: 1; min-width: 0; height: 100%; touch-action: none; cursor: ew-resize; }
+</style>
+
+<script>
+  import { slide } from '../../scripts/defence/deck';
+  import { stage, onSize, pointer } from '../../scripts/defence/stage';
+  import type { Rule } from '../../scripts/llna';
+  import { curveOf, tangentOf, box, draw, STEPS, type Kind, type Tangent } from '../../scripts/defence/cobweb';
+
+  // The rule is shared by both slides: a press on either changes both, and it carries over from one to the next.
+  // Entering the density slide from before brings back the Game of Life.
+  const FIXED: Record<string, Rule> = { life: { r: 9, B: 8, S: 12 }, consensus: { r: 9, B: 464, S: 488 } };
+  let pick = 'life', rule: Rule = FIXED.life;
+  const listeners: (() => void)[] = [];
+  function choose(id: string) {
+    pick = id;
+    rule = id === 'random' ? { r: 9, B: Math.floor(Math.random() * 512), S: Math.floor(Math.random() * 512) } : FIXED[id];
+    for (const f of listeners) f();
+  }
+
+  const STEP_MS = 260, MORPH_MS = 450, N = 240, START: Record<Kind, number> = { density: 0.5, defect: 0.05 };
+  /** A curve as samples, so a change of rule can morph one into the other. */
+  const sample = (f: (x: number) => number) => Float64Array.from({ length: N + 1 }, (_, i) => f(i / N));
+  const read = (a: Float64Array, x: number) => { const u = Math.max(0, Math.min(1, x)) * N, i = Math.min(N - 1, Math.floor(u)); return a[i] + (a[i + 1] - a[i]) * (u - i); };
+
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.avg')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.plot')!, kind = c.dataset.kind as Kind;
+    const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
+    let f = curveOf(rule, kind), red: Tangent | null = tangentOf(f, kind), at = 0, start = START[kind], progress = STEPS;
+    // a morph from the samples `was` to the new curve, then the cobweb drawn step by step
+    let was: Float64Array | null = null, now = sample(f), e = 1, mode: 'still' | 'morph' | 'web' = 'still', t0 = 0, raf = 0;
+    const shown = (x: number) => (was ? read(was, x) + (read(now, x) - read(was, x)) * e : f(x));
+    function paint() {
+      const st = stage(c); if (!st) return;
+      draw(st, box(st.w, st.h), { kind, f: shown, start, progress: mode === 'morph' ? 0 : progress, red: at >= 1 && mode !== 'morph' ? red : undefined, handle: true });
+    }
+    function frame(t: number) {
+      if (mode === 'morph') {
+        const u = Math.min(1, (t - t0) / MORPH_MS); e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+        if (u >= 1) { was = null; mode = 'web'; t0 = t; progress = 0; }
+      }
+      if (mode === 'web') { progress = Math.min(STEPS, (t - t0) / STEP_MS); if (progress >= STEPS) mode = 'still'; }
+      paint();
+      raf = mode === 'still' ? 0 : requestAnimationFrame(frame);
+    }
+    const run = (m: 'morph' | 'web') => { cancelAnimationFrame(raf); mode = m; t0 = performance.now(); if (m === 'web') progress = 0; raf = requestAnimationFrame(frame); };
+    const halt = () => { cancelAnimationFrame(raf); raf = 0; was = null; mode = 'still'; progress = STEPS; };
+    const mark = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick)));
+    listeners.push(() => {
+      // morph from whatever is on screen now to the new rule's curve
+      const from = sample(shown);
+      f = curveOf(rule, kind); red = tangentOf(f, kind); was = from; now = sample(f); e = 0;
+      mark(); run('morph');
+    });
+    buttons.forEach((b) => b.addEventListener('click', () => choose(b.dataset.rule!)));
+
+    let drag = false;
+    const move = (ev: PointerEvent) => { const st = stage(c); if (!st) return; const p = box(st.w, st.h); start = Math.min(1, Math.max(0, (pointer(c, ev).x - p.x) / p.w)); paint(); };
+    c.addEventListener('pointerdown', (ev) => { drag = true; c.setPointerCapture(ev.pointerId); halt(); move(ev); });
+    c.addEventListener('pointermove', (ev) => { if (drag) move(ev); });
+    c.addEventListener('pointerup', () => { if (drag) { drag = false; run('web'); } });
+
+    slide(s, {
+      set(b, how) {
+        const fresh = b === 0 && how === 'jump';
+        at = b;
+        if (fresh) {
+          start = START[kind];
+          if (kind === 'density' && pick !== 'life') { choose('life'); return; }
+          run('web'); return;
+        }
+        paint();
+      },
+      leave() { halt(); paint(); },
+    });
+    onSize(c, paint);
+  }
+</script>

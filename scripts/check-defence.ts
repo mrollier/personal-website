@@ -106,6 +106,7 @@ import { sensitivity, selfEquivalentRules, candidates, jaggedness, derrida } fro
 import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsTowardsHomogeneous, trial } from '../src/scripts/llna.ts';
 import { lattice } from '../src/scripts/net.ts';
 import { pearson } from '../src/scripts/stats.ts';
+import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts';
 {
   const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
   const near = (a: number, b: number, tol: number, what: string) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
@@ -138,6 +139,14 @@ import { pearson } from '../src/scripts/stats.ts';
   const replay = (netSeed: number, startSeed: number) => trial('fssp', lattice(30, 8, 0.2, makeRng(netSeed)), win, 0.5, makeRng(startSeed), 1800);
   const d = replay(sync.demo.netSeed, sync.demo.startSeed); assert.ok(d.ok); assert.equal(d.tick, sync.demo.tick);
   for (const t of sync.trials) { const v = replay(t.netSeed, t.startSeed); assert.equal(v.ok, t.ok); assert.equal(v.tick, t.tick); }
+  // the metrics slides' red lines, as their say slots quote them: Life unstable near a fifth with slope 1.7, sensitivity
+  // about three; the consensus-seeker unstable at ½, sensitivity over six; the defect tangent is the Boolean sensitivity
+  const life = R9(8, 12), tan = (rule: Rule, kind: Kind) => tangentOf(curveOf(rule, kind), kind)!;
+  const tl = tan(life, 'density'); near(tl.x, 0.192, 1e-3, 'Life unstable equilibrium'); near(tl.slope, 1.74, 5e-3, 'Life slope there');
+  const tc = tan(probe, 'density'); near(tc.x, 0.5, 1e-3, 'consensus unstable equilibrium'); near(tc.slope, 1.477, 5e-3, 'consensus slope there');
+  near(tan(life, 'defect').slope, sensitivity(life, 8).BS, 1e-3, 'Life defect tangent = BS8'); near(sensitivity(life, 8).BS, 3.17, 5e-3, 'Life BS8');
+  near(tan(probe, 'defect').slope, 6.398, 1e-3, 'consensus defect tangent');
+  assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
   console.log('genotype anchors of the brief hold');
 }
 

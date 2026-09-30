@@ -47,6 +47,7 @@ const talks = [
               <div class="meta">
                 {p.data.venue}, {p.data.year}
                 {p.data.doi && p.data.url && <> · <a href={p.data.url}>preprint</a></>}
+                {p.data.demo && <> · <a href={p.data.demo}>interactive demo</a></>}
               </div>
               {p.data.summary && <p>{p.data.summary}</p>}
             </li>

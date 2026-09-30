@@ -1,0 +1,193 @@
+---
+// Small multiples for the taxonomy page: one rule, from one start, under several variants of one item of the classical
+// definition, side by side. `kind` picks the item: the boundary conditions of Table 1.2, the update schemes of Section
+// 2.2.1, the rule allocations of Section 6.2, or the second-order memory of Section 5.2.2 that makes any rule reversible
+// (run forward, then back). Cells that follow the second rule ψ are tinted. Self-contained with src/scripts/taxonomy.ts,
+// variants.ts, wolfram.ts, eca.ts, net.ts, raster.ts, palette.ts and figure.ts. The URL query under the figure's id keeps
+// the settings.
+type Kind = 'boundary' | 'update' | 'allocation' | 'reversible';
+type Props = { kind: Kind; id: string; rule?: number; psi?: number; init?: 'seed' | 'random' };
+const { kind, id, rule = 110, psi = 102, init = 'random' } = Astro.props;
+const AGAIN: Record<Kind, string> = { boundary: 'new start', update: 'new coins', allocation: 'new coins', reversible: 'new start' };
+---
+<figure class="fig" id={id} data-multiples data-kind={kind} data-rule={rule} data-psi={psi} data-init={init} tabindex="-1">
+  <canvas role="img" aria-label="Spacetime diagrams side by side, time running down"></canvas>
+  <div class="controls" role="group" aria-label="Rule and start">
+    <label>{kind === 'allocation' ? 'rule φ' : 'rule'} <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    {kind === 'allocation' && <label>second rule ψ <input name="psi" type="number" min="0" max="255" value={psi} inputmode="numeric" /></label>}
+    {kind === 'update' && <label>α <input name="alpha" type="range" min="0.1" max="0.9" step="0.1" value="0.5" /> <output name="av">0.5</output></label>}
+    <span class="seg" role="group" aria-label="Start from">start from
+      <button type="button" data-init="seed" aria-pressed="false">one cell</button>
+      <button type="button" data-init="random" aria-pressed="false">random cells</button>
+    </span>
+    <button name="again" type="button">{AGAIN[kind]}</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 300px; background: var(--panel); border: 1px solid var(--line); }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover { border-color: var(--accent); }
+  .seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] { font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls input[type="range"] { width: 7rem; accent-color: var(--accent); margin: 0; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+</style>
+
+<script>
+  import { tableOf } from '../scripts/wolfram';
+  import { step } from '../scripts/eca';
+  import { makeRng } from '../scripts/net';
+  import { stepVariant, defaults, BOUNDARIES, IDENTITY } from '../scripts/variants';
+  import { order, shuffle, sweep, alphaStep, nuStep, periodic, clustered, symmetricRule, SYMMETRIC, reversibleStep } from '../scripts/taxonomy';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label } from '../scripts/figure';
+
+  type Kind = 'boundary' | 'update' | 'allocation' | 'reversible';
+  type Panel = { name: string; rows: Uint8Array[]; tint?: Uint8Array[]; turn?: number };
+  // cells and ticks per panel, and the narrowest a panel may get before the grid drops a column
+  const SIZE: Record<Kind, { N: number; T: number; min: number }> = {
+    boundary: { N: 31, T: 40, min: 120 }, update: { N: 81, T: 60, min: 170 },
+    allocation: { N: 81, T: 60, min: 170 }, reversible: { N: 81, T: 40, min: 220 },
+  };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`);
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, status = $<HTMLOutputElement>('status')!;
+    const kind = el.dataset.kind as Kind, { N, T, min } = SIZE[kind];
+    const ruleIn = $<HTMLInputElement>('rule')!, psiIn = $<HTMLInputElement>('psi'), alphaIn = $<HTMLInputElement>('alpha'), av = $<HTMLOutputElement>('av');
+    const initBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-init]'));
+    const url = urlState(el.id, { rule: el.dataset.rule!, psi: el.dataset.psi!, alpha: '0.5', init: el.dataset.init!, seed: '1' });
+    const byte = (v: string, def: number) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x <= 255 ? x : def; };
+    let rule = byte(url.get('rule'), 110), psi = byte(url.get('psi'), 102), alpha = Math.min(0.9, Math.max(0.1, +url.get('alpha') || 0.5));
+    let init = url.get('init') === 'seed' ? 'seed' : 'random', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let panels: Panel[] = [], rasters: Raster[] = [], text = '';
+
+    const start = (rnd: () => number) => {
+      const row = new Uint8Array(N);
+      if (init === 'seed') row[N >> 1] = 1; else for (let i = 0; i < N; i++) row[i] = rnd() < 0.5 ? 1 : 0;
+      return row;
+    };
+    /** T ticks of `next` from the start row. */
+    const run = (row: Uint8Array, next: (r: Uint8Array, t: number) => Uint8Array) => { const rows = [row]; for (let t = 0; t < T; t++) rows.push(next(rows[t], t)); return rows; };
+
+    function build() {
+      const table = tableOf(rule), row0 = start(makeRng(seed * 7919 + 1)), rng = (k: number) => makeRng(seed * 131 + k * 17);
+      if (kind === 'boundary') {
+        panels = BOUNDARIES.map((b, k) => {
+          const cfg = { ...defaults(table, tableOf(IDENTITY)), boundary: b.id, fixed: 1, inter: 10, pDist: 0.8 }, rnd = rng(k);
+          const name = b.id === 'fixed' ? 'fixed at 1' : b.id === 'intermediate' ? 'intermediate (cell 11)' : b.id === 'distributed' ? 'distributed, P(1) = 0.8' : b.name;
+          return { name, rows: run(row0, (r) => stepVariant(r, cfg, rnd)) };
+        });
+        text = `rule ${rule} on ${N} cells, ${T} ticks, eight ways to fill in the missing neighbour at each end.`;
+      } else if (kind === 'update') {
+        const fixed = shuffle(N, rng(9));
+        panels = [
+          { name: 'synchronous', rows: run(row0, (r) => step(r, rule)) },
+          { name: `α-asynchronous, α = ${alpha}`, rows: run(row0, ((rnd) => (r: Uint8Array) => alphaStep(r, table, alpha, rnd))(rng(1))) },
+          ...(['independent', 'new-sweep', 'fixed-sweep', 'line'] as const).map((s, k) => {
+            const rnd = rng(k + 2), name = { independent: 'random independent', 'new-sweep': 'random new sweep', 'fixed-sweep': 'random fixed sweep', line: 'line by line' }[s];
+            return { name, rows: run(row0, (r) => sweep(r, table, order(s, N, rnd, fixed))) };
+          }),
+        ];
+        text = `rule ${rule}. One row per tick for the first two; for the four fully asynchronous schemes one row per sweep of ${N} single-cell updates, so every row has on average one update per cell.`;
+      } else if (kind === 'allocation') {
+        const phi = table, ps = tableOf(psi), rnd0 = rng(1), sym = symmetricRule(rule, psi);
+        const fixedRun = (alloc: Uint8Array): Panel => ({ name: '', rows: run(row0, (r) => nuStep(r, alloc, phi, ps)), tint: Array.from({ length: T + 1 }, () => alloc) });
+        const half = new Uint8Array(N); shuffle(N, rnd0).slice(0, N >> 1).forEach((i) => { half[i] = 1; });
+        const rogue = new Uint8Array(N); rogue[(N >> 1) + 7] = 1;
+        const redrawn: Uint8Array[] = [], rnd1 = rng(2);
+        const redrawnRows = run(row0, (r, t) => { const a = Uint8Array.from({ length: N }, () => (rnd1() < 0.5 ? 1 : 0)); redrawn[t] = a; return nuStep(r, a, phi, ps); });
+        const symRows = run(row0, (r) => step(r, sym)), asym = symRows.map((r) => Uint8Array.from(r, (_, i) => (SYMMETRIC.includes(((r[(i + N - 1) % N] << 2) | (r[i] << 1) | r[(i + 1) % N])) ? 0 : 1)));
+        panels = [
+          { ...fixedRun(half), name: 'random, fixed: half on ψ' },
+          { name: 'random, redrawn every tick', rows: redrawnRows, tint: redrawn },
+          { ...fixedRun(rogue), name: 'one rogue cell on ψ' },
+          { ...fixedRun(periodic(N, 4, 2)), name: 'periodic, T = 4, ν = ½' },
+          { ...fixedRun(clustered(N, 8, rng(3))), name: 'clustered' },
+          { name: `ψ where asymmetric: rule ${sym}`, rows: symRows, tint: asym },
+        ];
+        text = `φ = rule ${rule}, ψ = rule ${psi}; tinted cells follow ψ at the next tick. Redrawing the allocation every tick is the stochastic CA with p = ½. Letting the neighbourhood decide gives one uniform rule: φ on 000, 010, 101 and 111, ψ elsewhere, is rule ${sym}.`;
+      } else {
+        const back = (prev: Uint8Array, cur: Uint8Array): Panel => {
+          const rows = [cur]; let [p, q] = [prev, cur];
+          for (let t = 0; t < T; t++) { [p, q] = [q, reversibleStep(p, q, table)]; rows.push(q); }
+          [p, q] = [q, p]; rows.push(q); // turn round: the last two rows swap places, and the run retraces its steps
+          for (let t = 1; t < T; t++) { [p, q] = [q, reversibleStep(p, q, table)]; rows.push(q); }
+          return { name: '', rows, turn: T };
+        };
+        const rnd = makeRng(seed * 7919 + 1), one = new Uint8Array(N); one[N >> 1] = 1;
+        panels = [
+          { ...back(new Uint8Array(N), one), name: 'from one cell' },
+          { ...back(Uint8Array.from({ length: N }, () => (rnd() < 0.5 ? 1 : 0)), Uint8Array.from({ length: N }, () => (rnd() < 0.5 ? 1 : 0))), name: 'from random cells' },
+        ];
+        const same = panels.every((p) => p.rows[0].every((v, i) => v === p.rows[2 * T][i]));
+        text = `rule ${rule}R: rule ${rule} where the cell was 0 two ticks earlier, rule ${255 - rule} where it was 1. ${T} ticks down to the marks, then ${T} back: the bottom row ${same ? 'is' : 'is not'} the top row again.`;
+      }
+      rasters = panels.map((p) => new Raster(N, p.rows.length));
+    }
+
+    function paint() {
+      const w = c.getBoundingClientRect().width; if (w < 1) return;
+      const gap = 14, cap = 18, n = panels.length, H = panels[0].rows.length;
+      let cols = Math.max(1, Math.min(n, Math.floor((w - 16 + gap) / (min + gap))));
+      const lines = Math.ceil(n / cols); cols = Math.ceil(n / lines);
+      const pw = (w - 16 - gap * (cols - 1)) / cols, ph = (pw / N) * H;
+      const want = `${Math.ceil(lines * (cap + ph) + (lines - 1) * gap + 16)}px`;
+      if (c.style.height !== want) c.style.height = want;
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), ink = parse(t.ink), pan = parse(t.panel), tint = mix(pan, parse(t.accent), 0.3);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, sz.w, sz.h);
+      panels.forEach((p, k) => {
+        const r = rasters[k], x = 8 + (k % cols) * (pw + gap), y = 8 + Math.floor(k / cols) * (cap + ph + gap) + cap;
+        for (let j = 0; j < p.rows.length; j++) {
+          const row = p.rows[j], tr = p.tint?.[j];
+          for (let i = 0; i < N; i++) r.set(j * N + i, row[i] ? ink : tr?.[i] ? tint : pan);
+        }
+        r.flush(); r.blit(ctx, { x, y, w: pw, h: ph });
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, pw + 1, ph + 1);
+        label(ctx, p.name, x, y - 5, t, { color: t.ink, size: 11 });
+        if (p.turn !== undefined) { // marks at the row where the run turns round
+          const yy = y + ((p.turn + 0.5) / H) * ph;
+          ctx.fillStyle = t.accent; ctx.fillRect(x - 6, yy - 1, 5, 2); ctx.fillRect(x + pw + 1, yy - 1, 5, 2);
+        }
+      });
+      status.value = text;
+      c.setAttribute('aria-label', text);
+    }
+
+    function show() {
+      ruleIn.value = String(rule); if (psiIn) psiIn.value = String(psi);
+      if (alphaIn) { alphaIn.value = String(alpha); av!.value = String(alpha); }
+      for (const b of initBtns) b.setAttribute('aria-pressed', String(b.dataset.init === init));
+    }
+    const redo = () => {
+      show(); build(); paint();
+      url.set('rule', String(rule)); url.set('psi', String(psi)); url.set('alpha', String(alpha)); url.set('init', init); url.set('seed', String(seed));
+    };
+    const again = () => { seed++; redo(); };
+    ruleIn.addEventListener('change', () => { rule = byte(ruleIn.value, rule); redo(); });
+    psiIn?.addEventListener('change', () => { psi = byte(psiIn.value, psi); redo(); });
+    alphaIn?.addEventListener('input', () => { alpha = +alphaIn.value; redo(); });
+    for (const b of initBtns) b.addEventListener('click', () => { init = b.dataset.init!; redo(); });
+    $('again')!.addEventListener('click', again);
+    keys(el, { n: again });
+    show(); build();
+    watch(c, paint);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-multiples]').forEach(mount);
+</script>

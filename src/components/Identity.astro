@@ -1,0 +1,205 @@
+---
+// Two automata from two families, one picture: the identities round the rim of the taxonomy's central diagram, run
+// side by side and compared cell for cell. `kind` picks the pair: an asynchronous and a stochastic CA fed the same coins
+// (Section 3.2), a radius-2 binary rule and the rule on blocks of cells with more states (Fig. 4.1), a two-rule
+// non-uniform CA whose allocation evolves and the quaternary uniform CA that simulates it (Fig. 6.1), or a line-by-line
+// sweep and the synchronous network automaton it amounts to. The status line counts the cells where the two disagree.
+// Self-contained with src/scripts/taxonomy.ts, wolfram.ts, net.ts, raster.ts, palette.ts and figure.ts. The URL query
+// under the figure's id keeps the settings.
+type Kind = 'aca-sca' | 'pool' | 'nuca-msca' | 'sweep';
+type Props = { kind: Kind; id: string };
+const { kind, id } = Astro.props;
+const DEF: Record<Kind, { rule: number; init: 'seed' | 'random' }> = {
+  'aca-sca': { rule: 90, init: 'seed' }, pool: { rule: 1095399156, init: 'random' },
+  'nuca-msca': { rule: 110, init: 'random' }, sweep: { rule: 30, init: 'random' },
+};
+const { rule, init } = DEF[kind];
+---
+<figure class="fig" id={id} data-identity data-kind={kind} data-rule={rule} data-init={init} tabindex="-1">
+  <canvas role="img" aria-label="Two spacetime diagrams side by side, time running down"></canvas>
+  <div class="controls" role="group" aria-label="Rules and start">
+    {kind === 'pool'
+      ? <label>radius-2 rule <input name="rule" class="wide" type="number" min="0" max="4294967295" value={rule} inputmode="numeric" /></label>
+      : <label>{kind === 'nuca-msca' || kind === 'aca-sca' ? 'rule φ' : 'rule'} <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>}
+    {(kind === 'aca-sca' || kind === 'nuca-msca') && <label>second rule ψ <input name="psi" type="number" min="0" max="255" value={kind === 'aca-sca' ? 204 : 170} inputmode="numeric" /></label>}
+    {kind === 'nuca-msca' && <label>allocation rule ξ <input name="xi" type="number" min="0" max="255" value="240" inputmode="numeric" /></label>}
+    {kind === 'aca-sca' && <label>p = α <input name="p" type="range" min="0.1" max="0.9" step="0.1" value="0.5" /> <output name="pv">0.5</output></label>}
+    {kind === 'pool' && <label>cells per block <select name="b"><option value="2">2 (4 states)</option><option value="3">3 (8 states)</option><option value="4">4 (16 states)</option><option value="5" selected>5 (32 states)</option></select></label>}
+    {kind === 'nuca-msca' && <label>allocation period <select name="period">{[2, 3, 4, 5, 6, 8].map((v) => <option value={v} selected={v === 5}>{v}</option>)}</select></label>}
+    {kind === 'pool' && <button name="random" type="button">random rule</button>}
+  </div>
+  <div class="controls" role="group" aria-label="Start">
+    <span class="seg" role="group" aria-label="Start from">start from
+      <button type="button" data-init="seed" aria-pressed="false">one cell</button>
+      <button type="button" data-init="random" aria-pressed="false">random cells</button>
+    </span>
+    <button name="again" type="button">{kind === 'aca-sca' ? 'new coins' : 'new start'}</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 320px; background: var(--panel); border: 1px solid var(--line); }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .controls input[type="number"] { font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls input.wide { width: 8.5em; }
+  .controls input[type="range"] { width: 7rem; accent-color: var(--accent); margin: 0; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .status :global(.ok) { color: var(--accent); font-weight: 600; }
+  .status :global(.bad) { color: var(--danger); font-weight: 600; }
+</style>
+
+<script>
+  import { tableOf } from '../scripts/wolfram';
+  import { makeRng } from '../scripts/net';
+  import { alphaStep, scaStep, step5, pool, unpool, poolTable, stepK, nuStep, periodic, nextAlloc, dualTable, ruleNumber, sweep, order, wired, wiring } from '../scripts/taxonomy';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, ramp, type RGB } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label } from '../scripts/figure';
+
+  type Kind = 'aca-sca' | 'pool' | 'nuca-msca' | 'sweep';
+  // how a panel is coloured: 0/1 cells, K states on a ramp, the four dual states, the cells following ψ, or disagreement
+  type Style = 'binary' | 'states' | 'dual' | 'alloc' | 'diff';
+  type Panel = { name: string; rows: ArrayLike<number>[]; W: number; style: Style; K?: number };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`);
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, status = $<HTMLOutputElement>('status')!;
+    const kind = el.dataset.kind as Kind, max = kind === 'pool' ? 4294967295 : 255;
+    const ruleIn = $<HTMLInputElement>('rule')!, psiIn = $<HTMLInputElement>('psi'), xiIn = $<HTMLInputElement>('xi'), pIn = $<HTMLInputElement>('p'), pv = $<HTMLOutputElement>('pv');
+    const bIn = $<HTMLSelectElement>('b'), periodIn = $<HTMLSelectElement>('period'), initBtns = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-init]'));
+    const url = urlState(el.id, { rule: el.dataset.rule!, psi: psiIn?.value ?? '0', xi: '240', p: '0.5', b: '5', period: '5', init: el.dataset.init!, seed: '1' });
+    const int = (v: string, def: number, hi = 255) => { const x = Math.round(+v); return Number.isFinite(x) && x >= 0 && x <= hi ? x : def; };
+    let rule = int(url.get('rule'), +el.dataset.rule!, max), psi = int(url.get('psi'), 0), xi = int(url.get('xi'), 240), p = Math.min(0.9, Math.max(0.1, +url.get('p') || 0.5));
+    let b = int(url.get('b'), 5, 5) || 5, period = int(url.get('period'), 5, 8) || 5, init = url.get('init') === 'seed' ? 'seed' : 'random', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    if (b < 2) b = 2; if (period < 2) period = 2;
+    let panels: Panel[] = [], rasters: Raster[] = [], text = '';
+
+    const binary = (N: number, rnd: () => number) => {
+      const r = new Uint8Array(N);
+      if (init === 'seed') r[N >> 1] = 1; else for (let i = 0; i < N; i++) r[i] = rnd() < 0.5 ? 1 : 0;
+      return r;
+    };
+    const verdict = (a: ArrayLike<number>[], d: ArrayLike<number>[]) => {
+      let n = 0, cells = 0;
+      a.forEach((row, t) => { for (let i = 0; i < row.length; i++) { cells++; if (row[i] !== d[t][i]) n++; } });
+      return n === 0 ? `<span class="ok">they agree in all ${cells.toLocaleString('en')} cells</span>` : `<span class="bad">they differ in ${n.toLocaleString('en')} of ${cells.toLocaleString('en')} cells</span>`;
+    };
+
+    function build() {
+      const rnd = makeRng(seed * 7919 + 3);
+      if (kind === 'aca-sca') {
+        const N = 81, T = 60, phi = tableOf(rule), ps = tableOf(psi), start = binary(N, rnd), r1 = makeRng(seed), r2 = makeRng(seed);
+        const A = [start], S = [start];
+        for (let t = 0; t < T; t++) { A.push(alphaStep(A[t], phi, p, r1)); S.push(scaStep(S[t], phi, ps, p, r2)); }
+        panels = [
+          { name: `asynchronous: rule ${rule}, α = ${p}`, rows: A, W: N, style: 'binary' },
+          { name: `stochastic: ${rule} with chance ${p}, else ${psi}`, rows: S, W: N, style: 'binary' },
+          { name: 'where they differ', rows: A.map((r, t) => r.map((v, i) => v ^ S[t][i])), W: N, style: 'diff' },
+        ];
+        text = `Each cell, each tick, flips one coin in both. ${psi === 204 ? 'With ψ = 204, the rule that changes nothing, ' : `With ψ = ${psi} rather than 204, `}${verdict(A, S)}.`;
+      } else if (kind === 'pool') {
+        const M = Math.round(50 / b), N = M * b, T = 50, K = 1 << b, t5 = tableOf(rule, 2), tb = poolTable(t5, b);
+        const E = [binary(N, rnd)], P: Uint16Array[] = [pool(E[0], b)];
+        for (let t = 0; t < T; t++) { E.push(step5(E[t], t5)); P.push(stepK(P[t], tb, K)); }
+        panels = [
+          { name: `rule ${rule}: 2 states, 5 neighbours`, rows: E, W: N, style: 'binary' },
+          { name: `${K} states, 3 neighbours`, rows: P, W: M, style: 'states', K },
+        ];
+        text = `${N} cells of the radius-2 rule, and ${M} cells that each hold a block of ${b}: their rule has ${K}³ = ${(K ** 3).toLocaleString('en')} entries, built from the 32 of the first. Unpacked block by block, ${verdict(E, P.map((r) => unpool(r, b)))}.`;
+      } else if (kind === 'nuca-msca') {
+        const N = 60, T = 50, phi = tableOf(rule), ps = tableOf(psi), xt = tableOf(xi), q = dualTable(phi, ps, xt);
+        const S = [binary(N, rnd)], A = [periodic(N, period, Math.floor(period / 2))], D: Uint16Array[] = [Uint16Array.from(S[0], (s, i) => 2 * s + A[0][i])];
+        for (let t = 0; t < T; t++) { S.push(nuStep(S[t], A[t], phi, ps)); A.push(nextAlloc(A[t], xt)); D.push(stepK(D[t], q, 4)); }
+        const num = ruleNumber(q, 4).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        panels = [
+          { name: `rule allocation, evolved by ξ = ${xi}`, rows: A, W: N, style: 'alloc' },
+          { name: `non-uniform: φ = ${rule}, ψ = ${psi}`, rows: S, W: N, style: 'binary' },
+          { name: 'uniform, 4 states', rows: D, W: N, style: 'dual', K: 4 },
+        ];
+        text = `The four states are {0, φ}, {0, ψ}, {1, φ}, {1, ψ}. The uniform rule is number ${num}; read as 0 or 1, ${verdict(S, D.map((r) => Array.from(r, (v) => v >> 1)))}.`;
+      } else {
+        const N = 41, T = 41, tb = tableOf(rule), ord = order('line', N, rnd);
+        const L = [binary(N, rnd)], Wd = [L[0]];
+        for (let t = 0; t < T; t++) { L.push(sweep(L[t], tb, ord)); Wd.push(wired(Wd[t], tb)); }
+        const A = wiring(N);
+        panels = [
+          { name: 'asynchronous, line by line', rows: L, W: N, style: 'binary' },
+          { name: 'synchronous, wired', rows: Wd, W: N, style: 'binary' },
+          { name: 'the wiring: whom cell i reads', rows: Array.from({ length: N }, (_, i) => A.subarray(i * N, (i + 1) * N)), W: N, style: 'binary' },
+        ];
+        text = `Rule ${rule}, one row per sweep. Updating the cells one by one from left to right is the same as updating all at once, if each cell reads the previous tick through the wiring on the right and applies its own composite rule: ${verdict(L, Wd)}.`;
+      }
+      rasters = panels.map((pn) => new Raster(pn.W, pn.rows.length));
+    }
+
+    function paint() {
+      const w = c.getBoundingClientRect().width; if (w < 1) return;
+      const gap = 16, cap = 18, n = panels.length, sumW = panels.reduce((a, pn) => a + pn.W, 0), maxW = Math.max(...panels.map((pn) => pn.W));
+      let s = Math.min(8, (w - 16 - gap * (n - 1)) / sumW), row = true;
+      if (s < 3) { row = false; s = Math.min(8, (w - 16) / maxW); }
+      const Hs = panels.map((pn) => pn.rows.length * s);
+      const want = `${Math.ceil(row ? cap + Math.max(...Hs) + 16 : Hs.reduce((a, h) => a + h + cap, 0) + gap * (n - 1) + 16)}px`;
+      if (c.style.height !== want) c.style.height = want;
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), ink = parse(t.ink), pan = parse(t.panel), acc = parse(t.accent), danger = parse(t.danger);
+      const tint = mix(pan, acc, 0.3), rampK = ramp([pan, acc, ink]), dual: RGB[] = [pan, tint, ink, mix(ink, acc, 0.55)];
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, sz.w, sz.h);
+      const total = row ? sumW * s + gap * (n - 1) : maxW * s;
+      let x = (sz.w - total) / 2, y = 8 + cap;
+      panels.forEach((pn, k) => {
+        const r = rasters[k], H = pn.rows.length, pw = pn.W * s, ph = H * s;
+        if (!row) x = (sz.w - pw) / 2;
+        for (let j = 0; j < H; j++) for (let i = 0; i < pn.W; i++) {
+          const v = pn.rows[j][i];
+          r.set(j * pn.W + i, pn.style === 'states' ? rampK(v / (pn.K! - 1)) : pn.style === 'dual' ? dual[v] : pn.style === 'alloc' ? (v ? tint : pan) : pn.style === 'diff' ? (v ? danger : pan) : v ? ink : pan);
+        }
+        r.flush(); r.blit(ctx, { x, y, w: pw, h: ph });
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, pw + 1, ph + 1);
+        label(ctx, pn.name, x, y - 5, t, { color: t.ink, size: 11 });
+        if (row) x += pw + gap; else y += ph + cap + gap;
+      });
+      status.innerHTML = text;
+      c.setAttribute('aria-label', status.textContent ?? '');
+    }
+
+    function show() {
+      ruleIn.value = String(rule); if (psiIn) psiIn.value = String(psi); if (xiIn) xiIn.value = String(xi);
+      if (pIn) { pIn.value = String(p); pv!.value = String(p); }
+      if (bIn) bIn.value = String(b); if (periodIn) periodIn.value = String(period);
+      for (const bt of initBtns) bt.setAttribute('aria-pressed', String(bt.dataset.init === init));
+    }
+    const redo = () => {
+      show(); build(); paint();
+      for (const [k, v] of Object.entries({ rule, psi, xi, p, b, period, init, seed })) url.set(k, String(v));
+    };
+    const again = () => { seed++; redo(); };
+    ruleIn.addEventListener('change', () => { rule = int(ruleIn.value, rule, max); redo(); });
+    psiIn?.addEventListener('change', () => { psi = int(psiIn.value, psi); redo(); });
+    xiIn?.addEventListener('change', () => { xi = int(xiIn.value, xi); redo(); });
+    pIn?.addEventListener('input', () => { p = +pIn.value; redo(); });
+    bIn?.addEventListener('change', () => { b = +bIn.value; redo(); });
+    periodIn?.addEventListener('change', () => { period = +periodIn.value; redo(); });
+    $('random')?.addEventListener('click', () => { rule = Math.floor(Math.random() * 4294967296); redo(); });
+    for (const bt of initBtns) bt.addEventListener('click', () => { init = bt.dataset.init!; redo(); });
+    $('again')!.addEventListener('click', again);
+    keys(el, { n: again });
+    show(); build();
+    watch(c, paint);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-identity]').forEach(mount);
+</script>

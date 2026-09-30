@@ -4,43 +4,11 @@
 // opens that family's text (a named slot per family: eca, aca, sca, msca, enca, nuca) and a run from one live
 // cell or random cells, square cells, and only the knob that family adds; the extended-neighbourhood family is shown
 // as a Life-like grid with its born and survive sets, which you can also draw on. Self-contained with src/scripts/variants.ts,
-// wolfram.ts, life.ts, raster.ts, palette.ts, figure.ts and EcaTable.astro. The URL query under `fam.` keeps the choice.
+// wolfram.ts, life.ts, wheel.ts, raster.ts, palette.ts, figure.ts and EcaTable.astro. The URL query under `fam.` keeps the choice.
 import EcaTable from './EcaTable.astro';
+import { spokes, rims, band, nodes, R0, f1 } from '../scripts/wheel';
 type Props = { rule?: number };
 const { rule = 90 } = Astro.props;
-
-type Fam = { id: string; short: string; name: string[]; angle: number; spoke: [string, string] };
-const FAMS: Fam[] = [
-  { id: 'nuca', short: 'νCA', name: ['non-uniform'], angle: -90, spoke: ['more rules', ''] },
-  { id: 'msca', short: 'MSCA', name: ['multi-state'], angle: -18, spoke: ['more states', ''] },
-  { id: 'enca', short: 'ENCA', name: ['extended', 'neighbourhood'], angle: 54, spoke: ['larger', 'neighbourhood'] },
-  { id: 'aca', short: 'ACA', name: ['asynchronous'], angle: 126, spoke: ['asynchronous', 'update'] },
-  { id: 'sca', short: 'SCA', name: ['stochastic'], angle: 198, spoke: ['non-deterministic', 'update'] },
-];
-const RIM: [string, string, string, string][] = [
-  ['nuca', 'msca', 'mapping onto', 'product states'],
-  ['msca', 'enca', 'more time steps', 'or fewer cells'],
-  ['enca', 'aca', 'network wiring', 'or ±1 dimension'],
-  ['aca', 'sca', 'probabilistic', 'update sequence'],
-  ['sca', 'nuca', 'probabilistic', 'rule allocation'],
-];
-const CX = 320, CY = 305, R = 240, R0 = 52, GAP = R0 + 5;
-const at = (id: string) => { const f = FAMS.find((x) => x.id === id)!, a = (f.angle * Math.PI) / 180; return [CX + R * Math.cos(a), CY + R * Math.sin(a)]; };
-const f1 = (v: number) => v.toFixed(1);
-/** An arrow between two circle centres, shortened to the rims, with a label on each side that reads upright. */
-function edge(a: number[], b: number[], above: string, below: string, outward = false) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
-  const x1 = a[0] + ux * GAP, y1 = a[1] + uy * GAP, x2 = b[0] - ux * GAP, y2 = b[1] - uy * GAP, mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-  let ang = (Math.atan2(dy, dx) * 180) / Math.PI; if (ang > 90 || ang < -90) ang += 180;
-  // "above" the text line points along (sin, −cos); round the rim the first label goes on the outside
-  const r = (ang * Math.PI) / 180, up = Math.sin(r) * (mx - CX) - Math.cos(r) * (my - CY) > 0;
-  const [top, bottom] = outward && !up ? [below, above] : [above, below];
-  return { d: `M${f1(x1)},${f1(y1)} L${f1(x2)},${f1(y2)}`, t: `translate(${f1(mx)},${f1(my)}) rotate(${f1(ang)})`, top, bottom };
-}
-const spokes = FAMS.map((f) => edge([CX, CY], at(f.id), f.spoke[0], f.spoke[1]));
-const rims = RIM.map(([a, b, o, i]) => edge(at(a), at(b), o, i, true));
-const band = `M${FAMS.map((f) => at(f.id).map(f1).join(',')).join(' L')} Z ` + FAMS.map((f) => `M${CX},${CY} L${at(f.id).map(f1).join(',')}`).join(' ');
-const nodes = [{ id: 'eca', short: 'ECA', name: ['elementary'], x: CX, y: CY }, ...FAMS.map((f) => { const [x, y] = at(f.id); return { id: f.id, short: f.short, name: f.name, x, y }; })];
 // Life-like rules for the extended-neighbourhood panel: born with / survives with a number of the eight neighbours
 const lifeCode = (B: number[], S: number[]) => `B${B.join('')}/S${S.join('')}`;
 const mask = (xs: number[]) => xs.reduce((m, x) => m | (1 << x), 0);

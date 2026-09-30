@@ -1,0 +1,571 @@
+---
+import Base from '../../layouts/Base.astro';
+import FamilyMap from '../../components/FamilyMap.astro';
+import Multiples from '../../components/Multiples.astro';
+import Identity from '../../components/Identity.astro';
+import Mixture from '../../components/Mixture.astro';
+import Tex from '../../components/Tex.astro';
+import { getCollection } from 'astro:content';
+// The paper this page is built on lives in the publications collection, so its links stay in one place.
+const paper = (await getCollection('publications')).find((p) => p.data.id === 'ca-taxonomy')?.data;
+const doi = `https://doi.org/${paper?.doi ?? '10.1016/j.cnsns.2024.108362'}`;
+const arxiv = paper?.url ?? 'https://arxiv.org/abs/2401.08408';
+// One tab per family, between the recipe they all start from and the verdict; the hash picks the tab, so a family can be linked.
+const tabs = [
+  { id: 'recipe', name: 'The recipe' },
+  { id: 'asynchronous', name: 'Asynchronous' },
+  { id: 'stochastic', name: 'Stochastic' },
+  { id: 'states', name: 'More states' },
+  { id: 'neighbourhoods', name: 'Wider neighbourhoods' },
+  { id: 'rules', name: 'More rules' },
+  { id: 'verdict', name: 'Verdict' },
+];
+const links = {
+  eca: '#definition', aca: '#asynchronous', sca: '#stochastic', msca: '#states', enca: '#neighbourhoods', nuca: '#rules',
+  'aca-sca': '#id-aca-sca', 'sca-nuca': '#alloc', 'nuca-msca': '#id-nuca-msca', 'msca-enca': '#id-pool', 'enca-aca': '#id-sweep',
+};
+---
+<Base title="Five ways to bend a cellular automaton" description="The five families of cellular automata beyond the elementary one, asynchronous, stochastic, multi-state, extended-neighbourhood and non-uniform, and the exact identities between them, live in the browser: my review paper in Communications in Nonlinear Science and Numerical Simulation." wide>
+  <div class="measure">
+    <h1>Five ways to bend a cellular automaton</h1>
+    <p>
+      The simplest cellular automaton is a row of cells, each 0 or 1. At every tick each cell looks at itself and its two
+      neighbours, and one fixed rule, the same for every cell, says what it becomes next; all cells switch at the same
+      moment. That is the elementary cellular automaton, and it has been studied to death, because even it can compute
+      anything a computer can. Yet almost nobody who uses cellular automata uses this one. A model of a forest fire, an
+      epidemic, a traffic jam or a cipher bends at least one item of the recipe: cells that do not all switch at once,
+      rules that roll dice, more than two states, neighbours further away, different rules for different cells. Each
+      bend grew its own name and its own literature, and from the outside the result looks like a pile of trial and error.
+    </p>
+    <p>
+      In a <a href={doi}>review paper</a> with Kallil Zielinski, Aisling Daly, Odemir Bruno and Jan Baetens I sorted the
+      pile. Its answer, in one sentence:
+    </p>
+    <p class="claim">
+      The variants of the cellular automaton are not a melting pot but a family tree: five families, each bending one
+      item of the classical definition, tied together by exact mathematical identities, and in which every gain in
+      realism is paid for in mathematical elegance.
+    </p>
+    <p>
+      Unlike in a biological family tree, some types belong to two families at once, because they are provably the same
+      thing written two ways. The tabs below go through the families one by one, the way the paper does: the definition,
+      the main variants within the family, the identity that ties it to its neighbour, and what the bend does to the
+      tools that describe a cellular automaton. Every identity runs live, and the page counts, cell by cell, whether the
+      two sides really draw the same picture.
+    </p>
+    <p>
+      The paper is a review, so it has no data: everything below is simulated in your browser. The formulas and the
+      examples are the paper's; where I add something of my own, I say so.
+    </p>
+  </div>
+
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Families">
+      <ul role="tablist" aria-orientation="vertical">
+        {tabs.map((t, i) => <li><a role="tab" id={`tab-${t.id}`} href={`#${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="panels">
+
+      <section role="tabpanel" id="recipe" aria-labelledby="tab-recipe" tabindex="0">
+      <div class="measure">
+        <h2>The recipe</h2>
+        <p>
+          Every family starts from the same recipe, the elementary cellular automaton or ECA, written as six items:
+        </p>
+        <ol class="recipe" id="definition">
+          <li><strong>cells</strong> <Tex tex="c_i" /> in a row, one for every integer <Tex tex="i" />;</li>
+          <li><strong>states</strong> <Tex tex="S = \{0, 1\}" />;</li>
+          <li><strong>the state</strong> of cell <Tex tex="c_i" /> at tick <Tex tex="t" />, written <Tex tex="s(c_i, t)" />;</li>
+          <li><strong>a start</strong> <Tex tex="s(c_i, 0) = s_0(c_i)" />;</li>
+          <li><strong>a neighbourhood</strong> <Tex tex="\mathcal{N}(c_i) = \{c_{i-1}, c_i, c_{i+1}\}" />;</li>
+          <li><strong>a rule</strong> <Tex tex="\phi" /> that turns the three states of the neighbourhood into the next state:</li>
+        </ol>
+        <Tex block tex="s(c_i, t+1) = \phi\bigl(s(c_{i-1}, t),\, s(c_i, t),\, s(c_{i+1}, t)\bigr)." />
+        <p>
+          Three cells of two states make eight neighbourhoods, and a rule is a 0 or a 1 for each: <Tex tex="2^{2^3} = 256" /> rules,
+          numbered 0 to 255 by reading the eight answers as a binary number <Tex tex="W(\phi)" />. A rule seen in a mirror,
+          or with 0 and 1 swapped, draws the same pictures, which leaves 88 genuinely different ones. A few of those, like
+          rule 110, are complex enough to compute anything.
+        </p>
+        <p>
+          The five families each change one item. Three of them change item 6, the rule: the <a href="#asynchronous">asynchronous</a> family changes when a cell applies it, the <a href="#stochastic">stochastic</a> family
+          lets a coin choose it, and the <a href="#rules">non-uniform</a> family lets it depend on the cell. The <a href="#states">multi-state</a> family changes item 2, the states, and the <a href="#neighbourhoods">extended-neighbourhood</a> family
+          item 5, the neighbourhood. The paper's central
+          diagram puts them round the elementary automaton, with an arrow from the centre for what each family changes
+          and an arrow between neighbours for the identity that turns one into the other:
+        </p>
+      </div>
+      <FamilyMap links={links} />
+      <div class="measure">
+        <p>
+          There is a seventh item, hidden in the first. A computer holds a finite row, so the cells at the ends miss a
+          neighbour, and something has to fill it in. The paper lists eight boundary conditions; a ring, where the last
+          cell's right neighbour is the first cell, is the usual one and the only one in which no cell ever sees an edge.
+          The choice can change the picture well beyond the edge cells:
+        </p>
+      </div>
+      <Multiples kind="boundary" id="bc" rule={110} />
+      <div class="measure">
+        <p>
+          One more pair of words runs through all the tabs. Some tools read a cellular automaton off its rule without
+          running it: Langton's <Tex tex="\lambda" />, the share of neighbourhoods that do not map to 0, or the sensitivity,
+          how often flipping one input flips the output. That is the <em>genotype</em>. Other tools read it off the pictures
+          it draws: Wolfram's four classes (homogeneous, periodic, chaotic, complex), Lyapunov exponents that measure how a
+          flipped cell spreads, entropies. That is the <em>phenotype</em>. Each family tab ends with which of these tools
+          survive the bend, because that is where the price of realism shows.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="asynchronous" aria-labelledby="tab-asynchronous" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Asynchronous: no central clock</h2>
+        <p>
+          A cellular automaton claims to be fully local, and then it lets a global clock tell every cell when to move.
+          Nature has no such clock. In an asynchronous cellular automaton (ACA) a cell at each tick either applies the rule
+          or keeps its state. The most common version flips a coin for every cell: with the synchrony rate <Tex tex="\alpha \in [0, 1]" />,
+        </p>
+        <Tex block tex="s(c_i, t+1) = \begin{cases} \phi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{with probability } \alpha, \\ s(c_i, t) & \text{with probability } 1 - \alpha, \end{cases}" />
+        <p>
+          where <Tex tex="\tilde{s}(\mathcal{N}(c_i), t)" /> is the tuple of states in the neighbourhood. At <Tex tex="\alpha = 1" /> this
+          is the elementary automaton, at <Tex tex="\alpha = 0" /> nothing moves. Call <Tex tex="Z(t)" /> the set of cells that
+          update at tick <Tex tex="t" />: here its size is binomial, about <Tex tex="\alpha N" />, and the family is the
+          catalogue of ways to choose it. Fully asynchronous schemes update one cell at a time. A random independent ACA
+          picks that cell at random, again and again. A random new sweep shuffles the row into a fresh order every <Tex tex="N" /> updates, so no cell goes twice before all have gone once; a random fixed sweep shuffles once and
+          keeps the order; line by line updates the cells from left to right, so every cell sees one neighbour that has just
+          moved. The same rule under all of them, one row per sweep, which is how such diagrams are usually compared:
+        </p>
+      </div>
+      <Multiples kind="update" id="upd" rule={126} init="seed" />
+      <div class="measure">
+        <p>
+          Rule 126 on a clock draws nested triangles. Take the clock away and they fray, differently for every scheme:
+          the random ones end in noise, while a fixed sweep and line by line settle into a checkerboard. Line by line is
+          not even random, and it fills the row in its very first sweep: every cell reads its left neighbour's new state,
+          so a change can run the whole length of the row at once.
+        </p>
+        <p>
+          Fixed schemes carry a paradox. Updating cells in a fixed order, or with fixed periods, replaces the global clock
+          with a global timetable: in the paper's words, one tyrant overthrows another. Such a deterministic <Tex tex="Z(t)" /> is
+          mathematically convenient, though: Worsch showed that for all deterministic choices of <Tex tex="Z(t)" /> a single
+          asynchronous automaton with a radius-1 rule can simulate all the others, so choosing the timetable for a rule is
+          the same as choosing the rule for a timetable. And if <Tex tex="Z(t) = Z" /> never changes, the cells outside it
+          simply never move: that is a <a href="#rules">non-uniform</a> automaton whose second rule is 204, the rule that
+          changes nothing. The same trick, with a coin, is the <a href="#id-aca-sca">identity</a> with the stochastic family.
+        </p>
+        <p>
+          Whether the steps are counted in computer time or physical time, with waiting times drawn from an exponential
+          distribution, makes no real difference: time runs one way, so the two can always be mapped onto each other.
+        </p>
+        <h3>What survives</h3>
+        <p>
+          The genotype survives intact: <Tex tex="\lambda" /> and the other rule-table parameters describe <Tex tex="\phi" />,
+          which is still one elementary rule. Global properties do not, since attractors and periodic orbits now depend on <Tex tex="Z(t)" /> too, and closed expressions exist only for special cases, such as the catalogue of rules whose
+          periodic points do not depend on the order of a fixed sweep. The phenotype can be read in the usual way, as long as
+          the diagrams are cropped to one update per cell on average, as above. It changes, though: asynchrony can move a
+          rule to another Wolfram class, and even among the sixteen one-neighbour automata, simpler than the elementary
+          ones, nine change their behaviour under some form of full asynchrony. Asynchrony is sometimes required, too: a
+          whole row cannot be made to flash in step from every start by any synchronous deterministic rule, but it can
+          by going beyond that, a problem <a href="/demos/thesis/#synchronisation">my thesis</a> takes up on networks.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="stochastic" aria-labelledby="tab-stochastic" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Stochastic: a coin picks the rule</h2>
+        <p>
+          Randomness drives the formation of structure in nature, morphogenesis for one, and a stochastic cellular
+          automaton (SCA) lets every cell, every tick, flip a coin between two rules:
+        </p>
+        <Tex block tex="s(c_i, t+1) = \begin{cases} \phi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{with probability } p, \\ \psi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{with probability } 1 - p. \end{cases}" />
+        <p>
+          At <Tex tex="p = 1" /> this is the elementary automaton again. Make <Tex tex="\psi" /> rule 204, which returns the
+          cell's own state, and the coin decides whether the cell moves or waits: that is the asynchronous automaton with <Tex tex="\alpha = p" />, the arrow <em>probabilistic update sequence</em> in the diagram. Below, both run from the
+          same start with the same coins; change <Tex tex="\psi" /> and they part.
+        </p>
+      </div>
+      <Identity kind="aca-sca" id="id-aca-sca" />
+      <div class="measure">
+        <p>
+          Two rules only disagree on some neighbourhoods, and on the others the coin makes no difference, so most SCAs are
+          only partly random. At the other extreme, rule 0 against its complement 255 with <Tex tex="p = \tfrac12" /> ignores
+          the neighbourhood altogether: pure noise. In between sits the majority SCA, rule 232 (follow the majority)
+          against 51 (do the opposite of what you did), with its obvious link to how opinions spread.
+        </p>
+        <p>
+          More generally, the chance of a 1 can depend on the neighbourhood itself. Eight neighbourhoods, eight
+          probabilities:
+        </p>
+        <Tex block tex="s(c_i, t+1) = \begin{cases} 1 & \text{with probability } p\bigl(\tilde{s}(\mathcal{N}(c_i))\bigr), \\ 0 & \text{with probability } 1 - p\bigl(\tilde{s}(\mathcal{N}(c_i))\bigr), \end{cases} \qquad \mathbf{p} = (p_0, \dots, p_7) \in [0, 1]^8." />
+        <p>
+          The two-rule SCA is the special case where each probability is <Tex tex="p\,\phi + (1-p)\,\psi" /> of that
+          neighbourhood, which is also how Fatès defines diploid automata. Other special cases keep only a few of the eight
+          free, like the Domany–Kinzel automaton, whose equivalence to an Ising model matters to percolation theory.
+        </p>
+        <p>
+          The <a href="#states">multi-state tab</a> adds a twist. Read the state of a cell as the probability that it is 1, and
+          the stochastic automaton becomes a deterministic one on the continuous states <Tex tex="s_i \in [0, 1]" />:
+        </p>
+        <Tex block tex="\phi(s_{i-1}, s_i, s_{i+1}) = \sum_{n=0}^{7} p_n \prod_{j \in \{i-1,\, i,\, i+1\}} s_j^{\,b_j(n)}\, \bar{s}_j^{\,1 - b_j(n)}, \qquad \bar{s} = 1 - s," />
+        <p>
+          with <Tex tex="b_j(n)" /> the bit of neighbourhood <Tex tex="n" /> that belongs to cell <Tex tex="j" />. The
+          figure runs the stochastic automaton once, runs it 200 times and averages, and runs the continuous automaton next
+          to it. Pick a mix of two rules or set the eight chances by hand.
+        </p>
+      </div>
+      <Mixture />
+      <div class="measure">
+        <p>
+          The continuous automaton gets the first tick exactly right. After that it multiplies the chances of neighbouring
+          cells as if they were independent, while two neighbours share most of their history. That makes it the mean-field
+          approximation of the SCA rather than its exact twin; the paper presents the correspondence without this caveat, and
+          the figure is my addition. From one cell, rule 22 half the time leaves few cells alive in most runs, and after 60
+          ticks its continuous twin predicts about three times as many 1s as the runs actually have.
+        </p>
+        <p>
+          The coin can also be global: all cells follow <Tex tex="\phi" /> together, except that with a small chance <Tex tex="\pi" /> the whole row takes a step of <Tex tex="\psi" /> instead, a noisy hiccup. For all 3825 pairs of
+          genuinely different elementary rules, Roy and colleagues found that two chaotic rules can combine into a periodic
+          one this way, and that the behaviour can jump at particular values of <Tex tex="\pi" />.
+        </p>
+        <h3>What survives</h3>
+        <p>
+          A rule-table parameter such as <Tex tex="\lambda" /> can be averaged over the two rules, weighted by the coin, but
+          there is no reason the SCA should behave somewhere in between its two rules, and in general it does not. The
+          global picture changes character: successive rows form a Markov chain, so the questions become ergodicity and
+          absorption times rather than attractors. The phenotype loses two classes outright, since randomness disturbs any
+          homogeneous or periodic pattern, and complexity can no longer mean computing power: there are no universal SCAs.
+          What SCAs gain is phase transitions, sudden changes of behaviour as <Tex tex="p" /> passes a threshold, and a
+          paradox: randomness can make a model more stable. A deterministic cellular automaton for the Ising model of a
+          magnet runs into what Vichniac called a feedback catastrophe, nothing like a real magnet; a temperature-dependent
+          probability per neighbourhood cures it.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="states" aria-labelledby="tab-states" tabindex="0" hidden>
+      <div class="measure">
+        <h2>More states</h2>
+        <p>
+          Nature rarely comes in two states: a forest has trees, fire and ash, an epidemic has the susceptible, the
+          infected and the recovered. A multi-state cellular automaton (MSCA) lets the state set <Tex tex="S" /> be any
+          set, finite or not, with or without structure. The price is paid at once. With <Tex tex="k" /> states and <Tex tex="|\mathcal{N}|" /> neighbours there are <Tex tex="k^{k^{|\mathcal{N}|}}" /> rules: three states instead of two
+          turn the 256 elementary rules into <Tex tex="3^{27} \approx 7.6 \times 10^{12}" />. A ternary rule is numbered like an
+          elementary one, <Tex tex="\sum_{i=0}^{26} 3^i s_i" />, and most work sticks to totalistic rules, which only look at
+          the sum of the neighbourhood: <Tex tex="k^{(k-1)|\mathcal{N}|+1}" /> of them, 2187 for three states.
+        </p>
+        <p>
+          States can stand in for neighbours. Smith showed in 1971 that a cellular automaton with any neighbourhood is
+          equivalent to one with a neighbourhood of three and more states, by pooling cells into blocks: a block and the two
+          blocks beside it contain everything its own cells look at. So three neighbours are enough in general, and the
+          trade is between the number of states, the size of the neighbourhood and the number of cells. Below is the paper's
+          example: a two-state rule with five neighbours on 50 cells, and the 32-state rule with three neighbours on 10 cells
+          that does the same thing. Try other block sizes, or any other of the <Tex tex="2^{32}" /> radius-2 rules.
+        </p>
+      </div>
+      <Identity kind="pool" id="id-pool" />
+      <div class="measure">
+        <p>
+          That is one half of the arrow <em>more time steps or fewer cells</em> between this family and the next. The other
+          half trades time instead of cells: the paper shows the same five-neighbour rule simulated by an eight-state rule
+          with three neighbours on the same number of cells, taking two ticks for each one.
+        </p>
+        <p>
+          Let the number of states grow without bound and the states fill an interval: a continuous cellular automaton,
+          close kin to coupled map lattices and to the finite-difference schemes that solve differential equations. Rucker
+          objected that they are therefore redundant; what sets them apart is the habit of experiment rather than proof.
+          The <a href="#stochastic">stochastic tab</a> shows one of them at work. Fuzzy cellular automata take a middle road:
+          write an elementary rule in logic, rule 18 for example as
+        </p>
+        <Tex block tex="\phi(s_{i-1}, s_i, s_{i+1}) = (\bar{s}_{i-1} \wedge \bar{s}_i \wedge s_{i+1}) \vee (s_{i-1} \wedge \bar{s}_i \wedge \bar{s}_{i+1}),"/>
+        <p>
+          and let <em>and</em>, <em>or</em> and <em>not</em> act on degrees of truth between 0 and 1. The result can behave
+          nothing like the original: fuzzy rule 90 from a random start settles on 1/2 everywhere, while Boolean rule 90 never
+          settles at all.
+        </p>
+        <h3>What survives</h3>
+        <p>
+          Most of the genotype survives: Langton introduced <Tex tex="\lambda" /> for rules with at least five neighbours and
+          four states in the first place, and roughly matched it to the four Wolfram classes. The sensitivity needs care,
+          since flipping a state now has more than one outcome. Global properties are often out of reach, partly because
+          the relevant questions are undecidable, unless the states have structure, such as linearity. The phenotype can
+          still be sorted into classes, but local measures need the states to mean something: the density of 1s makes no
+          sense when the states are S, I and R, and a change of state is no longer one thing. For continuous states, the
+          tools of coupled map lattices serve better than those of cellular automata.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="neighbourhoods" aria-labelledby="tab-neighbourhoods" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Wider neighbourhoods</h2>
+        <p>
+          Hardly anything depends only and exactly on its two nearest neighbours, and hardly anything sits on a perfect line.
+          An extended-neighbourhood cellular automaton (ENCA) keeps all neighbourhood information in an adjacency
+          matrix <Tex tex="\mathbf{A}" />, with <Tex tex="A_{ij} \neq 0" /> when cell <Tex tex="c_j" /> is a neighbour
+          of <Tex tex="c_i" />, and lets the rule read the neighbourhood at earlier ticks too:
+        </p>
+        <Tex block tex="\mathcal{N}(c_i) = \{ c_j \mid A_{ij} \neq 0 \}, \qquad s(c_i, t+1) = \phi\bigl(\tilde{s}(\mathcal{N}(c_i), 0), \dots, \tilde{s}(\mathcal{N}(c_i), t)\bigr)." />
+        <p>
+          The mildest version widens the neighbourhood to a radius <Tex tex="r" />, with <Tex tex="2r + 1" /> cells and <Tex tex="k^{k^{2r+1}}" /> rules; <Tex tex="r = 2" /> already gives over four billion. In two dimensions the usual
+          neighbourhoods are von Neumann's, the four adjacent cells, and Moore's, which adds the diagonals, the simplest of
+          Cole's templates
+        </p>
+        <Tex block tex="H^{(n)}_r = \Bigl\{ \mathbf{a} \Bigm| \sum_{i=0}^{n-1} |a_i| \le r \Bigr\}, \qquad J^{(n)}_r = \Bigl\{ \mathbf{a} \Bigm| \max_{0 \le i \le n-1} |a_i| \le r \Bigr\}," />
+        <p>
+          for the offsets <Tex tex="\mathbf{a}" /> of the neighbours in <Tex tex="n" /> dimensions. Any cellular automaton in <Tex tex="n" /> dimensions can be reduced to one in a single dimension with a wider neighbourhood, and one on a
+          regular tiling can be simulated on another, hexagons for squares, at the cost of more states. Beyond tilings lie
+          Voronoi cells, Penrose tilings and hyperbolic space, and finally network automata, where the cells are the nodes of
+          any network, the neighbourhood of a node is whoever it is linked to and its size, the degree, differs from node to
+          node. That is where <a href="/demos/cellular-automata/#life-on-graphs">the Game of Life on networks</a> of my
+          Physica D paper lives.
+        </p>
+        <p>
+          The arrow to the asynchronous family, <em>network wiring or ±1 dimension</em>, stands for several results.
+          Golze built a synchronous automaton in one dimension more from an asynchronous one, by reading time as space;
+          Aracena and colleagues showed equivalences of this kind for Boolean networks under different update schedules.
+          The simplest instance I know is below, my own illustration rather than a construction from the paper. Updating
+          the cells one by one from left to right is the same as updating them all at once, provided each cell reads the
+          previous tick through the right wiring: cell <Tex tex="i" /> depends on every cell from the far end of the ring up
+          to its right neighbour, through a composite rule of its own. Asynchrony becomes wiring, and a non-uniform one at
+          that.
+        </p>
+      </div>
+      <Identity kind="sweep" id="id-sweep" />
+      <div class="measure">
+        <p>
+          The neighbourhood can also change over time, as in the structurally dynamic automata of Ilachinski, or reach into
+          the past. An automaton with memory lets the rule read earlier ticks, and a memory of two ticks makes any rule
+          reversible. Only six of the 256 elementary rules can be run backwards, all of them trivial, yet
+        </p>
+        <Tex block tex="s(c_i, t+1) = \begin{cases} \phi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{if } s(c_i, t-1) = 0, \\ 1 - \phi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{if } s(c_i, t-1) = 1 \end{cases}" />
+        <p>
+          can always be undone: given the two latest rows, the same formula gives back the row before them. Here the rule
+          runs forward to the marks and then backward, and ends exactly where it began. Rule 30R is the paper's example;
+          any rule works. Toffoli showed more: any cellular automaton can be simulated by a reversible one with one
+          dimension more.
+        </p>
+      </div>
+      <Multiples kind="reversible" id="rev" rule={30} init="seed" />
+      <div class="measure">
+        <h3>What survives</h3>
+        <p>
+          A wider neighbourhood leaves every definition intact and only makes the rule table longer: Langton's parameter was
+          first studied with five neighbours. Global properties stay well defined but grow unwieldy, which is why totalistic
+          rules are popular here. In a network the degree differs from node to node, so a rule table no longer fits, and the
+          rule usually looks at the weighted share of neighbours in state 1,
+        </p>
+        <Tex block tex="s(c_i, t+1) = \phi\Bigl(\frac{1}{|\mathcal{N}(c_i)|} \sum_{c_j \in \mathcal{N}(c_i)} A_{ij}\, s(c_j, t)\Bigr)," />
+        <p>
+          which is open to analysis, only not the classical kind. Network science then does more for the genotype than
+          cellular-automaton theory does. In the phenotype, Wolfram's classes carry over to two dimensions but not
+          everything carries to three, network automata show all four classes, and anything with a direction, like a
+          Lyapunov exponent, has to follow paths through the network instead. The wiring alone can cause a phase transition,
+          and adding a memory of up to ten ticks changes the behaviour of almost half of the elementary rules.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="rules" aria-labelledby="tab-rules" tabindex="0" hidden>
+      <div class="measure">
+        <h2>More rules</h2>
+        <p>
+          The last family drops the rule that all cells share. In a non-uniform cellular automaton (νCA) the rule depends on
+          the cell and the tick; the simplest has two elementary rules and a set <Tex tex="Z(t)" /> of cells that follow the
+          first:
+        </p>
+        <Tex block tex="s(c_i, t+1) = \begin{cases} \phi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{if } i \in Z(t), \\ \psi\bigl(\tilde{s}(\mathcal{N}(c_i), t)\bigr) & \text{otherwise,} \end{cases} \qquad \nu(t) = \frac{|Z(t)|}{N}," />
+        <p>
+          with <Tex tex="\nu" /> the degree of non-uniformity, maximal at one half. With <Tex tex="\psi" /> rule 204 this is
+          the <a href="#asynchronous">asynchronous</a> automaton with <Tex tex="\alpha = \nu" />, and the family is again a
+          catalogue of ways to choose <Tex tex="Z(t)" />. Fixed once and for all, there are <Tex tex="2^N" /> allocations. A
+          random one gives each cell a coin once; redraw it every tick and it is the <a href="#stochastic">stochastic</a> automaton,
+          the arrow <em>probabilistic rule allocation</em>. A single rogue cell models a permanent fault; a periodic
+          allocation, the first <Tex tex="\nu T" /> cells of every stretch of <Tex tex="T" />, is the one that admits
+          formulas; a clustered one models regions, such as water and soil in a model of a forest fire.
+        </p>
+      </div>
+      <Multiples kind="allocation" id="alloc" rule={153} psi={102} />
+      <div class="measure">
+        <p>
+          The last panel lets the neighbourhood choose: rule 153 on the symmetric neighbourhoods 000, 010, 101 and 111, rule
+          102 on the others. That is no longer non-uniform at all: it is the uniform rule 195, whose bits are the bits of 153
+          where 153 applies and those of 102 elsewhere. The paper's example; any pair works.
+        </p>
+        <p>
+          The allocation can also run by its own rule. Let a third elementary rule <Tex tex="\xi" /> update, every tick,
+          which cells follow <Tex tex="\phi" />:
+        </p>
+        <Tex block tex="[\phi_i(t+1) = \phi] = \xi\bigl([\phi_{i-1}(t) = \phi],\, [\phi_i(t) = \phi],\, [\phi_{i+1}(t) = \phi]\bigr)." />
+        <p>
+          Now every cell carries two bits, its state and its rule, and both evolve by a uniform rule of the neighbourhood.
+          Four combined states, three neighbours: a uniform quaternary automaton, the arrow <em>mapping onto product
+          states</em>. The paper's figure uses <Tex tex="\phi = 110" />, <Tex tex="\psi = 170" /> and <Tex tex="\xi = 240" />,
+          which shifts the allocation one cell to the right every tick; the rule number in the status line is the paper's,
+          computed here from the three elementary rules, digit for digit.
+        </p>
+      </div>
+      <Identity kind="nuca-msca" id="id-nuca-msca" />
+      <div class="measure">
+        <p>
+          In general a νCA with <Tex tex="l" /> rules and <Tex tex="k" /> states is a uniform automaton with <Tex tex="kl" /> states
+          and the same neighbourhood. The converse fails, because there are far fewer of the former:
+        </p>
+        <Tex block tex="k^{\,l k^{|\mathcal{N}|}}\, l^{\,l^{|\mathcal{N}|}} \ll (kl)^{(kl)^{|\mathcal{N}|}}," />
+        <p>
+          about <Tex tex="256^3 \approx 1.7 \times 10^7" /> against <Tex tex="4^{64} \approx 3.4 \times 10^{38}" /> here: most
+          quaternary rules are not of this form, because the two bits of a combined state must each follow an elementary
+          rule of their own. At the far end of the family, hybrid automata let a global parameter, such as the wind in a
+          fire model or the temperature in Vichniac's Ising model, steer the rule: useful in applications, out of reach of
+          formulas.
+        </p>
+        <h3>What survives</h3>
+        <p>
+          Much of the classical genotype rests on one rule table applied everywhere, and fails without it. Rule-table
+          parameters can be averaged over the rules, but the paper suggests something less arbitrary: where a uniform
+          automaton that simulates the νCA exists, as above, read the parameters off its rule table. The paper knew of no
+          one who had tried this. Some global properties have been worked out, such as which νCAs built from elementary rules
+          conserve the number of 1s or can be reversed. The phenotype is almost unexplored: two rules can already be
+          allocated in about <Tex tex="2^N / N" /> ways on a ring of <Tex tex="N" /> cells, and they can cooperate in unpredictable ways.
+          Nearly every local measure stays well defined, and one is new: sensitivity to the allocation itself. Give a single
+          cell the other rule, like the rogue cell above, and ask how far that difference spreads. The simplest νCAs are also
+          convolutional neural networks with their weights written down by hand, which <a href="/demos/thesis/#cnn">my thesis</a> uses to run many of them at once.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="verdict" aria-labelledby="tab-verdict" tabindex="0" hidden>
+      <div class="measure">
+        <h2>What it adds up to</h2>
+        <p>
+          The five families build up to the paper's main conclusion:
+        </p>
+        <p class="claim">
+          The variants of the cellular automaton are not a melting pot but a family tree: five families, each bending one
+          item of the classical definition, tied together by exact mathematical identities, and in which every gain in
+          realism is paid for in mathematical elegance.
+        </p>
+        <p>
+          Three observations stand out. First, a paradox: the cellular automaton is meant to be strictly local, yet most
+          of its families impose some global or random choice on the cells, a timetable, a coin, an allocation, a
+          parameter. Second, the trade-off: more realism and more applications almost always come with less mathematical
+          elegance and fewer general methods, as the table shows. Third, the overlap: the identities round the rim mean that
+          one question can be attacked from several families at once, and they connect research communities that rarely
+          read each other.
+        </p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">family</th><th scope="col">bends</th><th scope="col">genotype: tools read off the rule</th><th scope="col">phenotype: tools read off the pictures</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row"><a href="#asynchronous">asynchronous</a></th><td>when a cell updates</td><td>rule-table parameters intact; global properties depend on the update order</td><td>readable after cropping to one update per cell; the Wolfram class can change</td></tr>
+            <tr><th scope="row"><a href="#stochastic">stochastic</a></th><td>which rule a cell follows, by chance</td><td>averaged parameters need not predict anything; Markov chains replace attractors</td><td>no truly homogeneous or periodic behaviour, no universality; phase transitions in <Tex tex="p" /></td></tr>
+            <tr><th scope="row"><a href="#states">multi-state</a></th><td>the states</td><td>most parameters survive; global properties often undecidable</td><td>classes still work; densities and changes of state need a meaning for the states</td></tr>
+            <tr><th scope="row"><a href="#neighbourhoods">extended neighbourhood</a></th><td>who the neighbours are</td><td>definitions intact but tables grow; on networks, totalistic rules and network science</td><td>classes carry over, mostly; directions become paths; topology alone can cause phase transitions</td></tr>
+            <tr><th scope="row"><a href="#rules">non-uniform</a></th><td>which rule a cell follows, by position</td><td>much of it lost; possibly recovered from a simulating uniform automaton</td><td>almost unexplored; local measures intact, plus sensitivity to the allocation</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="measure">
+        <p>
+          The paper ends on the two families it sees as best placed to reveal more: non-uniform automata and network
+          automata, close to well-documented families, easy to simulate in bulk and widely applied. That is where the
+          rest of my PhD went: the <a href="/demos/thesis/">thesis</a> studies Life-like rules on networks, how far
+          their rule alone predicts their behaviour, and non-uniform automata as neural networks.
+        </p>
+        <p>
+          A caveat about this page. The identities are exact and the figures check them cell for cell, but each family is
+          represented by its simplest members, one-dimensional rows of two-state cells with two rules at most. The paper
+          covers much more ground, from Penrose tilings to fuzzy logic, in words and references rather than simulations.
+        </p>
+
+        <h2>Read more</h2>
+        <ul class="pubs">
+          <li>
+            <a href={doi}>A comprehensive taxonomy of cellular automata</a>
+            <div class="meta"><strong>M. Rollier</strong>, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens</div>
+            <div class="meta">Communications in Nonlinear Science and Numerical Simulation 140, 108362, 2025 · <a href={arxiv}>preprint</a></div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.1007/s11047-018-9696-8">A survey of cellular automata: types, dynamics, non-uniformity and applications</a>
+            <div class="meta">K. Bhattacharjee, N. Naskar, S. Roy, S. Das, Natural Computing 19, 2020. The closest earlier survey.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.1016/j.physd.2021.133074">Progress, gaps and obstacles in the classification of cellular automata</a>
+            <div class="meta">M. Vispoel, A. J. Daly, J. M. Baetens, Physica D 432, 2022. The genotype and phenotype tools this page keeps coming back to.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.48550/arXiv.1406.0792">A guided tour of asynchronous cellular automata</a>
+            <div class="meta">N. Fatès, 2014. The asynchronous family in depth.</div>
+          </li>
+        </ul>
+        <p class="meta">
+          Keys once a figure has focus: n draws new coins or a new start. The address bar follows the settings, so a view
+          can be linked.
+        </p>
+      </div>
+      </section>
+
+    </div>
+  </div>
+</Base>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .panels { min-width: 0; }
+  [role="tabpanel"]:focus { outline: none; }
+  [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
+  .claim { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 1rem; font-size: 1.1rem; font-weight: 600; }
+  .recipe li { margin: 0.2rem 0; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0 1.5rem; }
+  table { border-collapse: collapse; font-size: 0.9rem; min-width: 40rem; }
+  th, td { text-align: left; vertical-align: top; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line); }
+  thead th { font-family: var(--mono); font-size: 0.8rem; font-weight: normal; color: var(--muted); }
+  tbody th { font-weight: 600; white-space: nowrap; }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>
+
+<script>
+  // The hash picks the tab: a tab's own id, or the id of anything inside a tab. Arrow keys walk the list.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+  const box = document.querySelector<HTMLElement>('.tabbed')!;
+
+  function show(id: string, scroll: boolean) {
+    let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+    if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+    if (i < 0) i = 0;
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+    // an anchor inside a tab scrolls to it; a tab change only scrolls back up when the reader was deep in the previous one
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+  }
+  const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  document.querySelector('[role="tablist"]')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+  });
+</script>

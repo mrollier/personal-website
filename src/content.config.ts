@@ -19,6 +19,7 @@ export const collections = {
       doi: z.string().optional(),
       url: z.string().url().optional(),
       summary: z.string().optional(),
+      demo: z.string().optional(), // the page on this site that plays the paper out
     }),
   }),
   projects: defineCollection({

@@ -1,4 +1,4 @@
-# One entry per paper. status: published | accepted | review | writing. Link: doi preferred, url for arXiv/preprint.
+# One entry per paper. status: published | accepted | review | writing. Link: doi preferred, url for arXiv/preprint. demo: its page on this site.
 - id: life-on-graphs
   title: "Essential metrics for Life on graphs"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
@@ -8,6 +8,7 @@
   doi: 10.1016/j.physd.2025.134950
   url: https://arxiv.org/abs/2506.21226
   summary: "The Game of Life generalised to arbitrary networks. A few simple metrics predict how it behaves, well enough to synchronise a firing squad nine times out of ten."
+  demo: /demos/cellular-automata/#life-on-graphs
 - id: ca-taxonomy
   title: "A comprehensive taxonomy of cellular automata"
   authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"
@@ -17,6 +18,7 @@
   doi: 10.1016/j.cnsns.2024.108362
   url: https://arxiv.org/abs/2401.08408
   summary: "Five families of cellular automata defined in one place, with a map of which exotic-sounding variants are the same thing wearing a different hat."
+  demo: /demos/taxonomy/
 - id: cnn-classification
   title: "Convolutional neural networks for automated cellular automaton classification"
   authors: "M. Rollier, A. J. Daly, J. M. Baetens"
@@ -53,6 +55,7 @@
   doi: 10.1016/j.mbs.2022.108957
   url: https://arxiv.org/abs/2202.11528
   summary: "Early in the pandemic Belgians moved less as cases rose, and how connected your district was to the first outbreaks predicted its excess deaths six weeks later."
+  demo: /demos/mobility/
 - id: npi-belgium
   title: "Assessing the effects of non-pharmaceutical interventions on SARS-CoV-2 transmission in Belgium by means of an extended SEIQRD model and public mobility data"
   authors: "T. W. Alleman, J. Vergeynst, L. De Visscher, M. Rollier, E. Torfs, I. Nopens, J. M. Baetens, Belgian Collaborative Group on COVID-19 Hospital Surveillance"
@@ -70,6 +73,7 @@
   doi: 10.1103/PhysRevD.98.024023
   url: https://arxiv.org/abs/1804.04877
   summary: "Without assuming what an echo looks like, a wavelet-based search can still pick gravitational-wave echoes out of detector noise and measure their spacing and decay."
+  demo: /demos/echoes/
 - id: node-importance
   title: "Probing dynamical importance of network nodes under maximal agnosticism"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"

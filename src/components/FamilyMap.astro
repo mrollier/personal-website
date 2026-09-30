@@ -1,0 +1,58 @@
+---
+// The taxonomy's central diagram as a map of a page: each circle links to where that family is explained, and each
+// arrow round the rim to where its identity runs live. `links` maps a circle's id (eca, aca, sca, msca, enca, nuca) or a
+// rim's id ('aca-sca', …, as in wheel.ts) to an href; anything left out is drawn without a link. No script.
+import { spokes, rims, band, nodes, R0, f1 } from '../scripts/wheel';
+type Props = { links: Record<string, string> };
+const { links } = Astro.props;
+const TITLE: Record<string, string> = { eca: 'Elementary', aca: 'Asynchronous', sca: 'Stochastic', msca: 'Multi-state', enca: 'Extended neighbourhood', nuca: 'Non-uniform' };
+---
+<figure class="map">
+  <svg viewBox="0 0 640 590" role="group" aria-label="The elementary cellular automaton in the middle, five families around it, and the identities between neighbouring families">
+    <defs>
+      <marker id="map-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" /></marker>
+    </defs>
+    <path class="band" d={band} />
+    {spokes.map((e) => (
+      <g class="rel">
+        <path class="arrow" d={e.d} marker-end="url(#map-tip)" />
+        <g class="words" transform={e.t} aria-hidden="true"><text y="-8">{e.top}</text>{e.bottom && <text y="19">{e.bottom}</text>}</g>
+      </g>
+    ))}
+    {rims.map((e) => {
+      const inner = <Fragment>
+        <path class="arrow" d={e.d} marker-start="url(#map-tip)" marker-end="url(#map-tip)" />
+        <g class="words" transform={e.t}><text y="-8">{e.top}</text>{e.bottom && <text y="19">{e.bottom}</text>}</g>
+      </Fragment>;
+      return links[e.id] ? <a class="rel rim" href={links[e.id]} aria-label={`${e.top} ${e.bottom}: see it run`}>{inner}</a> : <g class="rel">{inner}</g>;
+    })}
+    {nodes.map((n) => (
+      <a class="node" href={links[n.id]} aria-label={`${TITLE[n.id]} (${n.short})`}>
+        <circle cx={f1(n.x)} cy={f1(n.y)} r={R0} />
+        <text class="short" x={f1(n.x)} y={f1(n.y - (n.name.length > 1 ? 8 : 3))}>{n.short}</text>
+        {n.name.map((line, i) => <text class="name" x={f1(n.x)} y={f1(n.y + 15 + 13 * i - (n.name.length > 1 ? 5 : 0))}>{line}</text>)}
+      </a>
+    ))}
+  </svg>
+  <figcaption>The central diagram of the paper. Click a family for its tab, or an arrow round the rim to watch that identity hold.</figcaption>
+</figure>
+
+<style>
+  .map { margin: 1.5rem 0; }
+  svg { display: block; width: 100%; max-width: 600px; margin: 0 auto; height: auto; overflow: visible; }
+  .band { fill: none; stroke: var(--line); stroke-width: 46; stroke-linejoin: round; stroke-linecap: round; opacity: 0.5; }
+  .arrow { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+  marker path { fill: var(--ink); }
+  .words text { font-family: var(--sans); font-size: 15px; fill: var(--ink); text-anchor: middle; }
+  .rim { cursor: pointer; }
+  .rim .words text { fill: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; }
+  .rim:hover .arrow, .rim:focus-visible .arrow { stroke: var(--accent); stroke-width: 2.5; }
+  .node { cursor: pointer; outline: none; }
+  .node circle { fill: var(--bg); stroke: var(--ink); stroke-width: 2; transition: fill 0.15s; }
+  .node text { text-anchor: middle; fill: var(--ink); pointer-events: none; }
+  .node .short { font-family: var(--sans); font-weight: 700; font-size: 21px; }
+  .node .name { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+  .node:hover circle, .node:focus-visible circle { stroke: var(--accent); stroke-width: 3.5; }
+  figcaption { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); text-align: center; margin-top: 0.4rem; }
+  @media (max-width: 520px) { .words { display: none; } .band { stroke-width: 30; } }
+</style>

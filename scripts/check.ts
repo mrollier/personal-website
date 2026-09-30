@@ -14,4 +14,5 @@ import './check-lyapunov.ts';
 import './check-mosaic.ts';
 import './check-defence.ts';
 import './check-mobility.ts';
+import './check-taxonomy.ts';
 console.log('all checks passed');

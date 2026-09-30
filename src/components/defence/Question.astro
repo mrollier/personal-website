@@ -9,14 +9,14 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   <h2>Nature does this too</h2>
   <div class="d2-row">
     <figure>
-      <p class="lede">Each bird: align, stay close, don’t collide <span class="accent">→ a flock</span></p>
+      <p class="lede">Boids and your mouse</p>
       <div class="d2-box">
         <canvas class="boids" aria-label="A flock of birds, each following three local rules; the pointer scares them"></canvas>
         <SimButton class="d2-btn" />
       </div>
     </figure>
     <figure>
-      <p class="lede">Starlings, and a falcon</p>
+      <p class="lede">Starlings and a falcon</p>
       <div class="d2-box">
         <video src="/demos/defence/media/starlings.webm" muted loop playsinline preload="auto" aria-label="A starling flock splitting around a peregrine falcon and closing up behind it"></video>
         <SimButton class="d2-btn" />
@@ -24,7 +24,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     </figure>
   </div>
   <p class="cite">Flock after C. Reynolds, 1987 · video: C. Hemelrijk et al. 2019, CC BY 4.0, trimmed</p>
-  <p slot="say">Nature is full of the same recipe: simple local rules, on a network of who reacts to whom. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. On this page you can move the pointer over the simulated flock: the birds scatter from it and close up behind it.</p>
+  <p slot="say">Nature is full of the same recipe: simple local rules, on a network of who reacts to whom. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. The flock on the left is made of boids, the simulated birds of Craig Reynolds (1987), each following just those rules. Move the mouse over them: they scatter from it and close up behind it.</p>
   <p slot="say">The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it.</p>
 </Slide>
 
@@ -32,14 +32,14 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   <h2>Nature does this too</h2>
   <div class="d2-row">
     <figure>
-      <p class="lede">Each neuron: fires or not, depending on its inputs <span class="accent">→ thought, even dreams</span></p>
+      <p class="lede">Neurons firing</p>
       <div class="d2-box">
         <canvas class="brain" aria-label="A network of neurons in the shape of a brain, firing"></canvas>
         <SimButton class="d2-btn" />
       </div>
     </figure>
     <figure>
-      <p class="lede">A sleeping octopus, dreaming?</p>
+      <p class="lede">Experiencing and steering reality</p>
       <div class="d2-box">
         <video src="/demos/defence/media/octopus.webm" muted loop playsinline preload="auto" aria-label="An octopus asleep in its den: its skin darkens, breaks into blotches and pales again"></video>
         <SimButton class="d2-btn" />
@@ -47,7 +47,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     </figure>
   </div>
   <p class="cite">Left: illustration · video: an octopus in active sleep, A. Pophale et al., Nature 2023, CC BY 4.0, cropped and trimmed</p>
-  <p slot="say">A single neuron is well understood: it fires, or not, depending on its inputs. How billions of them produce thought and behaviour, and even dreams, is one of the hardest questions there is. The brain on the left is only an illustration: a neuron fires when enough of its inputs fired, then rests for a moment.</p>
+  <p slot="say">A single neuron is well understood: it fires, or not, depending on its inputs. How billions of them together experience reality and steer through it, and even dream, is one of the hardest questions there is. The brain on the left is only an illustration: a neuron fires when enough of its inputs fired, then rests for a moment.</p>
   <p slot="say">On the right, an octopus fast asleep. Every so often a sleeping octopus slips into a short phase of active sleep, and its skin comes alive: it darkens, breaks into blotches and pales again, running through the same patterns it uses when it is awake, to hide or to signal. That skin is a screen of tiny colour cells, each opened and closed by nerves from the brain, so what we are watching is the brain at work, with nothing outside to react to. The researchers found that its brain activity in these moments looks like waking activity, and compare it to our own REM sleep, the sleep in which we dream. Nobody knows what an octopus experiences; but simple cells, wired together, produce something that looks remarkably like a dream.</p>
 </Slide>
 
@@ -85,7 +85,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
 
   .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
   .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
-  .d2-row .lede { min-height: 2.5em; font-size: calc(42 * var(--u)); }
+  .d2-row .lede { padding-top: calc(52 * var(--u)); font-size: calc(42 * var(--u)); } /* one line, just above its picture */
   .d2-box { position: relative; }
   .d2-row canvas, .d2-row video { display: block; width: calc(832 * var(--u)); height: calc(586 * var(--u)); background: var(--panel); }
   .d2-row video { object-fit: contain; }

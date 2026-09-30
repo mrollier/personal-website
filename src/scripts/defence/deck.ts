@@ -3,7 +3,8 @@
 // Elements with data-b="k" appear from build k on, data-b-off="k" vanishes from build k on; anything else a build does
 // is the slide's own `set`. On the page each slide is a card with its own buttons. While presenting, the deck owns the
 // clicker keys in the capture phase, so no widget (a focused range input in Firefox) can swallow PageDown or PageUp.
-// Escape leaves fullscreen but not the deck, which stays full-window until `f` or `q`.
+// On a phone, a tap on the right or left half does the same. Escape leaves fullscreen but not the deck, which stays
+// full-window until `f` or `q`.
 
 import { makeRng } from '../net';
 
@@ -222,6 +223,26 @@ export function mountDeck(deck: HTMLElement): void {
   const refocus = () => { if (presenting) deck.focus({ preventScroll: true }); };
   deck.addEventListener('pointerup', refocus);
   deck.addEventListener('change', refocus);
+  // On a touchscreen a tap on the right half is Next and on the left half Prev, unless it lands on something that takes
+  // the tap itself: a control, a link, or a picture that claims touch for a drag (touch-action: none). A mouse click
+  // never moves the deck: on the laptop the clicker does, and a click belongs to the demo.
+  const OWN = 'button, a, input, select, textarea, label, video[controls], [data-go]';
+  const owns = (el: Element | null) => {
+    for (let e = el; e && e !== deck; e = e.parentElement) if (e.matches(OWN) || getComputedStyle(e).touchAction === 'none') return true;
+    return false;
+  };
+  let tap: { id: number; x: number; y: number; t: number } | null = null;
+  deck.addEventListener('pointerdown', (e) => {
+    tap = presenting && e.pointerType !== 'mouse' && e.isPrimary && !owns(e.target as Element) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
+  });
+  deck.addEventListener('pointercancel', () => { tap = null; });
+  deck.addEventListener('pointerup', (e) => {
+    const t = tap; tap = null;
+    if (!t || e.pointerId !== t.id || Math.hypot(e.clientX - t.x, e.clientY - t.y) > 24 || e.timeStamp - t.t > 600) return;
+    if (gate && !gate.hidden) return;
+    const r = deck.getBoundingClientRect();
+    if (!blank.hidden) blank.hidden = true; else if (e.clientX < r.left + r.width / 2) prev(); else next();
+  });
   // No pointer on the projector unless it moves.
   let idle = 0;
   addEventListener('pointermove', () => { deck.classList.remove('idle'); clearTimeout(idle); if (presenting) idle = window.setTimeout(() => deck.classList.add('idle'), 2500); });

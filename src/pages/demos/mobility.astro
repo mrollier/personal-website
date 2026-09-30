@@ -377,7 +377,7 @@ const tabs = [
   @media (max-width: 800px) {
     .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
     .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
-    .tabs ul { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
     .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
     .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
   }

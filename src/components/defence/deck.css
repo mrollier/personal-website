@@ -126,11 +126,13 @@
 .say p { margin: 0 0 0.6em; }
 
 /* ── presenting: one slide, as large as the window allows ── */
-html.deck-on { overflow: hidden; }
+html.deck-on { overflow: hidden; overscroll-behavior: none; }
 .deck.full {
   position: fixed; inset: 0; z-index: 100; background: var(--bg);
   display: grid; place-items: center; overflow: hidden;
 }
+/* taps turn the slides on a phone: no grey flash, no double-tap zoom, no text selection */
+.deck.presenting { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .deck::backdrop { background: var(--bg); }
 .deck.presenting [role="tabpanel"], .deck.presenting .block { display: contents !important; }
 .deck.presenting .slide:not(.current), .deck.presenting .cardbar, .deck.presenting .intro, .deck.presenting .say { display: none !important; }

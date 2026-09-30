@@ -6,7 +6,7 @@ import { pack, noise, bank, spark } from '../src/scripts/defence/cover.ts';
 import { decodeMosaic } from '../src/scripts/defence/mosaic.ts';
 import { stepLife, putRle, GOSPER_GUN, EATER, EATER_AT, ActiveLife } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
-import { room, wire, degrees, SEATS } from '../src/scripts/defence/room.ts';
+import { room, wire, degrees, SEATS, COLS, ROWS } from '../src/scripts/defence/room.ts';
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
 import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
 
@@ -63,14 +63,18 @@ for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
   for (let t = 1; t <= 660; t++) { stepLife(g, W, H, o); [g, o] = [o, g]; if (t > 600) seen.push(Buffer.from(g).toString('base64')); }
   assert.equal(seen[0], seen[30], 'the gun and the eater do not cycle with period 30');
 }
-// F1: the room. At p = 0 everyone is linked to the people around them (3 in a corner, 5 at a wall, 8 inside); the seat
-// in row 5, column 4 keeps 8 contacts at every p (seed 12836); rewiring never doubles a link or loops a seat, keeps the number
-// of links, and is monotone: a link rewired at p sits at the same seat at every larger p.
+// F1: the room. At p = 0 everyone is linked to the eight people around them, the room wrapping round at its edges; the
+// long row (up from the back, snaking, closed over the back edge) is made of those links; the seat in row 5, column 4
+// keeps 8 contacts at every p (seed 114895); rewiring never doubles a link or loops a seat, keeps the number of links,
+// and is monotone: a link rewired at p sits at the same seat at every larger p.
 {
-  const R = room(12836), home = wire(R, 0), key = (i: number, j: number) => (i < j ? i * SEATS + j : j * SEATS + i);
-  assert.equal(R.links.length, 268);
-  const d0 = degrees(R, home);
-  assert.deepEqual([d0[0], d0[3], d0[35], d0[79]], [3, 5, 8, 3]);
+  const R = room(114895), home = wire(R, 0), key = (i: number, j: number) => (i < j ? i * SEATS + j : j * SEATS + i);
+  assert.equal(R.links.length, 320);
+  assert.ok(degrees(R, home).every((d) => d === 8), 'not everyone has eight contacts at p = 0');
+  const grid = new Set(R.links.map((l) => key(l.stay, l.home)));
+  const row = Array.from({ length: SEATS }, (_, i) => { const q = Math.floor(i / COLS), c = i % COLS; return (ROWS - 1 - q) * COLS + (q % 2 ? COLS - 1 - c : c); });
+  assert.equal(new Set(row).size, SEATS);
+  assert.ok(row.every((a, i) => grid.has(key(a, row[(i + 1) % SEATS]))), 'the long row leaves the grid');
   let prev = home;
   for (let q = 0; q <= 100; q++) {
     const to = wire(R, q / 100), pairs = new Set(R.links.map((l, k) => key(l.stay, to[k])));
@@ -80,7 +84,7 @@ for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
     R.links.forEach((l, k) => { if (prev[k] !== l.home) assert.equal(to[k], prev[k], `link ${k} moved again at p = ${q / 100}`); });
     prev = to;
   }
-  assert.ok(prev.filter((t, k) => t !== R.links[k].home).length > 260);
+  assert.ok(prev.filter((t, k) => t !== R.links[k].home).length > 310);
 }
 // D2: the brain network lies inside its outline and keeps firing, in avalanches, without ever saturating.
 {

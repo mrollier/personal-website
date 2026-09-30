@@ -1,36 +1,27 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Eca from '../../components/Eca.astro';
-import EcaTable from '../../components/EcaTable.astro';
-import Deck from '../../components/Deck.astro';
-import CaGrid from '../../components/CaGrid.astro';
-import CaNet from '../../components/CaNet.astro';
 import LlnaRule from '../../components/LlnaRule.astro';
 import LlnaRun from '../../components/LlnaRun.astro';
 import { getCollection } from 'astro:content';
 const paper = (await getCollection('publications')).find((p) => p.id === 'life-on-graphs')!.data;
+const doi = `https://doi.org/${paper.doi}`;
 // One tab per theme; the hash picks the tab, so a theme can be linked.
 const tabs = [
-  { id: 'row', name: 'Row' },
-  { id: 'grid', name: 'Grid' },
-  { id: 'network', name: 'Network' },
-  { id: 'life-on-graphs', name: 'Life on graphs' },
+  { id: 'rules', name: 'Rules' },
   { id: 'firing-squad', name: 'Firing squad' },
   { id: 'majority', name: 'Majority' },
   { id: 'defects', name: 'Defects' },
 ];
 ---
-<Base title="Cellular automata" description="Interactive cellular automata: any Wolfram rule on a row of cells, the parity rule on a grid and on networks, and Life-like network automata from my Physica D paper: the interval rule diagram, the mean-field curve, the firing squad synchronisation problem, the majority problem and defect spreading." wide>
+<Base title="Life on graphs" description="Conway's Game of Life on networks, from my Physica D paper: the interval rule diagram and the mean-field curve, a firing squad and a majority vote solved bottom-up, and defects spreading on lattices, small worlds and random networks." wide>
   <div class="measure">
-    <h1>Cellular automata</h1>
+    <h1>Life on graphs</h1>
     <p>
-      Cells, each either on or off. Time runs in ticks. At every tick each cell looks only at its
-      neighbours and at itself, a fixed rule says what it becomes next, and every cell switches at the
-      same moment. That is the whole recipe. The first three themes take one rule from a row of cells to
-      a grid and then to a network, where a cell's neighbours are whoever it happens to be wired to. The
-      last four take Conway's Game of Life onto networks, following
-      <a href={paper.url}>my paper</a> on Life-like network automata, and use it to solve two classic
-      problems of collective computation.
+      Conway's Game of Life, taken off its grid and onto networks, where a cell's neighbours are whoever it
+      happens to be wired to. This is the demo of <a href={doi}>{paper.title}</a>, with Lucas Caldeira de
+      Oliveira, Odemir Bruno and Jan Baetens (<i>{paper.venue}</i>, {paper.year}). The first theme defines
+      the rules and the curve that predicts them; the next two use it to solve two classic problems of
+      collective computation; the last follows a single flipped node.
     </p>
   </div>
 
@@ -42,173 +33,12 @@ const tabs = [
     </nav>
     <div class="panels">
 
-      <section role="tabpanel" id="row" aria-labelledby="tab-row" tabindex="0">
+      <section role="tabpanel" id="rules" aria-labelledby="tab-rules" tabindex="0">
         <div class="measure">
-          <h2>A row of cells</h2>
+          <h2>Life-like rules on networks</h2>
           <p>
-            Each cell looks at three things only: its own state and the states of its left and right
-            neighbour. Three cells make 8 possible neighbourhoods, and a rule assigns an outcome to each, so
-            there are 2<sup>8</sup> = 256 rules, numbered 0 to 255. In the picture below the top row is the
-            starting state and every row underneath is the next tick: the image is a history, not a snapshot.
-            The row is a ring, so the last cell counts the first as its right neighbour. Click the table under
-            the controls to flip one outcome and see the rule number change.
-          </p>
-          <Deck id="deck" note="Fullscreen, two slides: the rule, then this demo. A clicker or the arrow keys move forward; Esc leaves.">
-            <section data-slide aria-label="Rule 90" style="--lut-size: clamp(0.9rem, 1.9vw, 1.8rem)">
-              <h2>Rule 90</h2>
-              <EcaTable rule={90} fingers />
-              <p>Look left, look right. Ignore your own hand.</p>
-              <p>
-                <strong>Exactly one neighbour up: your finger goes up.</strong><br />
-                Both up, or both down: your finger goes down.
-              </p>
-              <p class="meta">Pick your two neighbours first and keep them. On the edge, take the person in front of you; if you cannot see two people, take the presenter.</p>
-            </section>
-            <section data-slide data-adopt="#eca" aria-label="Live demo"></section>
-          </Deck>
-        </div>
-
-        <Eca rule={90} width={31} />
-
-        <div class="measure">
-          <p class="meta">
-            Keys once the demo has focus (click it, go fullscreen or start presenting): space plays and
-            pauses, → or PageDown steps, ← or PageUp undoes a round, r resets, f toggles fullscreen. A
-            presentation clicker sends PageDown and PageUp. The address bar follows the settings, so a
-            set-up can be bookmarked.
-          </p>
-
-          <h2 id="rule-90">Rule 90</h2>
-          <EcaTable rule={90} fingers />
-          <p>
-            Read the eight outcomes from case 111 down to case 000 and you get the binary
-            number <code>01011010</code>, which is 90 in decimal. That is where every rule gets its number.
-          </p>
-          <p>
-            Now look at what the table actually says: the outcome is 1 exactly when the left and right
-            neighbours differ. Your own state plays no part. In crowd terms: <strong>look left, look right,
-            ignore your own hand. If exactly one of your two neighbours has a finger up, put yours up for
-            the next round. If both or neither do, put it down.</strong> Mathematically the new state is
-            left XOR right, the sum of the two neighbours modulo 2.
-          </p>
-          <p>
-            Start from a single finger up in the middle and rule 90 draws the Sierpinski triangle: the
-            pattern spreads one seat per round in both directions, and the inside keeps hollowing out into
-            smaller copies of the whole. Row <em>t</em> is row <em>t</em> of Pascal's triangle with the odd
-            entries marked, because adding modulo 2 is exactly what the rule does.
-          </p>
-
-          <h2 id="crowd">Running it with a seated crowd</h2>
-          <ol>
-            <li>Everyone picks two neighbours and keeps them for the whole game: normally the person on the
-              left and the person on the right. On the edge of a row, take the person in front of you instead.
-              If you cannot see two people, take the presenter.</li>
-            <li>One person in the middle of the room starts with a finger up, everyone else down.</li>
-            <li>Each round: look at your two neighbours, not at your own hand, and decide. Nobody moves yet. On
-              "three", everyone changes at once. Deciding and changing have to be separate steps, or the quick
-              ones will contaminate the round for the slow ones.</li>
-            <li>Press <em>Start presenting</em> at the top of this theme. The first slide is the rule as the
-              crowd should hear it; one press forward on the clicker brings up the demo. From then on forward
-              steps a round and back undoes one. Back at round 0 returns to the rule slide, and Esc leaves.
-              Set the number of people as cells on the demo slide itself.</li>
-            <li>The demo shows the clean case, one straight row of that many cells. A real room, with
-              neighbours picked across rows, drifts away from the picture after a few rounds. The rule is the
-              same; the wiring is not, and that is worth saying out loud.</li>
-          </ol>
-        </div>
-      </section>
-
-      <section role="tabpanel" id="grid" aria-labelledby="tab-grid" tabindex="0" hidden>
-        <div class="measure">
-          <h2 id="on-a-grid">A grid of cells</h2>
-          <p>
-            Rule 90 has a name that travels: the <em>parity rule</em>. Count the neighbours with a finger up
-            and go up if the count is odd, down if it is even. Said that way, the rule no longer cares how
-            many neighbours there are or where they sit, so it works on anything. There are two versions.
-            The <em>self-exclusive</em> one counts the neighbours only, which is rule 90 on a row.
-            The <em>self-inclusive</em> one counts your own finger too, which is rule 150.
-          </p>
-          <p>
-            On a grid you first have to say who counts as a neighbour. The <em>von Neumann</em> neighbourhood
-            is the four cells you share an edge with. The <em>Moore</em> neighbourhood adds the four corners,
-            making eight. The range-two von Neumann neighbourhood takes every cell at most two steps away
-            along the grid lines, a diamond of twelve. The small pictogram in the corner of the picture shows
-            the one in use. The grid wraps at the edges, like the row did, so it is really a doughnut.
-          </p>
-        </div>
-        <CaGrid />
-        <div class="measure">
-          <p>
-            The parity rule has a party trick. Whatever you start with, after 2, 4, 8, 16 ticks the pattern
-            comes back as several exact copies of itself, one for every cell in the neighbourhood, each shifted
-            that many cells along. With the four von Neumann neighbours a smiley becomes four smileys, then
-            sixteen; include yourself and a fifth copy stays put in the middle. Edward Fredkin noticed this in
-            the 1960s and the four-neighbour version has carried his name since. In between those ticks the
-            picture is a mess, and that mess is what a crowd running rule 90 on a grid would see: every copy is
-            built from Sierpinski triangles crossing one another. The trick works because the rule
-            is <em>linear</em>: two patterns run at once give the sum of the two patterns run apart. Apply the
-            rule twice and the cross terms cancel in pairs, so two ticks amount to one parity count over
-            neighbours twice as far away; four ticks, four times as far; and a parity count over cells so far
-            apart that they never overlap is nothing but a set of copies.
-          </p>
-          <p>
-            Two things to try. Set the number of cells to 64 and watch the smiley vanish at tick 32: on a
-            doughnut that many cells around, the copies meet their own mirror images and cancel. And switch on
-            random: from a random start there is no picture to copy, and the rule looks like noise from then
-            on, which it is not. It is still the same deterministic sum.
-          </p>
-        </div>
-      </section>
-
-      <section role="tabpanel" id="network" aria-labelledby="tab-network" tabindex="0" hidden>
-        <div class="measure">
-          <h2 id="on-a-network">A network of cells</h2>
-          <p>
-            Now drop the grid. Each cell is a node in a network, its neighbours are the nodes it is linked to,
-            and the rule is the same parity count. Three families of random network are on offer. A <em>small
-            world</em> starts as a ring where every node knows its two neighbours on either side, then a
-            fraction of the links are cut and reattached at random; at zero rewiring it is a ring, at full
-            rewiring a tangle. A <em>random</em> network links every pair of nodes with the same probability,
-            set here by the mean number of links. A <em>scale-free</em> network is grown one node at a time,
-            each newcomer preferring to link to nodes that already have many links, which is how a few hubs and
-            a great many leaves come about.
-          </p>
-          <p>
-            Only one node starts up, and that is not a limitation. Because the rule is linear, any starting
-            pattern evolves as the sum of its single seeds, so the single-seed runs are all there is to know.
-            The slider picks which node it is, from the most to the least connected; the ring marks it. That is
-            the simplest notion of a node's importance, the number of its links, and how much it explains is
-            one of the questions in <a href="/research/">my current work</a>. Below the network the history is
-            drawn the way the row was in the first theme, time running down, one column per node.
-          </p>
-        </div>
-        <CaNet />
-        <div class="measure">
-          <p>
-            Things to watch. On the ring, the history is the picture from the first theme again, only
-            with two neighbours on each side: a triangle spreading two nodes per tick from the seed. Rewire a
-            few links and shortcuts appear, the front jumps ahead somewhere far from the seed, and the triangle
-            is gone within a handful of ticks. In a scale-free network the hub lights up all of its many
-            neighbours in one tick; start from a leaf instead and the same thing happens a tick or two later,
-            as soon as the activity reaches a hub. In the random network the least connected node may have no
-            links at all, in which case nothing happens, and the readout says so. On most of these networks
-            the run never comes to rest: roughly half the nodes are on at any tick, with no pattern the eye can
-            catch. A linear rule, and yet as unpredictable to look at as anything on this page.
-          </p>
-          <p class="meta">
-            Keys once a figure has focus: space plays and pauses, → or PageDown steps, ← or PageUp undoes a
-            tick, r resets to the starting state, f toggles fullscreen. The address bar follows the settings
-            of every figure, so a set-up can be linked.
-          </p>
-        </div>
-      </section>
-
-      <section role="tabpanel" id="life-on-graphs" aria-labelledby="tab-life-on-graphs" tabindex="0" hidden>
-        <div class="measure">
-          <h2>Life on graphs</h2>
-          <p>
-            The parity rule counted neighbours. Conway's Game of Life counts them too, but answers
-            differently depending on the cell's own state: a dead cell with exactly three live neighbours is
+            Conway's Game of Life counts a cell's live neighbours and answers differently depending on the
+            cell's own state: a dead cell with exactly three live neighbours is
             born, a live cell with two or three survives, everything else dies or stays dead. Rules of that
             shape are called <em>outer-totalistic</em>: what happens depends on your own state and on the
             total of your neighbours, not on which ones. On a grid every cell has eight neighbours, so
@@ -216,9 +46,8 @@ const tabs = [
             next has twenty, it is not.
           </p>
           <p>
-            The fix, worked out in <a href={paper.url}>{paper.title}</a> with Lucas Caldeira de Oliveira,
-            Odemir Bruno and Jan Baetens (<a href={`https://doi.org/${paper.doi}`}>{paper.venue}</a>,
-            code on <a href="https://github.com/mrollier/essential-metrics-life-on-graphs">GitHub</a>), is to
+            The fix, worked out in <a href={doi}>the paper</a> (code on <a href="https://github.com/mrollier/essential-metrics-life-on-graphs">GitHub</a>),
+            is to
             count the <em>share</em> rather than the number: ρ, the density of live nodes among a node's
             neighbours, a number between 0 and 1. Cut the unit interval into <em>r</em> equal pieces and let
             the rule say, for each piece, whether a dead node is born there and whether a live node survives
@@ -229,8 +58,7 @@ const tabs = [
           </p>
           <p>
             With r = 9 on a grid of eight neighbours the nine intervals match the nine possible counts 0 to 8
-            exactly, and Life is back: B = {'{'}R<sub>3</sub>{'}'}, S = {'{'}R<sub>2</sub>, R<sub>3</sub>{'}'}. We call the whole family
-            <em>Life-like network automata</em>. There are 2<sup>2r</sup> rules for each resolution r, so 262,144 at r = 9.
+            exactly, and Life is back: B = {'{'}R<sub>3</sub>{'}'}, S = {'{'}R<sub>2</sub>, R<sub>3</sub>{'}'}. We call the whole family <em>Life-like network automata</em>. There are 2<sup>2r</sup> rules for each resolution r, so 262,144 at r = 9.
           </p>
           <p>
             Two details make this the right definition and not merely a convenient one. First, r must be odd,
@@ -269,7 +97,7 @@ const tabs = [
             move while the diagram stays put: which intervals a node can reach depends on its degree, and so
             does its behaviour, which is the whole point of doing this on networks. Pick the firing squad rule
             and see a curve that crosses the anti-diagonal at ½ and nowhere else. Set r to 3 and the family
-            shrinks to a handful of threshold rules, one of them rule 150 from the first theme.
+            shrinks to a handful of threshold rules, one of them rule 150, the parity rule that counts a node's own state too.
           </p>
         </div>
       </section>

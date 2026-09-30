@@ -8,7 +8,7 @@
   doi: 10.1016/j.physd.2025.134950
   url: https://arxiv.org/abs/2506.21226
   summary: "The Game of Life generalised to arbitrary networks. A few simple metrics predict how it behaves, well enough to synchronise a firing squad nine times out of ten."
-  demo: /demos/cellular-automata/#life-on-graphs
+  demo: /demos/life-on-graphs/
 - id: ca-taxonomy
   title: "A comprehensive taxonomy of cellular automata"
   authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"

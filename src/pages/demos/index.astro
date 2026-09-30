@@ -1,46 +1,51 @@
 ---
 import Base from '../../layouts/Base.astro';
-// Demos are pages under this folder; list them here.
-const demos = [
+import { getCollection } from 'astro:content';
+// A paper links to its published version; only a paper with nothing but a preprint links there.
+const pubs = await getCollection('publications');
+const link = (id: string) => { const p = pubs.find((x) => x.id === id)!.data; return p.doi ? `https://doi.org/${p.doi}` : p.url; };
+// Demos are pages under this folder; list them here. A meta part with a paper id links to that paper.
+type Meta = string | { text: string; paper: string };
+const demos: { href: string; name: string; blurb: string; meta: Meta[] }[] = [
   {
-    href: '/demos/cellular-automata/',
-    name: 'Cellular automata',
-    blurb: 'Any of the 256 Wolfram rules on a row of cells, then the parity rule on a grid, where a smiley copies itself, and on networks, where one seed spreads from the best- or the worst-connected node. Then Life on graphs: the interval rule of my Physica D paper, its mean-field curve, and a firing squad, a majority vote and a spreading defect on lattices, small worlds and random networks.',
-    meta: 'PhD defence · Physica D paper · interactive',
+    href: '/demos/defence/',
+    name: 'The defence, slide by slide',
+    blurb: 'The slides of my public PhD defence, every one of them live: the audience plays rule 90 with their hands, the Game of Life turns into rules on networks, a quarter of a million rules shrink to 27 without a single simulation, and one stubborn person flips a whole network. Step through the builds here, present it with a clicker, or take the whole talk offline as one file.',
+    meta: ['PhD defence, 2 October 2026', 'slides', 'interactive'],
   },
   {
     href: '/demos/thesis/',
     name: 'The thesis, chapter by chapter',
     blurb: 'My PhD thesis as twelve tabs: how much of a cellular automaton’s behaviour can be read off its rule, how the wiring changes the answer, and why a cellular automaton is a neural network with its weights written down by hand. One live figure per chapter, from defect spreading and Lyapunov spectra to finding the nodes that matter in a network.',
-    meta: 'PhD thesis · interactive',
+    meta: ['PhD thesis', 'interactive'],
+  },
+  {
+    href: '/demos/life-on-graphs/',
+    name: 'Life on graphs',
+    blurb: 'Conway’s Game of Life taken onto networks, where one node has two neighbours and the next has twenty. Build any rule on the interval diagram and read its mean-field curve, pick 1 rule out of 262,144 that synchronises a firing squad, turn it into a majority vote, and follow a single flipped node as it heals or spreads on lattices, small worlds and random networks.',
+    meta: [{ text: 'Physica D paper', paper: 'life-on-graphs' }, 'interactive'],
   },
   {
     href: '/demos/taxonomy/',
     name: 'Five ways to bend a cellular automaton',
     blurb: 'The families of cellular automata beyond the elementary one: cells that update out of step, rules that roll dice, more states, wider neighbourhoods, different rules for different cells. Each family in a tab with its definition and variants, and the exact identities between them run side by side and checked cell by cell, down to the 39-digit rule number of the paper.',
-    meta: 'CNSNS review paper · interactive',
-  },
-  {
-    href: '/demos/defence/',
-    name: 'The defence, slide by slide',
-    blurb: 'The slides of my public PhD defence, every one of them live: the audience plays rule 90 with their hands, the Game of Life turns into rules on networks, a quarter of a million rules shrink to 27 without a single simulation, and one stubborn person flips a whole network. Step through the builds here, present it with a clicker, or take the whole talk offline as one file.',
-    meta: 'PhD defence, 2 October 2026 · slides · interactive',
+    meta: [{ text: 'CNSNS review paper', paper: 'ca-taxonomy' }, 'interactive'],
   },
   {
     href: '/demos/mobility/',
     name: 'Where the virus travelled',
     blurb: 'Did it matter where Belgians travelled in 2020, in a country this small and this connected? Pick any of the 43 arrondissements and see its commuters and the excess deaths side by side, week by week; watch a noisy curve of hospital admissions turn into a fan of 100 fits; and slide one province\'s epidemic over another\'s to see who ran ahead. All on public data, computed in the browser.',
-    meta: 'Mathematical Biosciences paper · interactive',
+    meta: [{ text: 'Mathematical Biosciences paper', paper: 'mobility-belgium' }, 'interactive'],
   },
   {
     href: '/demos/echoes/',
     name: 'Finding echoes',
     blurb: 'What a gravitational-wave echo from a not-quite-black-hole would look like, where it would come from, and how to dig one out of detector noise without knowing its shape. Four animations from my MSc thesis.',
-    meta: 'MSc thesis · interactive',
+    meta: ['MSc thesis', { text: 'Physical Review D paper', paper: 'gw-echoes' }, 'interactive'],
   },
 ];
 ---
-<Base title="Demos" description="Interactive demonstrations: cellular automata on rows, grids and networks, made for a live crowd, the five families of cellular automata and the identities between them, the spread of SARS-CoV-2 across Belgium, and gravitational-wave echoes from my MSc thesis." wide>
+<Base title="Demos" description="Interactive demonstrations: my PhD defence and thesis, the Game of Life on networks, the five families of cellular automata and the identities between them, the spread of SARS-CoV-2 across Belgium, and gravitational-wave echoes from my MSc thesis." wide>
   <div class="measure">
     <h1>Demos</h1>
     <p>
@@ -54,8 +59,7 @@ const demos = [
         <h3><a href={x.href}>{x.name}</a></h3>
         <p>{x.blurb}</p>
         <div class="links">
-          <a href={x.href}>open</a>
-          <span class="meta">{x.meta}</span>
+          <span class="meta">{x.meta.map((m, i) => <>{i > 0 && ' · '}{typeof m === 'string' ? m : <a href={link(m.paper)}>{m.text}</a>}</>)}</span>
         </div>
       </li>
     ))}

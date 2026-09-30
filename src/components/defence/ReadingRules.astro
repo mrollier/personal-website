@@ -1,66 +1,9 @@
 ---
-// F1–F4: from neighbours in a row to contacts anywhere in the room, and the room becomes a network of nodes; the Game
-// of Life as a rule on shares; and the two numbers that read a rule before it runs: its generosity, the Hamming weight
-// (with the mean-field curve), and its volatility, the Boolean sensitivity (with the Derrida curve and a twin run).
+// F3–F4: the two metrics that read a rule before it runs: its generosity, the Hamming weight (with the mean-field
+// curve), and its volatility, the Boolean sensitivity (with the Derrida curve and a twin run).
 import Slide from './Slide.astro';
-import Seats from './Seats.astro';
 import SimButton from './SimButton.astro';
-const B = 8, S = 12, r = 9;
-const cells = Array.from({ length: r }, (_, i) => ({ b: (B >> i) & 1, s: (S >> i) & 1 }));
-const cw = 1160 / r;
 ---
-<Slide label="Now imagine" builds={6} class="f1" ch={3}>
-  <div class="row grow f1-row">
-    <div class="f1-room">
-      <canvas class="f1-links" aria-hidden="true"></canvas>
-      <Seats you={[3, 4]} label="The room: one person and their two neighbours, then everyone linked to the people around them, then links rewired across the room" />
-    </div>
-    <div class="col f1-side">
-      <h2>Now imagine…</h2>
-      <p class="f1-cap" data-b="1">What you just did: your two neighbours.</p>
-      <p class="f1-cap" data-b="2">Link everyone to the people around them: a grid.</p>
-      <div class="f1-cap" data-b="3">
-        <p>Rewire some links across the room: a <b>small-world network</b>.</p>
-        <label class="f1-p">rewired<input type="range" class="ctl" min="0" max="1" step="0.01" value="0.2" data-p aria-label="share of links rewired" /><output data-pv>20%</output></label>
-      </div>
-      <p class="f1-cap" data-b="4">The same rule for all: a <b>network automaton</b>.</p>
-      <p class="f1-cap" data-b="5">Some have <b data-min>3</b> contacts, some <b data-max>10</b>: “exactly three” no longer makes sense.</p>
-      <p class="f1-cap" data-b="6">From now on: people are <b>nodes</b>, a hand up is a node that is <b>on</b>.</p>
-    </div>
-  </div>
-  <p slot="say">What if the room played the game differently? In the game everybody had two neighbours in a row. Now link everyone to the people around them, up to eight: a grid, with three contacts in a corner and five along a wall. Then take some of those links and swing them across the room to anyone at all. A few long links like these make a small-world network: everyone is suddenly only a few steps from everyone else. On this page, drag the slider: at 0 the grid comes back, at 100% the links are completely random.</p>
-  <p slot="say">Run the same rule for everyone on such a network and you have a network automaton. But now some have three contacts and some have ten, so a rule like “exactly three neighbours” no longer makes sense for everybody. From here on the people become nodes, and a hand up becomes a node that is on.</p>
-</Slide>
-
-<Slide label="Count the share, not the number" builds={1} class="f2" ch={5}>
-  <h2>Count the share, not the number</h2>
-  <p class="lede">A node looks at the share of its neighbours that are on.</p>
-  <div class="f2-diagram">
-    <p class="f2-name">The Game of Life, as a rule on shares</p>
-    <svg viewBox="0 0 1500 420" aria-label="The rule diagram of the Game of Life: nine intervals of the share, born in one, survive in two">
-      <text x="300" y="80" text-anchor="end" class="rl">off now:</text>
-      <text x="300" y="118" text-anchor="end" class="rs">born here</text>
-      <text x="300" y="220" text-anchor="end" class="rl">on now:</text>
-      <text x="300" y="258" text-anchor="end" class="rs">survives here</text>
-      {cells.map((c, i) => (
-        <>
-          <rect x={330 + i * cw + 3} y="30" width={cw - 6} height="120" class={c.b ? 'born' : 'off'} />
-          <rect x={330 + i * cw + 3} y="170" width={cw - 6} height="120" class={c.s ? 'keep' : 'off'} />
-        </>
-      ))}
-      <line x1="330" y1="316" x2={330 + r * cw} y2="316" class="ax" />
-      {Array.from({ length: r + 1 }, (_, i) => <line x1={330 + i * cw} y1="306" x2={330 + i * cw} y2="326" class="ax" />)}
-      <text x="330" y="370" text-anchor="middle" class="tk">0</text>
-      <text x={330 + 4.5 * cw} y="370" text-anchor="middle" class="tk">½</text>
-      <text x={330 + r * cw} y="370" text-anchor="middle" class="tk">1</text>
-      <text x={330 + 4.5 * cw} y="412" text-anchor="middle" class="rs">share of neighbours that are on, in nine intervals</text>
-    </svg>
-  </div>
-  <p class="lede" data-b="1">Every choice of where to be born and where to survive is a rule: 262,144 of them.</p>
-  <p slot="say">A node with ten neighbours and a node with three cannot follow a rule that counts neighbours. So count the share instead: the fraction of your neighbours that are on. Split that share into nine intervals, and a rule says in which intervals an off node is born and in which an on node survives. This is the Game of Life written as a rule on shares: born in one interval, surviving in two. It generalises the Game of Life in two directions at once: the rule can change, and so can the network.</p>
-  <p slot="say">Nine intervals for being born and nine for surviving give 2<sup>18</sup> = 262,144 rules. These are the Life-like network automata of the thesis. (Why nine, and why the intervals are placed symmetrically, is kept for the questions.)</p>
-</Slide>
-
 <Slide label="Reading the rule: generosity" builds={3} class="f3" ch={5}>
   <div class="row grow f34-row">
     <div class="col f34-side">
@@ -97,28 +40,6 @@ const cw = 1160 / r;
 </Slide>
 
 <style>
-  .f1-row { gap: calc(80 * var(--u)); align-items: stretch; }
-  .f1-room { position: relative; flex: none; margin-top: calc(-30 * var(--u)); }
-  .f1-room :global(.seats) { position: relative; height: calc(930 * var(--u)); width: auto; }
-  .f1-links { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .f1-side { justify-content: center; gap: calc(32 * var(--u)); }
-  .f1-cap { font-size: calc(40 * var(--u)); line-height: 1.25; }
-  .f1-p { display: flex; align-items: center; gap: calc(20 * var(--u)); margin-top: calc(14 * var(--u)); font-size: calc(40 * var(--u)); }
-  .f1-p input { width: calc(560 * var(--u)); }
-  .f1-p output { min-width: 3em; }
-
-  .f2-diagram { display: flex; flex-direction: column; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); }
-  .f2-name { font-size: calc(34 * var(--u)); }
-  .f2-diagram svg { width: calc(1500 * var(--u)); }
-  :global(.f2) rect.born { fill: var(--accent); }
-  :global(.f2) rect.keep { fill: var(--ink); }
-  :global(.f2) rect.off { fill: var(--panel); stroke: var(--line); stroke-width: 2; }
-  :global(.f2) .rl { font-family: var(--sans); font-size: 36px; font-weight: 600; fill: var(--ink); }
-  :global(.f2) .rs { font-family: var(--sans); font-size: 30px; fill: var(--muted); }
-  :global(.f2) .tk { font-family: var(--sans); font-size: 32px; fill: var(--muted); }
-  :global(.f1.as-nodes) :global(.seat) { opacity: 0; }
-  :global(.f2) .ax { stroke: var(--muted); stroke-width: 3; }
-
   .f34-row { gap: calc(50 * var(--u)); align-items: center; }
   .f34-side { width: calc(640 * var(--u)); flex: none; gap: calc(30 * var(--u)); }
   :global(.f3) .plot { width: calc(1040 * var(--u)); height: calc(860 * var(--u)); flex: none; touch-action: none; cursor: ew-resize; }
@@ -135,106 +56,14 @@ const cw = 1160 / r;
 </style>
 
 <script>
-  import { slide, sim, type How } from '../../scripts/defence/deck';
+  import { slide, sim } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
   import { axes, curve, dot, line, label, px, py, type Plot } from '../../scripts/defence/plot';
   import { makeRng, lattice } from '../../scripts/net';
-  import { room, wire, degrees, COLS } from '../../scripts/defence/room';
   import { type Rule, meanField, hammingWeight, step, randomState } from '../../scripts/llna';
   import { sensitivity, derridaCoeffs, derridaAt } from '../../scripts/genotype';
 
   const LIFE: Rule = { r: 9, B: 8, S: 12 }, K = 8;
-  const f2 = (x: number) => (Math.abs(x - 0.5) < 1e-9 ? '½' : String(x));
-
-  // ── F1: the room. Your two neighbours; then everyone linked to the people around them (the links grow out of each
-  // person); then a share p of the links rewired across the room, live on a slider (the moving ends swing over); at
-  // build 6 the people become nodes. The links (and the nodes) are drawn on a canvas behind the seats, so a tween
-  // repaints the canvas and never the eighty people. ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.f1')) {
-    const svg = s.querySelector<SVGSVGElement>('svg.seats')!, over = svg.querySelector('[data-over]')!, canvas = s.querySelector<HTMLCanvasElement>('canvas.f1-links')!;
-    const seats = Array.from(svg.querySelectorAll<SVGUseElement>('use.seat'));
-    const slider = s.querySelector<HTMLInputElement>('[data-p]')!, pv = s.querySelector<HTMLOutputElement>('[data-pv]')!;
-    const minOut = s.querySelector('[data-min]')!, maxOut = s.querySelector('[data-max]')!;
-    // Seed 12836: "you" keeps eight contacts at every p on the slider, as the next slides assume (npm test checks it).
-    const you = 4 * COLS + 3, P0 = 0.2, R = room(12836), n = R.links.length, ns = 'http://www.w3.org/2000/svg', VIEW = 880;
-    const cx = (i: number) => (i % COLS) * 110 + 48, cy = (i: number) => 96 + Math.floor(i / COLS) * 128 + 70;
-    // each link's moving end: drawn at (x, y), on its way from (fx, fy) to the seat to[k]; `moving` lists the links in flight
-    const x = new Float32Array(n), y = new Float32Array(n), fx = new Float32Array(n), fy = new Float32Array(n);
-    let to = wire(R, 0), at = 0, t0 = 0, dur = 1, raf = 0, moving: number[] = [], shown = '';
-    R.links.forEach((l, k) => { x[k] = cx(l.home); y[k] = cy(l.home); });
-    const mine = (k: number) => R.links[k].stay === you || to[k] === you;
-    function draw() {
-      const st = stage(canvas); if (!st || at < 2) return;
-      const { ctx, t } = st, k = st.w / VIEW;
-      ctx.lineCap = 'round';
-      for (const own of [false, true]) {
-        ctx.beginPath();
-        R.links.forEach((l, j) => { if (mine(j) === own) { ctx.moveTo(cx(l.stay) * k, cy(l.stay) * k); ctx.lineTo(x[j] * k, y[j] * k); } });
-        ctx.strokeStyle = own ? t.accent : t.muted; ctx.globalAlpha = own ? 1 : 0.45; ctx.lineWidth = (own ? 2.5 : 2) * k;
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      if (at >= 6) for (let i = 0; i < COLS * 10; i++) {
-        ctx.beginPath(); ctx.arc(cx(i) * k, cy(i) * k, 15 * k, 0, 2 * Math.PI);
-        ctx.fillStyle = i === you ? t.accent : t.panel; ctx.fill();
-        ctx.lineWidth = 3 * k; ctx.strokeStyle = i === you ? t.accent : t.ink; ctx.stroke();
-      }
-    }
-    const frame = (now: number) => {
-      const u = Math.min(1, (now - t0) / dur), e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
-      for (const j of moving) { x[j] = fx[j] + (cx(to[j]) - fx[j]) * e; y[j] = fy[j] + (cy(to[j]) - fy[j]) * e; }
-      draw();
-      raf = u < 1 ? requestAnimationFrame(frame) : 0;
-    };
-    /** Move every link's end to its seat at p: over `ms`, or at once; `grow` starts each link at the person who keeps it. */
-    function go(p: number, ms: number, grow = false) {
-      to = wire(R, p);
-      cancelAnimationFrame(raf); raf = 0; moving = [];
-      R.links.forEach((l, j) => {
-        if (grow) { x[j] = cx(l.stay); y[j] = cy(l.stay); }
-        fx[j] = x[j]; fy[j] = y[j];
-        if (x[j] !== cx(to[j]) || y[j] !== cy(to[j])) moving.push(j);
-      });
-      if (ms > 0 && moving.length) { t0 = performance.now(); dur = ms; raf = requestAnimationFrame(frame); }
-      else { for (const j of moving) { x[j] = cx(to[j]); y[j] = cy(to[j]); } moving = []; }
-      mark(); draw();
-    }
-    // who is highlighted: you, your contacts; from build 5 the fewest and the most contacts, circled
-    function mark() {
-      const near = new Set<number>();
-      if (at === 1) { near.add(you - 1); near.add(you + 1); }
-      if (at >= 2) R.links.forEach((l, j) => { if (l.stay === you) near.add(to[j]); else if (to[j] === you) near.add(l.stay); });
-      seats.forEach((u, i) => { u.classList.toggle('you', at >= 1 && i === you); u.classList.toggle('near', near.has(i)); });
-      if (at < 2) stage(canvas); // clears it
-      const deg = degrees(R, to), lo = deg.indexOf(Math.min(...deg)), hi = deg.indexOf(Math.max(...deg));
-      minOut.textContent = String(deg[lo]); maxOut.textContent = String(deg[hi]);
-      const want = at >= 5 ? `${lo}:${deg[lo]} ${hi}:${deg[hi]}` : '';
-      if (want === shown) return;
-      shown = want; over.replaceChildren();
-      if (want) for (const i of [lo, hi]) {
-        const c = document.createElementNS(ns, 'circle'), tx = document.createElementNS(ns, 'text'), right = cx(i) > 440;
-        c.setAttribute('cx', String(cx(i))); c.setAttribute('cy', String(cy(i) - 12)); c.setAttribute('r', '62'); c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'var(--danger)'); c.setAttribute('stroke-width', '6');
-        tx.setAttribute('x', String(cx(i) + (right ? -76 : 76))); tx.setAttribute('y', String(cy(i) + 4)); tx.setAttribute('text-anchor', right ? 'end' : 'start'); tx.setAttribute('font-size', '46'); tx.setAttribute('font-weight', '700'); tx.setAttribute('fill', 'var(--danger)'); tx.setAttribute('font-family', 'var(--sans)');
-        tx.textContent = String(deg[i]); over.append(c, tx);
-      }
-    }
-    const pct = (p: number) => `${Math.round(p * 100)}%`;
-    const setP = (p: number) => { slider.value = String(p); pv.value = pct(p); };
-    slider.addEventListener('input', () => { const p = +slider.value; pv.value = pct(p); go(p, 450); });
-    slide(s, {
-      set(b: number, how: How) {
-        const was = at; at = b;
-        s.classList.toggle('as-nodes', b >= 6);
-        if (b <= 1) { go(0, 0); return; }
-        if (b === 2) { go(0, how === 'next' ? 1100 : was > 2 ? 450 : 0, how === 'next'); return; }
-        if (b === 3 && how === 'next' && was === 2) { setP(P0); go(P0, 1400); return; }
-        if (was < 2 || how === 'jump') go(+slider.value, 0); else { mark(); draw(); }
-      },
-      enter() { setP(P0); },
-    });
-    setP(P0); mark();
-    onSize(canvas, draw);
-  }
 
   // ── F3: the mean-field curve, a draggable ρ, a cobweb and the crossings ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f3')) {

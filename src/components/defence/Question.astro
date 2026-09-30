@@ -1,5 +1,5 @@
 ---
-// D2–D3: nature uses the same recipe (a flock, a brain); the rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
+// D2–D3: nature uses the same recipe as the Life-like network automata just before (a flock, a brain); the rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 const RULE = 54;
@@ -24,7 +24,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     </figure>
   </div>
   <p class="cite">Flock after C. Reynolds, 1987 · video: C. Hemelrijk et al. 2019, CC BY 4.0, trimmed</p>
-  <p slot="say">Nature is full of the same recipe. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. On this page you can move the pointer over the simulated flock: the birds scatter from it and close up behind it.</p>
+  <p slot="say">Nature is full of the same recipe: simple local rules, on a network of who reacts to whom. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. On this page you can move the pointer over the simulated flock: the birds scatter from it and close up behind it.</p>
   <p slot="say">The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it.</p>
 </Slide>
 
@@ -78,7 +78,7 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   </div>
   <p class="cite">Genotype and phenotype, after S. A. Kauffman, 1990</p>
   <p slot="say">Borrowing two words from biology: the rule is the <em>genotype</em>, local and simple, what each cell does; the behaviour is the <em>phenotype</em>, global and rich, what the whole does. Here the rule is rule 54. Its table fits on one line, and yet you cannot read the pattern on the right off that table.</p>
-  <p slot="say">That gap is what the thesis is about. Its research question has two halves: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? The rule never tells the whole story, but it tells more than nothing, and the behaviour in turn tells us something about the rule and about the network it runs on.</p>
+  <p slot="say">That gap is what the thesis is about, and a Life-like network automaton is a good place to study it: the rule is as simple as a rule gets, the network can be anything, and every step can be watched. Its research question has two halves: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? The rule never tells the whole story, but it tells more than nothing, and the behaviour in turn tells us something about the rule and about the network it runs on.</p>
 </Slide>
 
 <style>

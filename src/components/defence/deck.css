@@ -88,20 +88,19 @@
   content: "↺"; border: 0; width: auto; height: auto; margin: 0 0 calc(4 * var(--u)); font: 700 calc(40 * var(--u)) / 1 var(--sans);
 }
 
-/* The thesis map in small along the bottom. */
+/* The talk's four chapters in small along the bottom, two by two: a reminder, not a heading. */
 .slide.ribboned .frame { padding-bottom: calc(120 * var(--u)); } /* the ribbon, and a credit line above it */
 .slide.ribboned .cite { bottom: calc(70 * var(--u)); }
 .slide.ribboned .illus { bottom: calc(70 * var(--u)); right: calc(96 * var(--u)); }
 .slide .ribbon {
-  position: absolute; left: calc(96 * var(--u)); bottom: calc(18 * var(--u)); display: flex; gap: calc(28 * var(--u));
-  font-size: calc(20 * var(--u)); line-height: 1; color: var(--muted); opacity: 0.8; white-space: nowrap;
+  position: absolute; z-index: 2; left: calc(96 * var(--u)); bottom: calc(18 * var(--u)); display: flex; gap: calc(56 * var(--u));
+  font-size: calc(22 * var(--u)); line-height: 1; color: var(--muted); opacity: 0.85; white-space: nowrap; transition: opacity 0.35s ease;
 }
-.slide .rpart { display: flex; align-items: center; gap: calc(6 * var(--u)); }
-.slide .rn { font-weight: 600; margin-right: calc(4 * var(--u)); }
-.slide .rch { padding: calc(6 * var(--u)) calc(12 * var(--u)); border: calc(2 * var(--u)) solid var(--line); }
-.slide .rch b { font-weight: 600; }
-.slide .rch.skip { border-style: dashed; opacity: 0.55; }
-.slide .rch.cur { background: var(--ink); border-color: var(--ink); color: var(--sun); opacity: 1; }
+.slide .rhalf { display: flex; align-items: center; }
+.slide .rh { margin-right: calc(14 * var(--u)); opacity: 0.8; }
+.slide .rch { padding: calc(7 * var(--u)) calc(14 * var(--u)); border: calc(2 * var(--u)) solid var(--line); background: var(--bg); }
+.slide .rch + .rch { border-left: 0; }
+.slide .rch.cur { background: var(--ink); border-color: var(--ink); color: var(--sun); }
 
 /* People: hand up is ink, hand down is a panel with a line. */
 .slide .up { color: var(--ink); fill: var(--ink); stroke: var(--ink); }

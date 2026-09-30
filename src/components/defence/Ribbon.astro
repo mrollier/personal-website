@@ -1,16 +1,17 @@
 ---
-// The thesis map in small along the bottom of a slide, so the room can see where the talk is: the four parts with
-// their chapters, the current one filled (class `cur`; the site already uses `now`), the ones skipped tonight hollow.
-// `ch` = 0 fills none, and a slide's script can set `cur` on a tile itself. The big version is the map slide.
-import { PARTS } from '../../scripts/defence/ribbon';
+// The four chapters of the talk in small along the bottom of every slide after the thesis map, so the room keeps track
+// of where the talk is: in the two halves of the research question, getting to know the rules and applying them, two
+// chapters each, with the current one filled (class `cur`; the site already uses `now`). `ch` = 0 fills none, and a
+// slide's script can set `cur` on a tile itself. The map slide shows where the ribbon comes from.
+import { HALVES } from '../../scripts/defence/ribbon';
 type Props = { ch: number };
 const { ch } = Astro.props;
 ---
 <div class="ribbon" aria-hidden="true">
-  {PARTS.map((p) => (
-    <span class="rpart">
-      <span class="rn">{p.n}</span>
-      {p.chs.map((c) => <span class:list={['rch', c.skip && 'skip', c.ch === ch && 'cur']} data-ch={c.ch}><b>{c.ch}</b> {c.name}</span>)}
+  {HALVES.map((h) => (
+    <span class="rhalf">
+      <span class="rh">{h.name}</span>
+      {h.chs.map((c) => <span class:list={['rch', c.ch === ch && 'cur']} data-ch={c.ch}>{c.name}</span>)}
     </span>
   ))}
 </div>

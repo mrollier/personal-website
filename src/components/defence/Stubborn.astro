@@ -1,131 +1,101 @@
 ---
-// H1–H2: one stubborn person in a room that runs a consensus-seeking rule; the room becomes a toy village (village.ts) (the people
-// lose their bodies and their heads scatter into it), where a quiet node changes nothing and an important one flips
+// H1–H2: the stubborn node in a toy village (village.ts) that runs a consensus-seeking rule: first a system that
+// converges, then one node forced to be stubborn, where a quiet node changes nothing and an important one flips
 // everyone (each run waits for its own start); then every node stubborn in turn, for its dynamical importance (the
-// thesis says clamped; the slides never do). H3: what it could be for: a health campaign with three ambassadors and an
+// thesis says clamped; the slides never do), and what it could be for: a health campaign with three ambassadors and an
 // unknown rule of persuasion, the consensus-seeking rule as a stand-in, its three ambassadors against the three
-// villagers with the most contacts, and our result. The limitations are for the
-// questions, not the slides.
-// Data: src/data/defence/clamp.json.
+// villagers with the most contacts, and our result. Both slides keep the network in one place, so it stays put from
+// one to the next. The limitations, and the score against the network's structure, are for the questions, not the
+// slides. Data: src/data/defence/clamp.json.
 import Slide from './Slide.astro';
-import Seats from './Seats.astro';
 import SimButton from './SimButton.astro';
 import clamp from '../../data/defence/clamp.json';
-import { knnSpearman } from '../../scripts/defence/importance';
-const knnRho = knnSpearman(clamp);
 ---
 <Slide id="ch-impact" label="The stubborn node" builds={6} class="h1" ch={10}>
-  <div class="row grow h1-row">
-    <div class="stack h1-view">
-      <div class="h1-seats" data-b-off="1"><Seats label="The room with every hand up except one" /></div>
-      <div class="h1-box" data-b="1">
-        <canvas class="net" aria-label="A network of 100 people running a consensus-seeking rule, one of them stubborn"></canvas>
+  <div class="row grow imp-row">
+    <div class="imp-view">
+      <div class="h1-box">
+        <canvas class="net" aria-label="A village of 100 people as a network, running a consensus-seeking rule; then one of them stubborn"></canvas>
         <SimButton class="h1-btn" />
       </div>
-      <canvas class="h1-morph" aria-hidden="true"></canvas>
     </div>
-    <div class="col h1-side">
-      <div class="h1-head">
+    <div class="col imp-side">
+      <div class="imp-head">
         <h2>The stubborn node</h2>
-        <p class="h1-sub">Which individuals steer the group?</p>
+        <p class="imp-sub">Which individuals steer the group?</p>
       </div>
-      <p class="lede">Everyone follows a consensus-seeking rule, and the room ends with every hand up.</p>
-      <p class="lede">Now one person refuses: <span class="danger">hand down, no matter what</span>. Does the room follow?</p>
-      <p class="h1-state" data-state></p>
+      <ol class="h1-steps">
+        <li data-b="1">Find a converging system</li>
+        <li data-b="3">Force a node to be stubborn</li>
+      </ol>
     </div>
   </div>
-  <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Imagine everyone in the room follows one: after a few timesteps every hand is up. Now one person refuses and keeps their hand down, whatever happens. Does the room follow them?</p>
-  <p slot="say">Now the room becomes a network: the people lose their bodies, and their heads scatter into a network of 100 people, half of them with a hand up. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration: a consensus-seeking rule in a toy village of 100 people, about eight contacts each, from the same start every time.)</p>
+  <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Here a toy village of 100 people, about eight contacts each: which individuals steer the group?</p>
+  <p slot="say">First, find a converging system: everyone follows a consensus-seeking rule, from a start with half of them on. The click runs it: with nobody stubborn, the village ends with every node on.</p>
+  <p slot="say">Then force a node to be stubborn: it stays off, no matter what. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole village flips to all off. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration, from the same start every time.)</p>
 </Slide>
 
 <Slide label="Dynamical importance score" builds={2} class="h2" ch={10}>
-  <h2>Dynamical importance score</h2>
-  <p class="h2-sub">Analysing the impact of individuals</p>
-  <div class="row grow h2-row">
-    <canvas class="net" aria-label="The network with every node coloured by how much of the network follows it when it is stubborn"></canvas>
-    <div class="col h2-side">
-      <p class="h2-def"><b>Importance</b> (darker): how much of the network follows a stubborn node, on average.</p>
-      <div class="stack h2-plots">
-        <canvas class="hist" data-b-off="1" aria-label="The share of nodes with each importance"></canvas>
-        <div class="h2-pair" data-b="1">
-          <canvas class="scatter" aria-label="Importance against the degree"></canvas>
-          <canvas class="scatter" data-b="2" aria-label="Importance against the average degree of the neighbours"></canvas>
-        </div>
+  <div class="row grow imp-row">
+    <div class="imp-view">
+      <canvas class="net" aria-label="The village with every node coloured by how much of the village follows it when it is stubborn; then three ambassadors ringed, and the three with the most contacts in dashed rings"></canvas>
+      <p class="h2-ramp">importance: low <i></i> high</p>
+    </div>
+    <div class="col imp-side">
+      <div class="imp-head">
+        <h2>Dynamical importance score</h2>
+        <p class="imp-sub">Analysing the impact of individuals</p>
       </div>
+      <div class="col h2-camp" data-b="1">
+        <p class="h2-ex">Example: a health campaign</p>
+        <p class="h2-line">Budget: <b>three ambassadors</b></p>
+        <p class="h2-line">Real rule unknown: <b>use a stand-in</b></p>
+        <p class="h2-key"><i class="amb"></i>our ambassadors<i class="most"></i>most contacts</p>
+      </div>
+      <p class="result" data-b="2"><b>Our result</b> Rank who steers the group, with a stand-in rule</p>
     </div>
   </div>
-  <p slot="say">Now make every node stubborn in turn, one at a time, and record how much of the network ends up following it: that is each node’s dynamical importance score (in the thesis, holding a node fixed is called clamping). In this village most people sway only a small part of it, and the most important about half of it, on average. (Chapter 10, work in progress; an illustration on the network of the previous slide, over {clamp.summary.starts} starts that reach agreement, with each node stubborn in each.)</p>
-  <p slot="say">Against the degree, the number of links, importance clearly goes up, but not one-to-one (a rank correlation of {clamp.summary.spearmanEtaDegree.toFixed(2)} in this village): the three villagers with the most contacts are not the most important. Against the average degree of a node’s neighbours, if anything the opposite ({knnRho.toFixed(2)}): the people on the outskirts know well-connected people, and still matter little. In the thesis that measure is consistently the weakest, and on some scale-free networks negative too. Across families of networks the score goes with the usual measures of centrality but reduces to none of them.</p>
-</Slide>
-
-<Slide label="Who should we convince first?" builds={3} class="h3" ch={10}>
-  <h2>Who should we convince first?</h2>
-  <p class="h3-sub">Example: a health campaign with a small budget</p>
-  <div class="row grow h3-row">
-    <canvas class="net" aria-label="A village as a network; then every villager coloured by their importance under a stand-in rule; then the three most important ringed, and the three with the most contacts in dashed rings"></canvas>
-    <div class="col h3-side">
-      <p class="h3-line">Budget: <b>three ambassadors</b></p>
-      <p class="h3-line">How villagers persuade each other: <b>unknown</b></p>
-      <p class="h3-line" data-b="1">Stand-in: a <b>consensus-seeking rule</b></p>
-      <p class="h3-key" data-b="2"><i class="amb"></i>our ambassadors<i class="most"></i>most contacts</p>
-      <p class="result" data-b="3"><b>Our result</b> Rank who steers the group, with a stand-in rule</p>
-    </div>
-  </div>
-  <p slot="say">Why would we want to know who matters? Take an example: a health campaign with a small budget. Marketing campaigns and political propaganda ask the same question; the health campaign is the friendlier example. In 32 villages in Honduras, researchers started a water-purification and a vitamin programme with a few villagers each, to see how far it would spread, and compared ways of picking those few (Kim and colleagues, The Lancet, 2015). So which three villagers should be our ambassadors? We do not know how villagers really persuade each other: the real rule is unknown.</p>
-  <p slot="say">So we use a stand-in: the consensus-seeking rule, not to model the villagers, but to measure them. Make each villager stubborn in turn and see how far the village follows: the darker, the further. (An illustration on the toy village of the previous slides; this is an example, not a campaign I studied.)</p>
-  <p slot="say">The three darkest become our ambassadors, ringed in red: an ambassador is a stubborn node, who keeps promoting the programme, no matter what. The dashed rings are the three villagers with the most contacts, 21 each: not the same people. Their many contacts also listen to the centre of the village, and follow it. In the Honduran trial too, picking the villagers with the most friends did no better than picking at random, while picking friends that villagers named did better, at least for the vitamins. Taking the top three one by one also ignores that they may reach the same people; choosing them together is a next step.</p>
-  <p slot="say">Our result: a ranking of who steers the group that needs no knowledge of the real rule, only a stand-in rule and a simulator. Whether the stand-in picks the same people as the real rule would is the most important next step of Chapter 10: comparing it with, say, an epidemic model on the same networks. This part of the thesis is unpublished and still in progress.</p>
+  <p slot="say">Now make every node stubborn in turn, one at a time, and record how much of the village ends up following it: that is each node’s dynamical importance score, the darker, the more (in the thesis, holding a node fixed is called clamping). In this village most people sway only a small part of it, and the most important about half of it, on average. (Chapter 10, work in progress; an illustration over {clamp.summary.starts} starts that reach agreement, with each node stubborn in each.)</p>
+  <p slot="say">Why would we want to know who matters? Take an example: a health campaign with a small budget. Marketing campaigns and political propaganda ask the same question; the health campaign is the friendlier example. In 32 villages in Honduras, researchers started a water-purification and a vitamin programme with a few villagers each, to see how far it would spread, and compared ways of picking those few (Kim and colleagues, The Lancet, 2015). So which three villagers should be our ambassadors? We do not know how villagers really persuade each other, so we use a stand-in: the consensus-seeking rule, not to model the villagers, but to measure them. The three most important, ringed in red, become our ambassadors: an ambassador is a stubborn node, who keeps promoting the programme, no matter what. The dashed rings are the three villagers with the most contacts, 21 each: not the same people. Importance goes with the number of contacts (a rank correlation of {clamp.summary.spearmanEtaDegree.toFixed(2)} here), but not one-to-one: the many contacts of those three also listen to the centre of the village, and follow it. In the Honduran trial too, picking the villagers with the most friends did no better than picking at random, while picking friends that villagers named did better, at least for the vitamins. (An example, not a campaign I studied.)</p>
+  <p slot="say">Our result: a ranking of who steers the group that needs no knowledge of the real rule, only a stand-in rule and a simulator. Whether the stand-in picks the same people as the real rule would is the most important next step of Chapter 10: comparing it with, say, an epidemic model on the same networks. Taking the top three one by one also ignores that they may reach the same people; choosing them together is a next step. This part of the thesis is unpublished and still in progress.</p>
 </Slide>
 
 <style>
-  .h1-row { gap: calc(60 * var(--u)); align-items: center; }
-  .h1-view { width: calc(900 * var(--u)); height: calc(900 * var(--u)); flex: none; place-items: center; }
-  .h1-seats :global(.seats) { height: calc(880 * var(--u)); width: auto; }
+  /* both slides: the network on the left in one and the same place, the title and the words on the right */
+  .imp-row { gap: calc(60 * var(--u)); align-items: center; }
+  .imp-view { position: relative; width: calc(820 * var(--u)); height: calc(880 * var(--u)); flex: none; }
+  .imp-view canvas.net { display: block; width: calc(820 * var(--u)); height: calc(820 * var(--u)); }
   .h1-box { position: relative; }
-  .h1-box canvas { display: block; width: calc(840 * var(--u)); height: calc(840 * var(--u)); }
   .h1-box :global(.h1-btn) { right: calc(10 * var(--u)); bottom: calc(10 * var(--u)); }
-  .h1-morph { width: calc(900 * var(--u)); height: calc(900 * var(--u)); pointer-events: none; visibility: hidden; }
-  /* while the people turn into the network, the network itself waits under the picture that moves */
-  :global(.h1.morphing) .h1-morph { visibility: visible; }
-  :global(.h1.morphing) .h1-box canvas { visibility: hidden; }
-  .h1-side { gap: calc(34 * var(--u)); }
-  .h1-head { display: flex; flex-direction: column; gap: calc(14 * var(--u)); margin-bottom: calc(16 * var(--u)); }
-  .h1-sub { font-size: calc(40 * var(--u)); }
-  .h1-state { font-size: calc(34 * var(--u)); min-height: 3em; }
+  .imp-side { align-self: stretch; padding-top: calc(60 * var(--u)); gap: calc(40 * var(--u)); flex: 1; min-width: 0; }
+  .imp-head { display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
+  .imp-sub { font-size: calc(40 * var(--u)); }
 
-  .h2-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
-  .h2-row { gap: calc(50 * var(--u)); align-items: flex-start; }
-  .h2-row > canvas.net { width: calc(660 * var(--u)); height: calc(660 * var(--u)); flex: none; }
-  .h2-side { gap: calc(30 * var(--u)); flex: 1; min-width: 0; }
-  .h2-def { font-size: calc(40 * var(--u)); line-height: 1.25; }
-  .h2-plots { width: 100%; }
-  .hist { width: 100%; height: calc(470 * var(--u)); }
-  .h2-pair { display: grid; grid-template-columns: 1fr 1fr; gap: calc(16 * var(--u)); }
-  .scatter { width: 100%; height: calc(470 * var(--u)); }
+  .h1-steps { font-size: calc(50 * var(--u)); gap: calc(30 * var(--u)); padding-left: 1.2em; margin-top: calc(30 * var(--u)); }
+  .h1-steps li { transition: color 0.35s ease, opacity 0.35s ease; }
+  .h1-steps li.past { color: var(--muted); }
 
-  .h3-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
-  /* the same place for the network as on H2, so it stays put from one slide to the next */
-  .h3-row { gap: calc(50 * var(--u)); align-items: flex-start; }
-  .h3-row > canvas.net { width: calc(660 * var(--u)); height: calc(660 * var(--u)); flex: none; }
-  .h3-side { gap: calc(36 * var(--u)); flex: 1; align-self: center; }
-  .h3-line { font-size: calc(46 * var(--u)); line-height: 1.25; }
-  :global(.h3) .result { margin-top: calc(20 * var(--u)); }
+  /* the colour of importance, under the network */
+  .h2-ramp { position: absolute; left: 0; right: 0; top: calc(830 * var(--u)); display: flex; justify-content: center; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); color: var(--muted); }
+  .h2-ramp i { display: inline-block; width: calc(220 * var(--u)); height: calc(34 * var(--u)); background: linear-gradient(to right, var(--panel), var(--accent)); border: calc(2 * var(--u)) solid var(--line); }
+  .h2-camp { gap: calc(24 * var(--u)); margin-top: calc(20 * var(--u)); }
+  .h2-ex { font-size: calc(46 * var(--u)); font-weight: 700; }
+  .h2-line { font-size: calc(44 * var(--u)); line-height: 1.25; }
+  :global(.h2) .result { margin-top: auto; }
   /* the two kinds of ring, as on the network */
-  .h3-key { display: flex; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); color: var(--muted); }
-  .h3-key i { width: calc(30 * var(--u)); height: calc(30 * var(--u)); border-radius: 50%; flex: none; }
-  .h3-key .amb { border: calc(6 * var(--u)) solid var(--danger); }
-  .h3-key .most { border: calc(4 * var(--u)) dashed var(--ink); margin-left: calc(24 * var(--u)); }
+  .h2-key { display: flex; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); color: var(--muted); margin-top: calc(6 * var(--u)); }
+  .h2-key i { width: calc(30 * var(--u)); height: calc(30 * var(--u)); border-radius: 50%; flex: none; }
+  .h2-key .amb { border: calc(6 * var(--u)) solid var(--danger); }
+  .h2-key .most { border: calc(4 * var(--u)) dashed var(--ink); margin-left: calc(24 * var(--u)); }
 </style>
 
 <script>
   import { slide, sim, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
-  import { axes, dot, px, py, type Plot } from '../../scripts/defence/plot';
-  import { neighbourDegree } from '../../scripts/defence/importance';
   import { type Rule, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
   import { build } from '../../scripts/net';
-  import { parse, mix, css, type RGB } from '../../scripts/palette';
+  import { parse, mix, css } from '../../scripts/palette';
   import clamp from '../../data/defence/clamp.json';
 
   const RULE: Rule = { r: 9, B: 464, S: 488 };
@@ -133,8 +103,8 @@ const knnRho = knnSpearman(clamp);
   const X = (i: number, b: { x: number; w: number }) => b.x + clamp.xy[2 * i] * b.w, Y = (i: number, b: { y: number; h: number }) => b.y + clamp.xy[2 * i + 1] * b.h;
   const radius = (i: number) => 7 + 1.6 * Math.sqrt(clamp.deg[i]);
 
-  /** The network: faint links, then the people, filled when their hand is up; a ringed person last, over the rest, and
-   * a dashed ring in ink round those `dashed` picks. */
+  /** The network: faint links, then the people, filled when they are on; a ringed person last, over the rest, and a
+   * dashed ring in ink round those `dashed` picks. */
   function drawNet(st: NonNullable<ReturnType<typeof stage>>, state: (i: number) => string, ring: (i: number) => string | null, dashed: (i: number) => boolean = () => false) {
     const { ctx, t } = st, b = { x: 30, y: 30, w: st.w - 60, h: st.h - 60 };
     ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -149,167 +119,46 @@ const knnRho = knnSpearman(clamp);
     ctx.setLineDash([]);
   }
 
-  // ── H1: the room, then the network: nobody stubborn (shown at build 1, run at 2), a quiet one (3, 4), an important
-  // one (5, 6) ──
+  // ── H1: the village from the start: a system that converges, nobody stubborn (shown at build 1, run at 2); then a
+  // node forced to be stubborn: a quiet one (3, 4), an important one (5, 6) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.h1')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, out = s.querySelector<HTMLElement>('[data-state]')!;
-    const svg = s.querySelector<SVGSVGElement>('svg.seats')!, seats = Array.from(svg.querySelectorAll<SVGUseElement>('use.seat'));
-    for (const u of seats) { u.setAttribute('href', '#hand-up'); u.classList.replace('down', 'up'); }
-    seats[3 * 8 + 5].setAttribute('href', '#hand-down'); seats[3 * 8 + 5].classList.replace('up', 'stubborn');
+    const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, steps = Array.from(s.querySelectorAll<HTMLElement>('.h1-steps li'));
     const start = Uint8Array.from(clamp.demo.bits, (ch) => +ch), { hi, lo } = clamp.demo;
-    let who = -1, a = start.slice(), b = new Uint8Array(n), tick = 0, cl = new Int8Array(n).fill(-1), done = false, at = 0;
+    let who = -1, a = start.slice(), b = new Uint8Array(n), tick = 0, cl = new Int8Array(n).fill(-1), at = 0;
     function reset(k: number) {
-      who = k; cl.fill(-1); a = start.slice(); tick = 0; done = false;
+      who = k; cl.fill(-1); a = start.slice(); tick = 0;
       if (k >= 0) { cl[k] = 0; a[k] = 0; }
     }
     function paint() {
       const st = stage(c); if (!st) return;
-      const { t } = st;
-      drawNet(st, (i) => (a[i] ? t.ink : t.panel), (i) => (i === who ? t.danger : null));
-      const up = Math.round(density(a) * n);
-      if (at === 0) { out.textContent = ''; return; }
-      out.innerHTML = `timestep ${tick} · ${up} of ${n} hands up` + (done ? (up <= 0 ? '<br><b class="danger">the whole room followed</b>' : who >= 0 ? '<br>nobody else followed' : '<br>consensus: every hand up') : '');
+      drawNet(st, (i) => (a[i] ? st.t.ink : st.t.panel), (i) => (i === who ? st.t.danger : null));
     }
     const advance = () => {
       stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; tick++;
       const r = density(a);
-      if (tick >= 40 || r === 0 || r === 1 || (who >= 0 && r >= 1 - 1.5 / n && tick > 12)) { done = true; return true; }
-      return false;
+      return tick >= 40 || r === 0 || r === 1 || (who >= 0 && r >= 1 - 1.5 / n && tick > 12);
     };
     const run = ticker(s, 3, advance, paint);
-    // ── the room becomes the network (build 0 → 1): the bodies fade while the heads stay, then each head flies to a node
-    // of its own, nearest first, as the links come in; the network's other twenty nodes grow where they are. On a
-    // canvas over both pictures, from where the seats and the network are laid out on screen. ──
-    const mc = s.querySelector<HTMLCanvasElement>('canvas.h1-morph')!, MORPH_MS = 1900;
-    const BODY = new Path2D('M8 128 C8 96 20 74 42 74 C64 74 76 96 76 128 Z'), ARM = new Path2D('M65 93 C80 85 84.5 70 84.5 46');
-    let morph = 1, morphRaf = 0;
-    type Head = { x: number; y: number; w: number; up: boolean; fill: RGB; stroke: RGB; to: number };
-    function morphPaint() {
-      const st = stage(mc); if (!st) return;
-      const { ctx, t } = st, m = mc.getBoundingClientRect(), sv = svg.getBoundingClientRect(), nb = c.getBoundingClientRect(), k = st.s;
-      // the seats (viewBox 880 wide; a seat's pictogram is 84 × 109 at column × 110 + 13, 96 + row × 128 + 8) and the
-      // network's nodes (Stubborn's drawNet: 30 in from its canvas's edges), in the morph canvas's design pixels
-      const q = sv.width / 880 / k, sx = (sv.left - m.left) / k, sy = (sv.top - m.top) / k, nx = (nb.left - m.left) / k, ny = (nb.top - m.top) / k;
-      const box = { x: 30, y: 30, w: nb.width / k - 60, h: nb.height / k - 60 };
-      const heads: Head[] = seats.map((u, i) => {
-        const cs = getComputedStyle(u), col = i % 8, row = Math.floor(i / 8);
-        return { x: sx + (col * 110 + 13) * q, y: sy + (96 + row * 128 + 8) * q, w: 84 * q, up: u.getAttribute('href') === '#hand-up', fill: parse(cs.fill), stroke: parse(cs.stroke), to: -1 };
-      });
-      const node = (j: number) => ({ x: nx + X(j, box), y: ny + Y(j, box) });
-      // nearest first: every head its own node
-      const pairs: [number, number, number][] = [], taken = new Uint8Array(n);
-      heads.forEach((h, i) => { const hx = h.x + 0.42 * h.w, hy = h.y + 0.4 * h.w; for (let j = 0; j < n; j++) { const p = node(j); pairs.push([(p.x - hx) ** 2 + (p.y - hy) ** 2, i, j]); } });
-      pairs.sort((a, b) => a[0] - b[0]);
-      for (const [, i, j] of pairs) if (heads[i].to < 0 && !taken[j]) { heads[i].to = j; taken[j] = 1; }
-      const ink = parse(t.ink), panel = parse(t.panel), muted = parse(t.muted);
-      const frame = () => {
-        const fade = Math.min(1, morph / 0.22), g = Math.max(0, Math.min(1, (morph - 0.22) / 0.78)), e = g < 0.5 ? 2 * g * g : 1 - (-2 * g + 2) ** 2 / 2;
-        // the heads keep their colours in flight and take the start's as they land
-        const land = Math.max(0, Math.min(1, (g - 0.6) / 0.4)), hue = land * land * (3 - 2 * land);
-        ctx.clearRect(0, 0, st.w, st.h);
-        // where every node is now: a head on its way, or one of the twenty that grow in place
-        const px = new Float32Array(n), py = new Float32Array(n);
-        for (let j = 0; j < n; j++) { const p = node(j); px[j] = p.x; py[j] = p.y; }
-        for (const h of heads) { const p = node(h.to), hx = h.x + 0.42 * h.w, hy = h.y + 0.4 * h.w; px[h.to] = hx + (p.x - hx) * e; py[h.to] = hy + (p.y - hy) * e; }
-        if (e > 0) {
-          ctx.globalAlpha = e; ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
-          for (const [i, j] of clamp.edges) { ctx.moveTo(px[i], py[i]); ctx.lineTo(px[j], py[j]); }
-          ctx.stroke(); ctx.globalAlpha = 1;
-        }
-        // the screen and the bodies, fading (a person is 100 × 130 in its pictogram's units)
-        if (fade < 1) {
-          ctx.globalAlpha = 1 - fade; ctx.fillStyle = t.line; ctx.beginPath(); ctx.roundRect(sx + 60 * q, sy + 12 * q, 760 * q, 24 * q, 4 * q); ctx.fill();
-          ctx.fillStyle = t.muted; ctx.font = `${34 * q}px ${t.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('screen', sx + 440 * q, sy + 78 * q); ctx.globalAlpha = 1;
-        }
-        if (fade < 1) for (const h of heads) {
-          ctx.save(); ctx.translate(h.x, h.y); ctx.scale(h.w / 100, h.w / 100); ctx.globalAlpha = 1 - fade;
-          ctx.fillStyle = css(h.fill); ctx.strokeStyle = css(h.stroke);
-          ctx.fill(BODY);
-          if (h.up) { ctx.lineWidth = 12.5; ctx.lineCap = 'round'; ctx.stroke(ARM); ctx.beginPath(); ctx.ellipse(84.5, 31, 10, 14, 0, 0, 2 * Math.PI); ctx.fill(); }
-          else { ctx.lineWidth = 3; ctx.stroke(BODY); }
-          ctx.restore();
-        }
-        // the twenty nodes nobody sat on, growing
-        for (let j = 0; j < n; j++) if (!taken[j] && e > 0) {
-          ctx.beginPath(); ctx.arc(px[j], py[j], radius(j) * e, 0, 2 * Math.PI); ctx.fillStyle = start[j] ? t.ink : t.panel; ctx.fill();
-          ctx.lineWidth = 2; ctx.strokeStyle = t.muted; ctx.stroke();
-        }
-        // the heads, turning into nodes of the start: half of them on
-        for (const h of heads) {
-          const j = h.to, r0 = 0.17 * h.w;
-          ctx.beginPath(); ctx.arc(px[j], py[j], r0 + (radius(j) - r0) * e, 0, 2 * Math.PI);
-          ctx.fillStyle = css(mix(h.fill, start[j] ? ink : panel, hue)); ctx.fill();
-          ctx.lineWidth = (h.up ? 0 : 3 * h.w / 100) * (1 - hue) + 2 * hue; if (ctx.lineWidth > 0.05) { ctx.strokeStyle = css(mix(h.stroke, muted, hue)); ctx.stroke(); }
-        }
-      };
-      return frame;
-    }
-    function becomeNetwork() {
-      const t0 = performance.now();
-      s.classList.add('morphing'); morph = 0;
-      const frame = morphPaint();
-      if (!frame) { stopMorph(); return; }
-      const tick = (now: number) => {
-        morph = Math.min(1, (now - t0) / MORPH_MS); frame();
-        if (morph < 1) morphRaf = requestAnimationFrame(tick); else stopMorph();
-      };
-      frame(); morphRaf = requestAnimationFrame(tick);
-    }
-    function stopMorph() { cancelAnimationFrame(morphRaf); morphRaf = 0; morph = 1; s.classList.remove('morphing'); }
     const nodeAt = (k: number) => (k >= 5 ? hi : k >= 3 ? lo : -1);
     sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [2, 4, 6], { reset() { run.play(false); reset(nodeAt(at)); paint(); }, play() { run.play(true); } });
     slide(s, {
       // going back to a run shows how it ended; the button's waiting builds reset it
       set(k: number, how: How) {
-        const was = at; at = k;
-        stopMorph();
-        if (k === 1 && was === 0 && how === 'next') becomeNetwork();
+        at = k;
+        steps[0].classList.toggle('past', k >= 3);
         if (nodeAt(k) !== who || how !== 'next') { run.play(false); reset(nodeAt(k)); if (how === 'prev' && k % 2 === 0 && k > 0) while (!advance()); }
         paint();
       },
       enter() { reset(-1); },
-      leave() { run.play(false); stopMorph(); },
+      leave() { run.play(false); },
     });
     onSize(c, paint);
   }
 
-  // ── H2: everyone's importance on the network; its spread, as a share of the nodes; then against two measures of the
-  // same network's structure: the degree, which goes with it, and the average degree of a node's neighbours, which
-  // does not (./importance) ──
+  // ── H2: everyone's importance on the village, with its colour scale under it (build 0); a health campaign: the three
+  // most important ringed in red, as stubborn nodes are, and the three with the most contacts in dashed rings (build 1);
+  // our result (2) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.h2')) {
-    const nc = s.querySelector<HTMLCanvasElement>('canvas.net')!, hc = s.querySelector<HTMLCanvasElement>('canvas.hist')!;
-    const [dc, kc] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.scatter'));
-    // the importance axis: none to a little over the village's highest score
-    const eta = clamp.eta, top = Math.max(...eta), knn = neighbourDegree(clamp), HI = 0.6;
-    onSize(nc, () => {
-      const st = stage(nc); if (!st) return;
-      const lo = parse(st.t.panel), hiC = parse(st.t.accent);
-      drawNet(st, (i) => css(mix(lo, hiC, eta[i] / top)), () => null);
-    });
-    onSize(hc, () => {
-      const st = stage(hc); if (!st) return;
-      const bins = 16, pct = new Array(bins).fill(0);
-      for (const v of eta) pct[Math.min(bins - 1, Math.floor((v / HI) * bins))] += 100 / n;
-      const most = Math.ceil(Math.max(...pct) / 10) * 10;
-      const p: Plot = { x: 150, y: 20, w: st.w - 180, h: st.h - 130, x0: 0, x1: HI, y0: 0, y1: most * 1.05 };
-      axes(st, p, { xticks: [[0, 'none'], [HI, 'high']], yticks: [[0, '0'], [most, String(most)]], xname: 'importance', yname: '% nodes' });
-      pct.forEach((v, b) => { st.ctx.fillStyle = st.t.accent; st.ctx.fillRect(px(p, (b * HI) / bins) + 2, py(p, v), (p.w / bins) - 4, py(p, 0) - py(p, v)); });
-    });
-    // the right-hand plot shares the left one's importance axis, so it leaves out its ticks and name
-    const scatter = (c: HTMLCanvasElement, xs: ArrayLike<number>, x0: number, x1: number, xticks: [number, string][], xname: string, left: boolean) => onSize(c, () => {
-      const st = stage(c); if (!st) return;
-      const p: Plot = { x: left ? 150 : 40, y: 20, w: st.w - (left ? 180 : 70), h: st.h - 130, x0, x1, y0: 0, y1: HI * 1.06 };
-      axes(st, p, { xticks, yticks: left ? [[0, 'none'], [HI, 'high']] : [], xname, yname: left ? 'importance' : '' });
-      for (let i = 0; i < n; i++) dot(st, px(p, xs[i]), py(p, eta[i]), 7, st.t.accent);
-    });
-    scatter(dc, clamp.deg, 0, Math.max(...clamp.deg) + 2, [[5, '5'], [10, '10'], [15, '15'], [20, '20']], 'degree', true);
-    scatter(kc, knn, 3, 17, [[5, '5'], [10, '10'], [15, '15']], 'average neighbour degree', false);
-  }
-
-  // ── H3: the village, plain (build 0); every villager in the colour of their importance under the stand-in rule, the
-  // scores of H2 (build 1); the three most important ringed in red, as stubborn nodes are, and the three with the most
-  // contacts in dashed rings (build 2); our result (3) ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.h3')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, eta = clamp.eta, top = Math.max(...eta);
     const three = new Set(eta.map((_, i) => i).sort((a, b) => eta[b] - eta[a]).slice(0, 3));
     const busiest = new Set(clamp.deg.map((_, i) => i).sort((a, b) => clamp.deg[b] - clamp.deg[a] || a - b).slice(0, 3));
@@ -317,7 +166,7 @@ const knnRho = knnSpearman(clamp);
     const paint = () => {
       const st = stage(c); if (!st) return;
       const lo = parse(st.t.panel), hiC = parse(st.t.accent);
-      drawNet(st, (i) => (at >= 1 ? css(mix(lo, hiC, eta[i] / top)) : st.t.panel), (i) => (at >= 2 && three.has(i) ? st.t.danger : null), (i) => at >= 2 && busiest.has(i));
+      drawNet(st, (i) => css(mix(lo, hiC, eta[i] / top)), (i) => (at >= 1 && three.has(i) ? st.t.danger : null), (i) => at >= 1 && busiest.has(i));
     };
     slide(s, { set(b: number) { at = b; paint(); } });
     onSize(c, paint);

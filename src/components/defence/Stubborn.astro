@@ -103,7 +103,8 @@ import clamp from '../../data/defence/clamp.json';
   const RULE: Rule = { r: 9, B: 464, S: 488 };
   const n = clamp.deg.length, net = build('ba', n, clamp.edges as [number, number][]);
   const X = (i: number, b: { x: number; w: number }) => b.x + clamp.xy[2 * i] * b.w, Y = (i: number, b: { y: number; h: number }) => b.y + clamp.xy[2 * i + 1] * b.h;
-  const radius = (i: number) => 7 + 1.6 * Math.sqrt(clamp.deg[i]);
+  // every node the same size (as large as one of eight contacts was, the village's average): the hubs show by their links
+  const RADIUS = 11.5;
 
   /** The network: faint links, then the people, filled when they are on; a ringed person last, over the rest, and a
    * dashed ring in ink round those `dashed` picks. */
@@ -113,11 +114,11 @@ import clamp from '../../data/defence/clamp.json';
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i, b), Y(i, b)); ctx.lineTo(X(j, b), Y(j, b)); }
     ctx.stroke();
     const circle = (i: number, r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
-    const person = (i: number) => { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), radius(i), 0, 2 * Math.PI); ctx.fillStyle = state(i); ctx.fill(); circle(i, radius(i), 2, t.muted); };
+    const person = (i: number) => { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), RADIUS, 0, 2 * Math.PI); ctx.fillStyle = state(i); ctx.fill(); circle(i, RADIUS, 2, t.muted); };
     for (let i = 0; i < n; i++) if (!ring(i)) person(i);
-    for (let i = 0; i < n; i++) { const r = ring(i); if (r) { person(i); circle(i, radius(i) + 10, 13, t.panel); circle(i, radius(i) + 10, 6, r); } }
+    for (let i = 0; i < n; i++) { const r = ring(i); if (r) { person(i); circle(i, RADIUS + 10, 13, t.panel); circle(i, RADIUS + 10, 6, r); } }
     ctx.setLineDash([9, 7]);
-    for (let i = 0; i < n; i++) if (dashed(i)) { circle(i, radius(i) + 10, 11, t.panel); circle(i, radius(i) + 10, 4, t.ink); }
+    for (let i = 0; i < n; i++) if (dashed(i)) { circle(i, RADIUS + 10, 11, t.panel); circle(i, RADIUS + 10, 4, t.ink); }
     ctx.setLineDash([]);
   }
 

@@ -121,7 +121,7 @@ const halves = [
   <Logos />
   <p slot="say">The title once more, in two halves: the rich landscape is what we see, the behaviour; iterated simplicity is what we write down, the rule. This thesis brought those two worlds a little closer together.</p>
   <p slot="say">Thank you. The colours drain out of the landscape, as on the still-life slide: every cell simply alive or dead, and nothing changes. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
-  <p slot="say">The last click takes away one cell (ringed in red for a moment), and the still life breaks down, as on the still-life slide: the debris spreads over the landscape for about a minute, then slows down and comes to rest. Where it comes near the words and the logos it is faded, so they stay readable.</p>
+  <p slot="say">The last click takes away one cell, and the still life breaks down, as on the still-life slide: the debris spreads over the landscape and keeps going while the slide is up. Where it comes near the words and the logos it is faded, so they stay readable.</p>
 </Slide>
 
 <style>
@@ -307,19 +307,20 @@ const halves = [
     } satisfies Act;
   })();
 
-  /** The village (clamp.json) in a square canvas of any size, nodes coloured by `fill`, those in `ring` ringed in red,
+  /** The village (clamp.json) in a square canvas of any size, every node the same size (as on the impact slides) and
+   * coloured by `fill`, those in `ring` ringed in red,
    * drawn last on a cream halo, over their neighbours. */
   function drawVillage(st: Stage, fill: (i: number) => string, ring: number | number[] = []) {
     const { ctx, t } = st, s = Math.min(st.w, st.h), k = s / 700, pad = 20 * k, bx = { x: (st.w - s) / 2 + pad, y: (st.h - s) / 2 + pad, w: s - 2 * pad, h: s - 2 * pad };
-    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = (i: number) => k * (7 + 1.6 * Math.sqrt(clamp.deg[i]));
+    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = 11.5 * k;
     const rings = typeof ring === 'number' ? [ring] : ring;
     const ringed = (i: number, r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
-    const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R(i), 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * k); ctx.strokeStyle = t.muted; ctx.stroke(); };
+    const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R, 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * k); ctx.strokeStyle = t.muted; ctx.stroke(); };
     ctx.strokeStyle = t.line; ctx.lineWidth = Math.max(1, 1.5 * k); ctx.beginPath();
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
     ctx.stroke();
     for (let i = 0; i < clamp.deg.length; i++) if (!rings.includes(i)) node(i);
-    for (const i of rings) { node(i); ringed(i, R(i) + 9 * k + 2, 13 * k + 3, t.panel); ringed(i, R(i) + 9 * k + 2, 6 * k + 2, t.danger); }
+    for (const i of rings) { node(i); ringed(i, R + 9 * k + 2, 13 * k + 3, t.panel); ringed(i, R + 9 * k + 2, 6 * k + 2, t.danger); }
   }
 
   // impact analysis: one stubborn person after another (clamp.json's cycle: the best-connected, the most important, a
@@ -546,18 +547,15 @@ const halves = [
   }
 
   // ── I3: the slogan's two halves come together over the landscape; then thanks, and the colours drain away as on
-  // slide C3; the last click (build 3) takes away one cell, ringed in red for a moment, and the Game of Life breaks the
-  // still life down: ten generations a second for a minute, then slower and slower until it stands still, so nothing
-  // flickers behind the questions. Cells near the words and the logos are faded, as on C3 behind its note ──
+  // slide C3; the last click (build 3) takes away one cell, and the Game of Life breaks the still life down, ten
+  // generations a second until the slide is left. Cells near the words and the logos are faded, as on C3 behind its note ──
   const m = decodeMosaic(mosaicData as MosaicJson);
   const spot = (BREAK.y + m.M) * m.PW + BREAK.x + m.M;
-  // a minute at full speed, then 30 generations more, each slower than the one before (about ten seconds)
-  const RUN = 600, EASE = 30;
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, bg = getComputedStyle(c).getPropertyValue('--bg').trim(), draw = mosaicPainter(m, '#0c2448', bg);
     const near = Array.from(s.querySelectorAll<HTMLElement>('.half, .worlds, .ty, .qr, .url, .small, .logos img'));
-    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0, idle = 0, taken = false, stop = () => {};
-    const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; idle = 0; taken = false; };
+    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), taken = false, stop = () => {};
+    const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); taken = false; };
     const paint = () => {
       const st = stage(c); if (!st) return;
       draw(st.ctx, live, 0, 0, st.w, st.h);
@@ -570,17 +568,8 @@ const halves = [
         ctx.roundRect((r.left - box.left) * k - 16, (r.top - box.top) * k - 12, r.width * k + 32, r.height * k + 24, 24);
       }
       ctx.fill(); ctx.globalAlpha = 1;
-      // the taken cell, ringed for a second; the ring fades over the next
-      if (taken && gens < 20) {
-        ctx.globalAlpha = Math.min(1, (20 - gens) / 10); ctx.strokeStyle = st.t.danger; ctx.lineWidth = 6; ctx.beginPath();
-        ctx.arc(((BREAK.x + 0.5) * st.w) / m.W, ((BREAK.y + 0.5) * st.h) / m.H, 34, 0, 2 * Math.PI); ctx.stroke(); ctx.globalAlpha = 1;
-      }
     };
-    const run = ticker(s, 10, () => {
-      if (gens >= RUN && ++idle < 1 + Math.floor((gens - RUN) / 5)) return false;
-      idle = 0; gens++; life.step(live);
-      return gens >= RUN + EASE;
-    }, paint);
+    const run = ticker(s, 10, () => { life.step(live); return false; }, paint);
     slide(s, {
       set(b: number, how: How) {
         s.classList.toggle('together', b >= 1); s.classList.toggle('thanked', b >= 2);

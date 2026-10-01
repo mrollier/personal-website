@@ -269,11 +269,16 @@ import { agree, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
   for (const c of mission.candidates) { near(c.bs8, sensitivity(R9(c.B, c.S), 8).BS, 6e-4, 'consensus.json bs8'); near(c.slope, slope(R9(c.B, c.S)), 6e-4, 'consensus.json slope'); }
   const steepest = k27.reduce((a, r) => (slope(r) > slope(a) ? r : a)); assert.deepEqual([steepest.B, steepest.S], [480, 496]);
   near(sensitivity(R9(480, 496), 8).BS, 2.46, 5e-3, 'BS8 of the threshold rule'); near(sensitivity(R9(488, 464), 8).BS, 6.398, 5e-4, 'BS8 of the winner');
-  const again = (rule: Rule, netSeed: number, startSeed: number) => agree(lattice(30, 8, 0.2, makeRng(netSeed)), rule, randomState(900, 0.5, makeRng(startSeed)));
+  const again = (rule: Rule, netSeed: number, startSeed: number, limit?: number) => agree(lattice(30, 8, 0.2, makeRng(netSeed)), rule, randomState(900, 0.5, makeRng(startSeed)), limit);
   const dv = again(WINNER, mission.demo.netSeed, mission.demo.startSeed); assert.ok(dv.ok); assert.equal(dv.tick, mission.demo.tick);
   assert.deepEqual(again(THRESHOLD, mission.demo.netSeed, mission.demo.startSeed), mission.demo.threshold);
   for (const [rule, ts] of [[WINNER, mission.trials.winner], [THRESHOLD, mission.trials.threshold]] as const) for (const t of ts) assert.deepEqual(again(rule, t.netSeed, t.startSeed), { ok: t.ok, tick: t.tick });
   assert.equal(mission.summary.winnerTrials, 19); assert.equal(mission.summary.thresholdTrials, 0); // as the say slot of F7 tells
+  // F5's race, as its say slot tells: all 27 on the demo grid from the demo start, for at most 100 rounds; three agree,
+  // the winner among them, and the threshold rule is stuck from round 10
+  const race = (mission.candidates as Rule[]).map((c) => ({ c, v: again(R9(c.B, c.S), mission.demo.netSeed, mission.demo.startSeed, 100) }));
+  assert.deepEqual(race.filter((x) => x.v.ok).map((x) => `${x.c.B},${x.c.S}`).sort(), ['368,482', '432,484', '488,464'], 'F5: who agrees');
+  assert.deepEqual(race.find((x) => x.c.B === THRESHOLD.B && x.c.S === THRESHOLD.S)!.v, { ok: false, tick: 10 }, 'F5: the threshold rule');
   // the metrics slides' red lines, as their say slots quote them: Life unstable near a fifth with slope 1.7, sensitivity
   // about three; the consensus-seeker unstable at ½, sensitivity over six; the defect tangent is the Boolean sensitivity
   const life = R9(8, 12), tan = (rule: Rule, kind: Kind) => tangentOf(curveOf(rule, kind), kind)!;

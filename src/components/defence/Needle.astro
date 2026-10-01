@@ -1,31 +1,36 @@
 ---
-// F5 and F7, the mission of Ch. 6: from a random start, after a while every node the same colour. F5: all 262 144
-// rules, the 512 that are their own cousin (either colour may win), and the 27 whose average next density moves away
-// from half and half, found without a simulation; then how sensitive the 27 are: the simple threshold rule is one of
-// them and gets stuck, the winner is among the most sensitive. F7: the winner at work on a rewired grid, the threshold
-// rule on the same start, and twenty fresh networks. Data: src/data/defence/consensus.json (scripts/defence/precompute.ts);
-// the run and its verdict: src/scripts/defence/agree.ts.
+// F5 and F7, the mission of Ch. 6: from a random start, after a while every node the same colour. F5: a funnel of
+// numbers, all 262 144 rules, the 512 that are their own cousin (either colour may win) and the 27 whose average next
+// density moves away from half and half, found without a simulation; then all 27 race on one rewired grid from one start
+// (the network and start of F7), within the thesis's 100 rounds: a few agree, the simple threshold rule is stuck. F7:
+// the winner at work on that grid, the threshold rule on the same start, and twenty fresh networks. Data:
+// src/data/defence/consensus.json (scripts/defence/precompute.ts); the run and its verdict: src/scripts/defence/agree.ts.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { texify, phi } from './tex';
 ---
 <Slide id="ch-synchronisation" label="Can the rule predict the behaviour?" builds={4} class="f5" ch={6}>
+  <h2>Can the rule predict the behaviour?</h2>
+  <p class="lede">The mission: after a while, all nodes the same colour.</p>
   <div class="row grow f5-row">
-    <canvas class="rules" aria-label="Every one of the 262 144 rules as one pixel: where it is born down, where it survives across"></canvas>
-    <div class="col f5-side">
-      <h2>Can the rule predict the behaviour?</h2>
-      <p class="lede">The mission: after a while, all nodes the same colour.</p>
-      <ol class="steps">
-        <li data-b="1"><b>262 144</b> rules, one pixel each</li>
-        <li data-b="2"><b>512</b> are their own cousin: either colour can win</li>
-        <li data-b="3"><b>27</b> move away from half and half, found <b>without a single simulation</b></li>
-      </ol>
-      <canvas class="sens" data-b="4" aria-label="The 27 from less to more sensitive: the simple threshold rule near the low end, the winner near the high end"></canvas>
+    <div class="funnel">
+      <div class="tier" data-b="1"><b>262&#8239;144</b><span>every rule</span></div>
+      <div class="tier" data-b="2"><b>512</b><span>treat on and off alike</span></div>
+      <div class="tier last" data-b="3"><b>27</b><span>move away from half and half</span></div>
+      <p class="nosim" data-b="3">without a single simulation</p>
+    </div>
+    <div class="race" data-b="3">
+      <p class="race-head">The 27, run from the same start</p>
+      <div class="race-box">
+        <canvas class="tiles" aria-label="The 27 rules, each on the same rewired grid of 900 nodes from the same start"></canvas>
+        <SimButton class="f5-btn" />
+      </div>
+      <p class="race-key"><span class="key thr">simple threshold</span><span class="key win">the winner</span><b data-count></b></p>
     </div>
   </div>
   <p slot="say">Can we really use what a rule looks like to predict what it will do? A test, in the form of a mission: from a random start, after a while every node should have the same colour, all on or all off. The obvious candidates are threshold rules: do what most of your neighbours do. On a network they get stuck, in patches that each agree with themselves but never with each other.</p>
-  <p slot="say" set:html={texify('Here are all 262 144 rules at resolution 9, one pixel each. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: it must be its own cousin. That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Now we can afford to run every one of them.')} />
-  <p slot="say" set:html={texify('Running them shows what else matters, and the last picture puts the 27 in a row from less to more sensitive. The simple threshold rule is one of the 27: it even moves away from half and half the fastest of all, and still it gets stuck. The rules that work best are among the most sensitive: one neighbour more or less often changes what a node does, and that kicks it out of a local standoff. The best of them, $\\phi^9_{488,464}$, brought more than 96% of the rewired grids of the thesis (eight neighbours each) to agreement; most of the 27 do far worse, which is why we still simulate (Chapter 6, Physica D 2025).')} />
+  <p slot="say" set:html={texify('There are 262 144 rules at resolution 9. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: it must be its own cousin. That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation.')} />
+  <p slot="say" set:html={texify('Now we can afford to run every one of them. Here all 27 run on the same grid of 900 nodes, a fifth of its links rewired, from the same random start, for at most 100 rounds, as in the thesis. Most of them freeze in patches within a few rounds, or keep churning, and fade; the simple threshold rule is stuck from round 10. Three reach agreement. Run over hundreds of networks, one of them is clearly the best: $\phi^9_{488,464}$, which brought more than 96% of the rewired grids of the thesis to agreement. It is among the most sensitive of the 27, but sensitivity alone is not enough: the filter narrows the search down, and only a run decides (Chapter 6, Physica D 2025).')} />
 </Slide>
 
 <Slide label="Watch it work" builds={3} class="f7" ch={6}>
@@ -48,16 +53,38 @@ import { texify, phi } from './tex';
       <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262 144, without a single simulation. The best one brings most networks to agreement.</p>
     </div>
   </div>
-  <p slot="say">The winner at work, on a grid of 900 nodes in which a fifth of the links have been rewired (eight neighbours each), from a random start with half of the nodes on. Patches form and fight, and from round 31 every node is on. The curve on the right is the share of nodes that are on, round by round.</p>
+  <p slot="say">The winner at work, on the grid of the race (900 nodes, eight neighbours each, a fifth of the links rewired), from the same random start with half of the nodes on. Patches form and fight, and from round 31 every node is on. The curve on the right is the share of nodes that are on, round by round.</p>
   <p slot="say">The buttons switch to the simple threshold rule, on the same network from the same start: within a dozen rounds it freezes into patches, each content with its own majority, a few nodes blinking at the borders. Then twenty fresh networks, each with its own start, for whichever rule is chosen: the winner brings 19 of the 20 to agreement, the threshold rule none. These grids are a small illustration; the thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks.</p>
 </Slide>
 
 <style>
-  .f5-row { gap: calc(60 * var(--u)); align-items: center; }
-  .rules { width: calc(860 * var(--u)); height: calc(900 * var(--u)); flex: none; }
-  .f5-side { gap: calc(30 * var(--u)); flex: 1; }
-  .steps { gap: calc(22 * var(--u)); font-size: calc(36 * var(--u)); }
-  .sens { width: 100%; height: calc(190 * var(--u)); }
+  .f5-row { gap: calc(64 * var(--u)); align-items: flex-start; }
+  .funnel { width: calc(640 * var(--u)); flex: none; display: flex; flex-direction: column; align-items: center; }
+  .tier { display: flex; flex-direction: column; align-items: center; padding: calc(12 * var(--u)) calc(20 * var(--u)); border: calc(3 * var(--u)) solid var(--line); background: var(--panel); position: relative; }
+  .tier:nth-child(1) { width: 100%; }
+  .tier:nth-child(2) { width: 88%; }
+  .tier:nth-child(3) { width: 78%; }
+  .tier b { font-size: calc(68 * var(--u)); line-height: 1.05; }
+  .tier span { font-size: calc(30 * var(--u)); color: var(--muted); text-align: center; white-space: nowrap; }
+  .tier + .tier { margin-top: calc(40 * var(--u)); }
+  /* the funnel narrows: an arrow down into each tier */
+  .tier + .tier::before { content: ''; position: absolute; top: calc(-36 * var(--u)); left: 50%; transform: translateX(-50%); border: calc(15 * var(--u)) solid transparent; border-top-color: var(--accent); }
+  .tier.last { background: var(--ink); border-color: var(--ink); color: var(--sun); }
+  .tier.last span { color: var(--sun); opacity: 0.85; }
+  .nosim { font-size: calc(38 * var(--u)); font-weight: 700; margin-top: calc(24 * var(--u)); }
+  .race { flex: 1; display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+  .race-head { font-size: calc(34 * var(--u)); color: var(--muted); }
+  .race-box { position: relative; }
+  .tiles { width: calc(1010 * var(--u)); height: calc(584 * var(--u)); }
+  .race-box :global(.f5-btn) { right: calc(-6 * var(--u)); bottom: calc(10 * var(--u)); }
+  .race-key { font-size: calc(32 * var(--u)); display: flex; align-items: center; gap: calc(36 * var(--u)); }
+  .key { display: inline-flex; align-items: center; gap: calc(12 * var(--u)); }
+  .key::before { content: ''; width: calc(26 * var(--u)); height: calc(26 * var(--u)); border: calc(4 * var(--u)) solid var(--ink); }
+  .key.win::before { border-color: var(--danger); border-width: calc(5 * var(--u)); }
+  .key.win { color: var(--danger); font-weight: 700; }
+  [data-count] { margin-left: auto; font-size: calc(40 * var(--u)); }
+  .key.win, [data-count] { transition: opacity 0.4s ease; }
+  :global(.f5:not(.raced)) .key.win, :global(.f5:not(.raced)) [data-count] { opacity: 0; }
 
   .f7-row { gap: calc(60 * var(--u)); align-items: center; }
   .f7-box { position: relative; flex: none; }
@@ -81,64 +108,72 @@ import { texify, phi } from './tex';
 <script>
   import { slide, sim, buildOf } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
-  import { axes, curve, dot, label, line, px, py, type Plot } from '../../scripts/defence/plot';
+  import { axes, curve, label, px, py, type Plot } from '../../scripts/defence/plot';
   import { makeRng, lattice } from '../../scripts/net';
-  import { type Rule, randomState, density, mirror } from '../../scripts/llna';
-  import { agreement, WINNER, THRESHOLD, type Agreement } from '../../scripts/defence/agree';
-  import { Raster } from '../../scripts/raster';
-  import { parse, mix } from '../../scripts/palette';
+  import { type Rule, randomState, density } from '../../scripts/llna';
+  import { agreement, WINNER, THRESHOLD, type Agreement, type Outcome } from '../../scripts/defence/agree';
+  import { parse } from '../../scripts/palette';
   import data from '../../data/defence/consensus.json';
 
   const cands = data.candidates as { B: number; S: number; bs8: number; slope: number }[];
   const is = (c: { B: number; S: number }, r: Rule) => c.B === r.B && c.S === r.S;
+  // the rewired grid of the mission (eight neighbours each, a fifth of the links rewired) and the start, for F5 and F7
+  const SIDE = 30, P_REWIRE = 0.2, demo = data.demo;
+  const demoNet = () => lattice(SIDE, 8, P_REWIRE, makeRng(demo.netSeed)), demoStart = () => randomState(SIDE * SIDE, 0.5, makeRng(demo.startSeed));
 
-  // ── F5: the rule space, one pixel per rule; then the 512, the 27, and the 27 by how sensitive they are ──
+  // ── F5: a funnel of numbers; then the 27 race on the same grid from the same start, ten rounds a second, for at most
+  // the thesis's 100 rounds. A tile that reaches agreement is framed; one that freezes or is still churning at the end
+  // fades. The simple threshold rule is ringed from the start, the winner once the race is over. The start is fixed:
+  // the speaker text quotes the outcome, and F7 replays two of the tiles. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f5')) {
-    const [c, sc] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas')), ras = new Raster(512, 512);
-    let at = 0;
+    const c = s.querySelector<HTMLCanvasElement>('canvas.tiles')!, count = s.querySelector<HTMLElement>('[data-count]')!;
+    const COLS = 7, GAP = 22, PAD = 12, LIMIT = 100;
+    const net = demoNet(), first = demoStart();
+    let runs: Agreement[] = [], verdict: (Outcome | null)[] = [];
+    // one 30 × 30 bitmap per tile, scaled up without smoothing: square cells
+    const bits = cands.map(() => { const o = document.createElement('canvas'); o.width = o.height = SIDE; return o; });
+    const over = () => {
+      const done = verdict.every(Boolean);
+      s.classList.toggle('raced', done);
+      count.textContent = done ? `${verdict.filter((v) => v!.ok).length} of 27 agree` : '';
+    };
+    const reset = () => { runs = cands.map((r) => agreement(net, { r: 9, B: r.B, S: r.S }, first, LIMIT)); verdict = runs.map(() => null); over(); };
     function paint() {
       const st = stage(c); if (!st) return;
-      const { ctx, t } = st, side = Math.min(st.w - 60, st.h - 80), x0 = 60, y0 = 60;
-      ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(x0 - 1, y0 - 1, side + 2, side + 2);
-      label(st, 'where it survives →', x0, y0 - 30, { size: 28, color: t.muted });
-      ctx.save(); ctx.translate(x0 - 22, y0); ctx.rotate(Math.PI / 2); label(st, 'where it is born →', 0, 0, { size: 28, color: t.muted }); ctx.restore();
-      if (at < 1) return;
-      const faint = mix(parse(t.panel), parse(t.line), at >= 2 ? 0.4 : 0.75);
-      ras.fill(faint); ras.flush(); ras.blit(ctx, { x: x0, y: y0, w: side, h: side }, true);
-      const k = side / 512, at2 = (B: number, S: number) => [x0 + (S + 0.5) * k, y0 + (B + 0.5) * k];
-      // their own cousin: survive is the complement of born read backwards
-      if (at >= 2) for (let B = 0; B < 512; B++) { const [x, y] = at2(B, 511 & ~mirror(B, 9)); dot(st, x, y, 3.2, t.accent); }
-      if (at >= 3) for (const r of cands) { const [x, y] = at2(r.B, r.S); dot(st, x, y, 9, 'rgba(0,0,0,0)', t.danger); }
-      if (at >= 4) { const [x, y] = at2(WINNER.B, WINNER.S); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); }
+      const { ctx, t } = st, T = (st.w - 2 * PAD - (COLS - 1) * GAP) / COLS;
+      const on = parse(t.ink), off = parse(t.panel), done = verdict.every(Boolean);
+      ctx.imageSmoothingEnabled = false;
+      cands.forEach((r, i) => {
+        const x = PAD + (i % COLS) * (T + GAP), y = PAD + Math.floor(i / COLS) * (T + GAP), v = verdict[i], a = runs[i].state;
+        const o = bits[i], octx = o.getContext('2d')!, img = octx.createImageData(SIDE, SIDE);
+        for (let k = 0; k < a.length; k++) { const col = a[k] ? on : off; img.data[4 * k] = col[0]; img.data[4 * k + 1] = col[1]; img.data[4 * k + 2] = col[2]; img.data[4 * k + 3] = 255; }
+        octx.putImageData(img, 0, 0);
+        ctx.globalAlpha = v && !v.ok ? 0.22 : 1;
+        ctx.drawImage(o, x, y, T, T);
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, T, T);
+        ctx.globalAlpha = 1;
+        if (v?.ok) { ctx.strokeStyle = t.accent; ctx.lineWidth = 6; ctx.strokeRect(x - 3, y - 3, T + 6, T + 6); }
+        if (is(r, THRESHOLD)) { ctx.strokeStyle = t.ink; ctx.lineWidth = 4; ctx.strokeRect(x - 8, y - 8, T + 16, T + 16); }
+        if (is(r, WINNER) && done) { ctx.strokeStyle = t.danger; ctx.lineWidth = 5; ctx.strokeRect(x - 8, y - 8, T + 16, T + 16); }
+      });
     }
-    // the 27 in a row, from less to more sensitive (Boolean sensitivity at eight neighbours), equal ones stacked
-    function paintSens() {
-      const st = stage(sc); if (!st) return;
-      const { t } = st, x0 = 30, x1 = st.w - 40, y = 98, lo = 1, hi = 7.2, X = (v: number) => x0 + ((v - lo) / (hi - lo)) * (x1 - x0);
-      line(st, x0, y, x1, y, t.muted, 2);
-      st.ctx.fillStyle = t.muted; st.ctx.beginPath(); st.ctx.moveTo(x1 + 18, y); st.ctx.lineTo(x1, y - 9); st.ctx.lineTo(x1, y + 9); st.ctx.fill();
-      label(st, 'more sensitive', x1 + 18, y + 48, { size: 28, color: t.muted, align: 'right' });
-      const seen = new Map<number, number>();
-      const named = (r: Rule) => is(r, WINNER) || is(r, THRESHOLD); // these two sit on the line
-      for (const r of [...cands].sort((x, y) => +named(y) - +named(x))) {
-        const key = Math.round(r.bs8 * 20), n = seen.get(key) ?? 0; seen.set(key, n + 1);
-        const yy = y + (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 15;
-        const color = is(r, WINNER) ? t.danger : is(r, THRESHOLD) ? t.ink : t.line;
-        dot(st, X(r.bs8), yy, is(r, WINNER) || is(r, THRESHOLD) ? 12 : 8, color);
-      }
-      const th = cands.find((r) => is(r, THRESHOLD))!, wi = cands.find((r) => is(r, WINNER))!;
-      label(st, 'simple threshold: stuck', X(th.bs8), y + 52, { size: 30, weight: 600, align: 'center' });
-      label(st, 'the winner', X(wi.bs8), y - 46, { size: 30, weight: 700, color: t.danger, align: 'center' });
-    }
-    slide(s, { set(b) { at = b; paint(); } });
-    onSize(c, paint); onSize(sc, paintSens);
+    const race = ticker(s, 10, () => {
+      runs.forEach((r, i) => { if (!verdict[i]) verdict[i] = r.next(); });
+      const done = verdict.every(Boolean);
+      if (done) over();
+      return done;
+    }, paint);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 4, { reset() { race.play(false); reset(); paint(); }, play() { race.play(true); } });
+    slide(s, { leave() { race.play(false); } });
+    reset();
+    onSize(c, paint);
   }
 
   // ── F7: the winner (or the threshold rule) on a rewired grid; then twenty fresh networks ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f7')) {
     const [grid, trace] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
-    const side = 30, N = side * side, p = 0.2, demo = data.demo;
-    const net = lattice(side, 8, p, makeRng(demo.netSeed)), first = randomState(N, 0.5, makeRng(demo.startSeed));
+    const side = SIDE, N = side * side, p = P_REWIRE;
+    const net = demoNet(), first = demoStart();
     const RULES: Record<string, Rule> = { winner: WINNER, threshold: THRESHOLD };
     const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
     let pick = 'winner', run: Agreement, rho: number[] = [], end: { ok: boolean; tick: number } | null = null;

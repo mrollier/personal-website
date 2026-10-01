@@ -1,11 +1,11 @@
 ---
-// G2 and G4, network classification (Ch. 9). G2: one rule on the talk's three networks (src/scripts/defence/trio.ts),
-// running; under each network its fingerprint, three histograms computed live from the last rounds (./print): the
-// Shannon entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them, and the
-// neighbourhood density that Ch. 9 used; then a fingerprint over each, and the message: we look for rules whose
-// fingerprints differ. A switch (and build 4) puts a consensus-seeking rule in the place of Miranda et al.'s rule: every
-// network agrees, and the three fingerprints become one. G4: the same two rules, every change of answer marked:
-// jaggedness, our result, and the bridge to what consensus-seeking rules are good for instead.
+// G2 and G4, network classification (Ch. 9). G2: one rule on the talk's three networks (src/scripts/defence/trio.ts);
+// under each network three histograms, empty until ▶, then computed live from the last rounds (./print): the Shannon
+// entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them, and the neighbourhood
+// density that Ch. 9 used; then a fingerprint in their place (a whorl, a loop, a tented arch), and the message: we look
+// for rules whose fingerprints differ. A switch (and build 4) puts a consensus-seeking rule in the place of Miranda et
+// al.'s rule: every network agrees, and the three fingerprints become one (a plain arch). G4: the same two rules, every
+// change of answer marked: jaggedness, our result, and the bridge to what consensus-seeking rules are good for instead.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { phi } from './tex';
@@ -24,27 +24,9 @@ const sides = [
   { x: { r: 9, B: 170, S: 340 }, name: 'Miranda et al.’s rule' },
 ];
 
-// A fingerprint, drawn: eight ridges looping over the top round one core, each broken in a place or two. Every variant
-// has the same design and a print of its own (another core, tilt, and breaks).
-function print(v: number): string {
-  let seed = 977 + 131 * v;
-  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  const cx = 50 + [-3, 4, 1][v], cy = 66 + [2, -3, 5][v], out: string[] = [];
-  for (let i = 0; i < 8; i++) {
-    const rx = 6 + i * 5.4, ry = rx * 1.28, below = 0.5 - i * 0.035 + (rnd() - 0.5) * 0.2;
-    const gaps = Array.from({ length: i > 1 ? 1 + (rnd() < 0.5 ? 1 : 0) : 0 }, () => [-below + rnd() * (Math.PI + 2 * below), 0.22 + rnd() * 0.18]);
-    let pen = false, d = '';
-    for (let k = 0; k <= 48; k++) {
-      const th = -below + (k / 48) * (Math.PI + 2 * below), x = cx + rx * Math.cos(th), y = cy - ry * Math.sin(th);
-      const cut = gaps.some(([g, w]) => th > g && th < g + w);
-      if (cut) { pen = false; continue; }
-      d += `${pen ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`; pen = true;
-    }
-    out.push(d);
-  }
-  return out.join('');
-}
-const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
+// G2's fingerprints, one textbook pattern per network (src/scripts/defence/fingerprint.ts); all three become a plain
+// arch once the networks look alike
+const kinds = ['whorl', 'loop', 'tented'];
 ---
 <Slide id="ch-classification" label="Which network is this?" builds={4} class="g2" ch={9}>
   <div class="g2-head">
@@ -58,7 +40,7 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
     <p data-b="3">We look for rules whose fingerprints are clearly <b>different</b>.</p>
   </div>
   <div class="g2-grid">
-    {rows.map((r, k) => <p class="g2-row" data-b="2" style={`grid-row: ${k + 3}`}>{r.name}</p>)}
+    {rows.map((r, k) => <p class="g2-row" data-b="1" style={`grid-row: ${k + 3}`}>{r.name}</p>)}
     {TRIO.map((ty, c) => (
       <figure data-type={c} style={`grid-column: ${c + 2}`}>
         <figcaption>{ty.name}</figcaption>
@@ -66,17 +48,17 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
           <canvas class="net" aria-label={`the rule running on the ${ty.name} network`}></canvas>
           {c === 2 && <SimButton class="g2-btn" />}
         </div>
-        {rows.map((r, k) => <canvas class="hist" style={`grid-row: ${k + 3}`} data-f={r.f} data-b="2" aria-label={`${r.name} of the ${ty.name} network, over the last rounds`}></canvas>)}
-        <svg class="fp" data-b="3" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-          <g class="own" transform={`rotate(${prints[c].tilt} 50 66)`}><path d={prints[c].d} /></g>
-          <g class="same" transform={`rotate(${prints[0].tilt} 50 66)`}><path d={prints[0].d} /></g>
-        </svg>
+        {rows.map((r, k) => <canvas class="hist" style={`grid-row: ${k + 3}`} data-f={r.f} data-b="1" aria-label={`${r.name} of the ${ty.name} network, over the last rounds`}></canvas>)}
+        <div class="fp" data-b="3" aria-hidden="true">
+          <canvas class="fp-own" data-kind={kinds[c]} data-seed={11 + c}></canvas>
+          <canvas class="fp-same" data-kind="arch" data-seed="14"></canvas>
+        </div>
       </figure>
     ))}
   </div>
-  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what it tells us about the network. Here one rule runs on the three networks of before, a random one, a small-world ring and a scale-free one, 150 nodes each. The rule is the one G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way: <Fragment set:html={phi(9, 170, 340)} />, on their own intervals (closed on the left, so not quite our symmetric ones).</p>
-  <p slot="say">To turn what the network does into numbers, look at every node over the last 40 rounds. How evenly does it split its time between on and off: its Shannon entropy. How many new pieces does it take to write its row of ons and offs down: its Lempel–Ziv complexity. And what share of its neighbours is on, round after round: the neighbourhood density, which Chapter 9 used. Each network gets three histograms, live on the slide, and on the scale-free network they look different at once: its many nodes with only four links soon stay off for good, so its entropy has a second peak at 0.</p>
-  <p slot="say">Together, the three histograms are the network’s fingerprint, and a simple classifier can learn to tell the fingerprints apart. So we look for rules that give fingerprints that are clearly different. The switch at the top (and the last click) puts a consensus-seeking rule, the winner of before, in the place of Miranda’s: every network soon agrees on all off, every node does the same, and the three fingerprints become one. A consensus-seeking rule is a bad detective. The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine; this slide keeps the idea and shrinks the rest.</p>
+  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what it tells us about the network. Here one rule runs on the three networks of before, a random one, a small-world ring and a scale-free one, 150 nodes each. The rule is the one G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way: <Fragment set:html={phi(9, 170, 340)} />, on their own intervals (closed on the left, so not quite our symmetric ones). One click names what we will look at, three properties per network, still empty; the next starts the rule.</p>
+  <p slot="say">To turn what the network does into numbers, look at every node over the last 40 rounds. How evenly does it split its time between on and off: its Shannon entropy. How many new pieces does it take to write its row of ons and offs down: its Lempel–Ziv complexity. And what share of its neighbours is on, round after round: the neighbourhood density, which Chapter 9 used. Each network gets three histograms, live on the slide, filling up within a few seconds, and on the scale-free network they look different at once: its many nodes with only four links soon stay off for good, so its entropy has a second peak at 0.</p>
+  <p slot="say">Together, the three histograms are the network’s fingerprint (drawn here as a real one: a whorl, a loop and a tented arch, the textbook kinds), and a simple classifier can learn to tell the fingerprints apart. So we look for rules that give fingerprints that are clearly different. The switch at the top (and the last click) puts a consensus-seeking rule, the winner of before, in the place of Miranda’s: every network soon agrees on all off, every node does the same, and the three fingerprints become one, a plain arch. A consensus-seeking rule is a bad detective. The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine; this slide keeps the idea and shrinks the rest.</p>
 </Slide>
 
 <Slide label="Jaggedness" builds={2} class="g4" ch={9}>
@@ -114,12 +96,12 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
   .g2-net :global(.g2-btn) { right: calc(-70 * var(--u)); bottom: 0; }
   .hist { width: 100%; height: 100%; }
   .g2-row { grid-column: 1; display: flex; align-items: center; font-size: calc(30 * var(--u)); line-height: 1.15; font-weight: 700; }
-  .fp {
-    grid-row: 3 / span 3; width: 100%; height: 100%; pointer-events: none;
-    background: color-mix(in srgb, var(--bg) 55%, transparent);
-  }
-  .fp path { fill: none; stroke: var(--ink); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
-  :global(.g2.alike) .fp .own, :global(.g2:not(.alike)) .fp .same { display: none; }
+  /* the fingerprint takes the place of the histograms, which fade far back */
+  .fp { grid-row: 3 / span 3; width: 100%; height: 100%; position: relative; pointer-events: none; }
+  .fp canvas { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 0.6s ease; }
+  :global(.g2.alike) .fp-own, :global(.g2:not(.alike)) .fp-same { opacity: 0; }
+  :global(.g2.printed) .hist { opacity: 0.12; }
+  :global(.g2.printed) .g2-row { opacity: 0.35; }
 
   .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); }
   .jag { margin: 0; display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
@@ -137,6 +119,7 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
   import { TRIO, trioNet, trioStart } from '../../scripts/defence/trio';
   import { fingerprinter, type Feature, type Print } from '../../scripts/defence/print';
   import { type Rule, step } from '../../scripts/llna';
+  import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
 
   const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' }, consensus: { r: 9, B: 488, S: 464 } };
   const FEATS: Feature[] = ['entropy', 'lz', 'density'];
@@ -177,7 +160,8 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
       s.classList.toggle('alike', same);
     }
     const rule = () => RULES[pick];
-    const run = ticker(s, 5, () => {
+    // twelve rounds a second, so the histograms take their shape within a few seconds
+    const run = ticker(s, 12, () => {
       cols.forEach((c, k) => { step(c.a, pic()[k].net, rule(), c.b); [c.a, c.b] = [c.b, c.a]; c.fp!.push(c.a); c.print = c.fp!.print(); });
     }, paint);
     const choose = (id: string) => {
@@ -186,15 +170,24 @@ const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
       pick = id; reset(); paint();
     };
     buttons.forEach((b) => b.addEventListener('click', () => choose(b.dataset.rule!)));
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 2, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
     slide(s, {
-      // build 4 puts the consensus-seeking rule in; any step back or jump below it, Miranda's again
-      set(b: number, how: How) { if (b >= 4) choose('consensus'); else if (how !== 'next' || b === 0) choose('miranda'); },
+      // build 3 puts the fingerprints in the histograms' place; build 4 the consensus-seeking rule, and any step back or
+      // jump below it Miranda's again
+      set(b: number, how: How) {
+        s.classList.toggle('printed', b >= 3);
+        if (b >= 4) choose('consensus'); else if (how !== 'next' || b === 0) choose('miranda');
+      },
       enter() { pick = ''; choose('miranda'); },
       leave() { run.play(false); },
     });
     reset();
     for (const c of cols) { onSize(c.net, paint); c.hists.forEach((h) => onSize(h, paint)); }
+    // the prints, as tall as the three histograms together
+    for (const c of s.querySelectorAll<HTMLCanvasElement>('.fp canvas')) {
+      const lines = ridges(c.dataset.kind as PrintKind, +c.dataset.seed!);
+      onSize(c, () => { const st = stage(c); if (!st) return; const h = st.h - 4; drawPrint(st.ctx, lines, (st.w - h / 1.25) / 2, 2, h, st.t.ink); });
+    }
   }
 
   /** The rule as two rows of intervals, born (top) and survive (bottom), with a red tick at every change of answer. */

@@ -17,4 +17,5 @@ import './check-mobility.ts';
 import './check-taxonomy.ts';
 import './check-nuca.ts';
 import './check-lpcnn.ts';
+import './check-links.ts';
 console.log('all checks passed');

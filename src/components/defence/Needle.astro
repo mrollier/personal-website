@@ -5,7 +5,8 @@
 // place where it will run), found without a simulation; then all 27 race on one rewired grid from one start (the network
 // and start of F7), within the thesis's 100 rounds: a few agree, the simple threshold rule is stuck, and no other rule
 // that is its own cousin agrees there: a strong filter, the conclusion under the funnel once the race is over. F7:
-// the winner at work on that grid, the threshold rule on the same start, and twenty fresh networks. Data:
+// the winner at work on that grid, the threshold rule on the same start, a slider that rewires the grid for the reader
+// (it fails on the grid itself and on a random network), our result, and the question the next chapter answers. Data:
 // src/data/defence/consensus.json (scripts/defence/precompute.ts); the run and its verdict: src/scripts/defence/agree.ts.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
@@ -44,9 +45,12 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
 
 <Slide label="Watch it work" builds={3} class="f7" ch={6}>
   <div class="row grow f7-row">
-    <div class="f7-box">
-      <canvas class="grid" aria-label="The chosen rule on a rewired 30 by 30 grid"></canvas>
-      <SimButton class="f7-btn" />
+    <div class="f7-left">
+      <div class="f7-box">
+        <canvas class="grid" aria-label="The chosen rule on a rewired 30 by 30 grid"></canvas>
+        <SimButton class="f7-btn" />
+      </div>
+      <label class="f7-p">rewired<input type="range" class="ctl" min="-3" max="0" step="0.01" value="-0.7" data-p aria-label="share of links rewired, on a logarithmic scale" /><output data-pv>20%</output></label>
     </div>
     <div class="col f7-side">
       <h2>Watch it work</h2>
@@ -54,16 +58,14 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
         <button type="button" class="ctl" data-rule="winner" aria-pressed="true">The winner <span set:html={phi(9, 488, 464)} /></button>
         <button type="button" class="ctl" data-rule="threshold" aria-pressed="false">Simple threshold <span set:html={phi(9, 480, 496)} /></button>
       </div>
-      <canvas class="trace" aria-label="Share of nodes on, round by round"></canvas>
-      <div class="trials" data-b="2">
-        <p><span data-won>0</span> of 20 fresh networks agreed</p>
-        <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}<SimButton class="f7-btn2" /></div>
-      </div>
-      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262 144, without a single simulation. The best one brings most networks to agreement.</p>
+      <canvas class="trace" aria-label="Share of nodes on, timestep by timestep"></canvas>
+      <p class="result" data-b="2"><b>Our result</b> Filter for rules that do what we want.</p>
+      <p class="f7-next" data-b="3">Can we also start from rules that do what we want, and find out <b>what makes them work</b>?</p>
     </div>
   </div>
-  <p slot="say">The winner at work, on the grid of the race (900 nodes, eight neighbours each, a fifth of the links rewired), from the same random start with half of the nodes on. Patches form and fight, and from round 31 every node is on. The curve on the right is the share of nodes that are on, round by round.</p>
-  <p slot="say">The buttons switch to the simple threshold rule, on the same network from the same start: within a dozen rounds it freezes into patches, each content with its own majority, a few nodes blinking at the borders. Then twenty fresh networks, each with its own start, for whichever rule is chosen: the winner brings 19 of the 20 to agreement, the threshold rule none. These grids are a small illustration; the thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks.</p>
+  <p slot="say">The winner at work, on the grid of the race (900 nodes, eight neighbours each, a fifth of the links rewired), from the same random start with half of the nodes on. Patches form and fight, and from timestep 31 every node is on. The curve on the right is the share of nodes that are on, timestep by timestep. The buttons switch to the simple threshold rule, on the same network from the same start: within a dozen timesteps it freezes into patches, each content with its own majority, a few nodes blinking at the borders.</p>
+  <p slot="say">The slider under the grid rewires it, on a logarithmic scale from one link in a thousand to all of them; back at 20% it is the race’s grid again. The talk stays there: on rewired grids like this one, the winner brought more than 96% of the networks of the thesis to agreement at a fifth rewired, but only 21% of the grids without rewiring and 37% of the fully rewired ones. On this grid and from this start it agrees within the thesis’s 100 timesteps from about 2% to 50% rewired, and not below or above. The thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks; these grids are a small illustration.</p>
+  <p slot="say">Our result: with the metrics as a filter, we find rules that do what we want before running a single one. Which raises the question the other way round: can we start from rules that already do something we want, such as telling networks apart, and find out what makes them work?</p>
 </Slide>
 
 <style>
@@ -107,26 +109,25 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   :global(.f5:not(.raced)) .key.win, :global(.f5:not(.raced)) [data-count] { opacity: 0; }
 
   .f7-row { gap: calc(60 * var(--u)); align-items: center; }
-  .f7-box { position: relative; flex: none; }
-  :global(.f7) .grid { width: calc(780 * var(--u)); height: calc(780 * var(--u)); }
+  .f7-left { flex: none; display: flex; flex-direction: column; gap: calc(40 * var(--u)); }
+  .f7-box { position: relative; }
+  :global(.f7) .grid { width: calc(740 * var(--u)); height: calc(740 * var(--u)); display: block; }
+  /* the slider stops short of the grid's ▶ */
+  .f7-p { display: flex; align-items: center; gap: calc(20 * var(--u)); width: calc(660 * var(--u)); font-size: calc(36 * var(--u)); color: var(--muted); }
+  .f7-p input { flex: 1; min-width: 0; }
+  .f7-p output { min-width: 3.6em; }
   .f7-box :global(.f7-btn) { right: calc(-32 * var(--u)); bottom: calc(-24 * var(--u)); }
   .f7-side { gap: calc(24 * var(--u)); flex: 1; }
   .f7-rules { display: flex; gap: calc(14 * var(--u)); flex-wrap: wrap; }
   .f7-rules .ctl { font-size: calc(30 * var(--u)); padding: calc(8 * var(--u)) calc(20 * var(--u)); }
   .f7-rules .ctl[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sun); }
   .trace { width: 100%; height: calc(260 * var(--u)); }
-  .trials p { font-size: calc(34 * var(--u)); }
-  .dots { display: flex; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); position: relative; align-items: center; }
-  .dots :global(.f7-btn2) { position: relative; margin-left: calc(20 * var(--u)); }
-  .dots i { width: calc(34 * var(--u)); height: calc(34 * var(--u)); border-radius: 50%; border: calc(3 * var(--u)) solid var(--line); background: var(--bg); }
-  .dots i.ok { background: var(--accent); border-color: var(--accent); }
-  .dots i.no { background: var(--panel); border-color: var(--muted); }
-  .dots i.run { border-color: var(--accent); }
-  :global(.f7) .result { font-size: calc(34 * var(--u)); }
+  :global(.f7) .result { font-size: calc(40 * var(--u)); }
+  .f7-next { font-size: calc(44 * var(--u)); line-height: 1.25; }
 </style>
 
 <script>
-  import { slide, sim, buildOf } from '../../scripts/defence/deck';
+  import { slide, sim } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
   import { axes, curve, label, px, py, type Plot } from '../../scripts/defence/plot';
   import { picker, type Ring } from '../../scripts/defence/donut';
@@ -229,15 +230,28 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     onSize(c, paint); onSize(mf, paintCurves);
   }
 
-  // ── F7: the winner (or the threshold rule) on a rewired grid; then twenty fresh networks ──
+  // ── F7: the winner (or the threshold rule) on the race's grid. The slider under it rewires the grid on a
+  // logarithmic scale, from one link in a thousand to all of them, always with the race's seed, so 20% is the race's
+  // grid again; the slide opens there. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f7')) {
     const [grid, trace] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
-    const side = SIDE, N = side * side, p = P_REWIRE;
-    const net = demoNet(), first = demoStart();
+    const side = SIDE, N = side * side, first = demoStart();
+    const slider = s.querySelector<HTMLInputElement>('[data-p]')!, pv = s.querySelector<HTMLOutputElement>('[data-pv]')!;
+    let p = P_REWIRE, net = demoNet();
+    /** The share the slider points at, to two significant digits (so 20% is exactly the race's fifth); true if it changed. */
+    const rewire = () => {
+      const q = Number((10 ** +slider.value).toPrecision(2));
+      pv.textContent = `${+(q * 100).toPrecision(2)}%`;
+      if (q === p) return false;
+      p = q; net = lattice(side, 8, p, makeRng(demo.netSeed));
+      return true;
+    };
     const RULES: Record<string, Rule> = { winner: WINNER, threshold: THRESHOLD };
     const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
     let pick = 'winner', run: Agreement, rho: number[] = [], end: { ok: boolean; tick: number } | null = null;
-    const reset = () => { run = agreement(net, RULES[pick], first); rho = [density(first)]; end = null; };
+    // at most the thesis's 100 timesteps, as in the race
+    const HORIZON = 100;
+    const reset = () => { run = agreement(net, RULES[pick], first, HORIZON); rho = [density(first)]; end = null; };
     function paintGrid() {
       const st = stage(grid); if (!st) return;
       const { ctx, t } = st, cell = st.w / side, a = run.state;
@@ -247,12 +261,12 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     function paintTrace() {
       const st = stage(trace); if (!st) return;
       const { t } = st, T = Math.max(60, rho.length), q: Plot = { x: 150, y: 10, w: st.w - 170, h: st.h - 100, x0: 0, x1: T, y0: 0, y1: 1 };
-      axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'round', yname: 'share on' });
+      axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'timestep', yname: 'share on' });
       curve(st, q, () => 0.5, t.line, 2, [6, 8]);
       st.ctx.strokeStyle = t.accent; st.ctx.lineWidth = 3; st.ctx.beginPath();
       rho.forEach((v, i) => { const X = px(q, i), Y = py(q, v); if (i) st.ctx.lineTo(X, Y); else st.ctx.moveTo(X, Y); });
       st.ctx.stroke();
-      if (end) label(st, end.ok ? `all the same from round ${end.tick}` : `stuck from round ${end.tick}`, st.w - 10, 24, { size: 28, align: 'right', color: end.ok ? t.accent : t.danger, weight: 600, bg: true });
+      if (end) label(st, end.ok ? `all the same from timestep ${end.tick}` : end.tick < HORIZON ? `stuck from timestep ${end.tick}` : `no agreement in ${HORIZON} timesteps`, st.w - 10, 24, { size: 28, align: 'right', color: end.ok ? t.accent : t.danger, weight: 600, bg: true });
     }
     // three rounds a second; it stops when the verdict is in
     const ticks = ticker(s, 3, () => {
@@ -260,40 +274,15 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
       end = run.next(); rho.push(density(run.state));
       return !!end;
     }, () => { paintGrid(); paintTrace(); });
-    // twenty trials of the chosen rule, a slice of rounds per frame so no frame waits
-    const dots = Array.from(s.querySelectorAll<HTMLElement>('[data-dots] i')), won = s.querySelector<HTMLElement>('[data-won]')!;
-    let job = 0;
-    const clear = () => { cancelAnimationFrame(job); job = 0; dots.forEach((d) => d.className = ''); won.textContent = '0'; };
-    function trials() {
-      clear();
-      const rule = RULES[pick], seeds = data.trials.winner;
-      let i = 0, wins = 0, tr: Agreement;
-      const begin = () => { const x = seeds[i]; tr = agreement(lattice(side, 8, p, makeRng(x.netSeed)), rule, randomState(N, 0.5, makeRng(x.startSeed))); dots[i].className = 'run'; };
-      begin();
-      const frame = () => {
-        const t0 = performance.now();
-        while (performance.now() - t0 < 4 && i < 20) {
-          const v = tr.next();
-          if (v) { dots[i].className = v.ok ? 'ok' : 'no'; if (v.ok) wins++; won.textContent = String(wins); i++; if (i < 20) begin(); }
-        }
-        if (i < 20) job = requestAnimationFrame(frame);
-      };
-      job = requestAnimationFrame(frame);
-    }
     const mark = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick)));
-    // another rule: back to the same start, and what ran runs on; once the trials are up, they run again for it
-    buttons.forEach((b) => b.addEventListener('click', () => {
-      if (b.dataset.rule === pick) return;
-      pick = b.dataset.rule!; mark();
-      const going = ticks.playing; ticks.play(false); reset(); paintGrid(); paintTrace();
-      if (going) ticks.play(true);
-      if (buildOf(s) >= 2) trials(); else clear();
-    }));
+    const gridBtn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;
+    // another rule or another rewiring: back to the same start, and what was started runs on
+    const restart = () => { const going = !!gridBtn.dataset.run; ticks.play(false); reset(); paintGrid(); paintTrace(); if (going) ticks.play(true); };
+    buttons.forEach((b) => b.addEventListener('click', () => { if (b.dataset.rule === pick) return; pick = b.dataset.rule!; mark(); restart(); }));
+    slider.addEventListener('input', () => { if (rewire()) restart(); });
     reset();
-    const [gridBtn, trialBtn] = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
     sim(gridBtn, 1, { reset() { ticks.play(false); reset(); paintGrid(); paintTrace(); }, play() { ticks.play(true); } });
-    sim(trialBtn, 2, { reset: clear, play: trials });
-    slide(s, { enter() { pick = 'winner'; mark(); reset(); clear(); }, leave() { ticks.play(false); cancelAnimationFrame(job); } });
+    slide(s, { enter() { pick = 'winner'; mark(); slider.value = '-0.7'; rewire(); reset(); }, leave() { ticks.play(false); } });
     onSize(grid, paintGrid); onSize(trace, paintTrace);
   }
 </script>

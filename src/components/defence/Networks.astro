@@ -7,6 +7,7 @@ import Slide from './Slide.astro';
 import Seats from './Seats.astro';
 import SimButton from './SimButton.astro';
 import { tex, texify, phi } from './tex';
+import { TRIO } from '../../scripts/defence/trio';
 
 // F2: the two rings in design pixels of the slide (src/scripts/defence/donut.ts draws them)
 const rings = [{ x: 500, y: 540, R: 215, w: 92, on: false }, { x: 1420, y: 540, R: 215, w: 92, on: true }];
@@ -16,7 +17,7 @@ const likes = [
   { id: 'life', name: 'Game of Life', B: 8, S: 12 },
   { id: 'replicator', name: 'Replicator', B: 170, S: 170 },
 ];
-const nets = ['small-world ring', 'small-world grid', 'scale-free'];
+const nets = TRIO.map((t) => t.name);
 ---
 <Slide label="Generalising even further" builds={5} class="f1">
   <div class="row grow f1-row">
@@ -72,9 +73,9 @@ const nets = ['small-world ring', 'small-world grid', 'scale-free'];
       </figure>
     ))}
   </div>
-  <p slot="say">The same three rules as before, Maze, the Game of Life and Replicator, now as Life-like network automata at resolution 9, each started with its own button, all three from the same random start, on a ring of 60 nodes, each linked to its four nearest neighbours on either side, with some of the links rewired. Maze still freezes and Replicator still churns, but the Game of Life soon dies out here. Each reset draws a new start.</p>
-  <p slot="say">Two more clicks put the same three rules on other networks: a grid of 100 nodes with eight neighbours each, again with some links rewired, and a network of 100 nodes grown by preferential attachment, with a few hubs. Both the rule and the network can be changed, and every combination behaves in its own way: a great many situations to study.</p>
-  <p slot="say" set:html={texify('A word on the names. The ring and the grid are Watts–Strogatz networks (WSr and WSg in the thesis): a ring or a grid with some of its links rewired at random. “Small-world” is a shorthand: depending on how much is rewired, such a network is close to the lattice, a small world, or close to a random network, and most of the rewired networks in the thesis lean towards random. The third is grown by nonlinear preferential attachment (NPA): every newcomer links to earlier nodes with a probability that grows with their degree $k$, as $k^\\alpha + 1$. With $\\alpha = 1$, as here, it resembles a Barabási–Albert scale-free network without being quite one; other values of $\\alpha$ give no hubs at all ($\\alpha = 0$) or one giant hub.')} />
+  <p slot="say">The same three rules as before, Maze, the Game of Life and Replicator, now as Life-like network automata at resolution 9, each started with its own button, all three from the same random start, on a random network of 150 nodes (between two and thirteen neighbours each, about seven on average). Maze still freezes within a few rounds and Replicator still churns, but the Game of Life all but dies out within seconds. Each reset draws a new start.</p>
+  <p slot="say">Two more clicks put the same three rules on the other two networks of the rest of the talk: a small-world network grown from a ring of 150 nodes, each linked to its four nearest neighbours on either side, with a tenth of the links rewired; and a scale-free network of 150 nodes in which two in five nodes have only four links and a few hubs have forty or fifty (drawn larger). The three behave alike on all three here, but both the rule and the network can be changed, and every combination is a situation of its own: a great many to study.</p>
+  <p slot="say" set:html={texify('A word on the names. The random network is an Erdős–Rényi network: every pair of nodes is linked with the same small probability. The ring is a Watts–Strogatz network (WSr in the thesis): a ring with some of its links rewired at random. “Small-world” is a shorthand: depending on how much is rewired, such a network is close to the lattice, a small world, or close to a random network, and most of the rewired networks in the thesis lean towards random. The third is grown by nonlinear preferential attachment (NPA): every newcomer links to earlier nodes with a probability that grows with their degree $k$, as $k^\\alpha + 1$. With $\\alpha = 1$ it resembles a Barabási–Albert scale-free network without being quite one; here $\\alpha = 1.5$, so a few hubs take most of the links, on the way to a star ($\\alpha = 0$ gives no hubs at all, a large $\\alpha$ one giant hub).')} />
 </Slide>
 
 <style>
@@ -127,7 +128,7 @@ const nets = ['small-world ring', 'small-world grid', 'scale-free'];
   import { picker, setPhi, type Ring } from '../../scripts/defence/donut';
   import { cousin } from '../../scripts/defence/rings';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
-  import { buildNet, makeRng, type NetSpec, type Layout } from '../../scripts/net';
+  import { trioNet, trioStart, RHO0 } from '../../scripts/defence/trio';
   import { step, randomState, type Rule } from '../../scripts/llna';
   import { room, wire, degrees, COLS, ROWS, SEATS } from '../../scripts/defence/room';
 
@@ -278,15 +279,15 @@ const nets = ['small-world ring', 'small-world grid', 'scale-free'];
   }
 
   // ── F3: Maze, Life and Replicator again (slide C4), now as Life-like network automata at resolution 9, each with its
-  // own button (builds 1–3), on a small-world ring; builds 4 and 5 move all three to a small-world grid and then a
-  // scale-free network (so do the buttons at the top), and what ran runs on. All three start from the same random
-  // state of their network; a reset draws a new one. The networks are built when first shown. ──
+  // own button (builds 1–3), on a random network; builds 4 and 5 move all three to a small-world ring and then a
+  // scale-free network (so do the buttons at the top), and what ran runs on: the talk's three networks (trio.ts). All
+  // three start from the same random state of their network; a reset draws a new one. The networks are built when first
+  // shown. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f3')) {
-    const SPECS: NetSpec[] = [{ kind: 'ws', n: 60, k: 8, p: 0.1 }, { kind: 'lat', side: 10, degree: 8, p: 0.1 }, { kind: 'npa', n: 100, m: 4, alpha: 1 }];
-    const LAYOUT: Layout[] = ['ring', 'grid', 'force'], SIZE = 540, RHO = 0.4;
+    const SIZE = 540;
     const pics: Picture[] = [], firsts: Uint8Array[] = [];
-    const pic = (k: number) => (pics[k] ??= picture(buildNet(SPECS[k], 31 + k, LAYOUT[k]), SIZE, 26, k ? 8 : 9, k === 2));
-    const first = (k: number) => (firsts[k] ??= randomState(pic(k).net.n, RHO, makeRng(1984 + k)));
+    const pic = (k: number) => (pics[k] ??= picture(trioNet(k), SIZE, 26, k === 1 ? 5 : 6.5, k === 2 ? 0.6 : false));
+    const first = (k: number) => (firsts[k] ??= trioStart(k, pic(k).net.n));
     let kind = 0;
     const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'), nets = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-net]'));
     const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c, j) => {
@@ -298,7 +299,7 @@ const nets = ['small-world ring', 'small-world grid', 'scale-free'];
       sim(btns[j], 1 + j, {
         reset() { run.play(false); restart(); },
         play() { run.play(true); },
-        reroll() { firsts[kind] = randomState(pic(kind).net.n, RHO, fresh()); },
+        reroll() { firsts[kind] = randomState(pic(kind).net.n, RHO0, fresh()); },
       });
       onSize(c, paint);
       return { run, restart };

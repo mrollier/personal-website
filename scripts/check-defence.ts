@@ -10,7 +10,9 @@ import { room, wire, degrees, SEATS, COLS, ROWS } from '../src/scripts/defence/r
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
 import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
 import { remap, ends, intervalOf, cousin } from '../src/scripts/defence/rings.ts';
-import { step, randomState, type Rule as LlnaRule } from '../src/scripts/llna.ts';
+import { step, randomState, phi, type Rule as LlnaRule } from '../src/scripts/llna.ts';
+import { trioNet, trioStart } from '../src/scripts/defence/trio.ts';
+import { fingerprinter } from '../src/scripts/defence/print.ts';
 import type { NetSpec } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
@@ -141,23 +143,56 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     assert.ok(out.every((v, i) => v === 1 - nout[i]), `the cousin of φ${r} ${rule.B},${rule.S} does not mirror it`);
   }
 }
-// F3, as its say text tells: on the slide's small-world ring (network 31, start 1984) Maze freezes and the Game of Life
-// dies out within a few dozen rounds, while Replicator is still changing after a hundred. D3: on the 16 × 16 small-world
-// grid (network 31, start 70) the Game of Life is still busy after 300 rounds.
+// The talk's three networks (trio.ts), as the say texts of F3 and G2 describe them: all connected; the random one with
+// two to thirteen neighbours, the ring with nearly eight each, the scale-free one with four for two in five nodes and
+// hubs of fifty.
 {
-  const quiet = (spec: NetSpec, rule: Rule, seed: number, T: number) => {
-    const net = buildNet(spec, 31, 'none');
-    let a = randomState(net.n, 0.4, makeRng(seed)), b = new Uint8Array(net.n), last = 0;
-    for (let t = 1; t <= T; t++) { step(a, net, rule, b); let c = 0; for (let i = 0; i < net.n; i++) c += a[i] ^ b[i]; [a, b] = [b, a]; if (c > 0) last = t; }
-    return { last, on: a.reduce((m, v) => m + v, 0) };
+  const nets = [0, 1, 2].map((k) => trioNet(k, 'none'));
+  for (const net of nets) { const seen = new Uint8Array(net.n), q = [0]; seen[0] = 1; while (q.length) { const v = q.pop()!; for (const w of net.adj[v]) if (!seen[w]) { seen[w] = 1; q.push(w); } } assert.ok(seen.every((x) => x), 'a trio network falls apart'); }
+  const deg = nets.map((net) => Array.from(net.deg as ArrayLike<number>));
+  assert.deepEqual([Math.min(...deg[0]), Math.max(...deg[0])], [2, 13]);
+  assert.deepEqual([Math.min(...deg[1]), Math.max(...deg[1])], [5, 12]);
+  assert.equal(deg[2].filter((d) => d === 4).length, 60); assert.equal(Math.max(...deg[2]), 52);
+  // F3: from each network's start, Maze freezes within ten rounds, the Game of Life all but dies out within forty
+  // (at most 5% on), and Replicator is still changing after a hundred
+  const run = (k: number, rule: Rule, T: number) => {
+    const net = nets[k];
+    let a = trioStart(k, net.n), b = new Uint8Array(net.n), last = 0;
+    for (let t = 1; t <= T; t++) { step(a, net, rule, b); let c = 0; for (let x = 0; x < net.n; x++) c += a[x] ^ b[x]; [a, b] = [b, a]; if (c > 0) last = t; }
+    return { last, on: a.reduce((m, v) => m + v, 0) / net.n };
   };
-  const ring: NetSpec = { kind: 'ws', n: 60, k: 8, p: 0.1 };
-  assert.ok(quiet(ring, { r: 9, B: 8, S: 62 }, 1984, 200).last < 20, 'F3: Maze does not freeze on the ring');
-  const life = quiet(ring, { r: 9, B: 8, S: 12 }, 1984, 200);
-  assert.ok(life.last < 60 && life.on === 0, 'F3: the Game of Life does not die out on the ring');
-  assert.equal(quiet(ring, { r: 9, B: 170, S: 170 }, 1984, 100).last, 100, 'F3: Replicator stops on the ring');
-  assert.ok(quiet({ kind: 'lat', side: 16, degree: 8, p: 0.05 }, { r: 9, B: 8, S: 12 }, 70, 300).last === 300, 'D3: the Game of Life stops on the grid');
+  for (const k of [0, 1, 2]) {
+    assert.ok(run(k, { r: 9, B: 8, S: 62 }, 50).last <= 10, `F3: Maze does not freeze on network ${k}`);
+    assert.ok(run(k, { r: 9, B: 8, S: 12 }, 40).on <= 0.05, `F3: the Game of Life lives on on network ${k}`);
+    assert.equal(run(k, { r: 9, B: 170, S: 170 }, 100).last, 100, `F3: Replicator stops on network ${k}`);
+  }
+  // G2: under Miranda et al.'s rule (their uniform cut) all three stay lively and their fingerprints after 75 rounds
+  // differ; nodes with four neighbours can never be born under it. Under the consensus-seeking winner all three are
+  // all off within twenty rounds, and their fingerprints are one and the same.
+  const MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule) => nets.map((net, k) => {
+    const fp = fingerprinter(net); let a = trioStart(k, net.n), b = new Uint8Array(net.n), flips = 0, off = -1;
+    fp.push(a);
+    for (let t = 1; t <= 75; t++) { step(a, net, rule, b); if (t > 55) for (let x = 0; x < net.n; x++) flips += a[x] ^ b[x]; [a, b] = [b, a]; fp.push(a); if (off < 0 && a.every((v) => !v)) off = t; }
+    return { print: fp.print(), flips: flips / 20 / net.n, off };
+  });
+  const dist = (x: ReturnType<typeof prints>[number], y: ReturnType<typeof prints>[number]) => (['entropy', 'lz', 'density'] as const).reduce((acc, f) => acc + x.print[f]!.reduce((m, v, b) => m + Math.abs(v - y.print[f]![b]), 0), 0);
+  const mir = prints(MIR);
+  for (const m of mir) assert.ok(m.flips >= 0.3, 'G2: Miranda et al.\'s rule is not lively on a trio network');
+  for (const [x, y] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(mir[x], mir[y]) >= 0.5, `G2: fingerprints ${x} and ${y} look alike under Miranda's rule`);
+  assert.equal(stepOne(MIR, 4), 0, 'G2: a node with four neighbours can be born under Miranda\'s rule');
+  const win = prints({ r: 9, B: 488, S: 464 });
+  for (const w of win) assert.ok(w.off >= 0 && w.off <= 20, 'G2: the winner does not bring a trio network to all off');
+  for (const [x, y] of [[0, 1], [0, 2]]) assert.ok(dist(win[x], win[y]) < 1e-9, 'G2: the consensus fingerprints differ');
 }
+// D3: on the 16 × 16 small-world grid (network 31, start 70) the Game of Life is still busy after 300 rounds.
+{
+  const net = buildNet({ kind: 'lat', side: 16, degree: 8, p: 0.05 }, 31, 'none');
+  let a = randomState(net.n, 0.4, makeRng(70)), b = new Uint8Array(net.n), last = 0;
+  for (let t = 1; t <= 300; t++) { step(a, net, { r: 9, B: 8, S: 12 }, b); let c = 0; for (let x = 0; x < net.n; x++) c += a[x] ^ b[x]; [a, b] = [b, a]; if (c > 0) last = t; }
+  assert.equal(last, 300, 'D3: the Game of Life stops on the grid');
+}
+/** Whether an off node with `k` neighbours can be born under `rule` at any count of neighbours on: 1 if so. */
+function stepOne(rule: Rule, k: number): number { for (let q = 0; q <= k; q++) if (phi(0, q, k, rule)) return 1; return 0; }
 console.log('defence checks passed');
 
 // ── §6 of the brief: the genotype anchors, recomputed from the thesis definitions (Ch. 5 §5.3, Ch. 6, Ch. 9) ──

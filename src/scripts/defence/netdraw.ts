@@ -8,12 +8,13 @@ import type { Stage } from './stage';
 export type Picture = { net: Net; x: Float32Array; y: Float32Array; links: Float32Array; node: Float32Array };
 
 /** Lay `net` (its xy already in the unit square) into a square of `size` design pixels with `pad` round it, with nodes
- * of radius `node`; with `hubs`, a node with more links is a little larger (for eight links, `node`). */
-export function picture(net: Net, size: number, pad: number, node: number, hubs = false): Picture {
-  const n = net.n, span = size - 2 * pad, x = new Float32Array(n), y = new Float32Array(n), r = new Float32Array(n), segs: number[] = [];
+ * of radius `node`; with `hubs`, a node with more links is larger (for eight links, `node`): a little (true), or by a
+ * given weight of the square root of its degree (0.6 makes a hub of fifty twice the size). */
+export function picture(net: Net, size: number, pad: number, node: number, hubs: boolean | number = false): Picture {
+  const h = hubs === true ? 0.3 : hubs || 0, n = net.n, span = size - 2 * pad, x = new Float32Array(n), y = new Float32Array(n), r = new Float32Array(n), segs: number[] = [];
   for (let i = 0; i < n; i++) {
     x[i] = pad + net.xy[2 * i] * span; y[i] = pad + net.xy[2 * i + 1] * span;
-    r[i] = hubs ? node * (0.7 + 0.3 * Math.sqrt(net.deg[i] / 8)) : node;
+    r[i] = node * (1 - h + h * Math.sqrt(net.deg[i] / 8));
   }
   const L = net.side;
   for (const [i, j] of net.edges) {

@@ -1,67 +1,82 @@
 ---
-// G1–G3: which network is this? One rule on three kinds of network, the patterns it draws and three properties of
-// the rows (the Shannon entropy and the Lempel–Ziv complexity of every row, as Miranda et al. 2016 define them; then
-// the share of neighbours on, which Ch. 9 used); why a consensus-seeking rule is a bad detective where a jagged rule is a good one; and jaggedness
-// itself, our result, and the bridge to what consensus-seeking rules are good for instead. Toy data from
-// src/data/defence/classify.json (scripts/defence/precompute.ts).
+// G2 and G4, network classification (Ch. 9). G2: one rule on the talk's three networks (src/scripts/defence/trio.ts),
+// running; under each network its fingerprint, three histograms computed live from the last rounds (./print): the
+// Shannon entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them, and the
+// neighbourhood density that Ch. 9 used; then a fingerprint over each, and the message: we look for rules whose
+// fingerprints differ. A switch (and build 4) puts a consensus-seeking rule in the place of Miranda et al.'s rule: every
+// network agrees, and the three fingerprints become one. G4: the same two rules, every change of answer marked:
+// jaggedness, our result, and the bridge to what consensus-seeking rules are good for instead.
 import Slide from './Slide.astro';
-import classify from '../../data/defence/classify.json';
-const [cons, det] = classify.examples;
-const types = classify.params.types;
+import SimButton from './SimButton.astro';
+import { phi } from './tex';
+import { TRIO } from '../../scripts/defence/trio';
 const rows = [
-  { f: 'entropy', b: 1, name: 'on–off balance' },
-  { f: 'lz', b: 2, name: 'compressibility' },
-  { f: 'density', b: 3, name: 'neighbours on' },
+  { f: 'entropy', name: 'Shannon entropy' },
+  { f: 'lz', name: 'Lempel–Ziv complexity' },
+  { f: 'density', name: 'neighbourhood density' },
+];
+const rules = [
+  { id: 'miranda', name: 'Miranda et al.', r: 9, B: 170, S: 340 },
+  { id: 'consensus', name: 'Consensus-seeking', r: 9, B: 488, S: 464 },
 ];
 const sides = [
-  { x: cons, name: 'A consensus-seeking rule', verdict: 'Everything agrees: flat patterns, one fingerprint.' },
-  { x: det, name: 'A jagged rule', verdict: 'Rich patterns: three fingerprints.' },
+  { x: { r: 9, B: 488, S: 464 }, name: 'A consensus-seeking rule' },
+  { x: { r: 9, B: 170, S: 340 }, name: 'Miranda et al.’s rule' },
 ];
+
+// A fingerprint, drawn: eight ridges looping over the top round one core, each broken in a place or two. Every variant
+// has the same design and a print of its own (another core, tilt, and breaks).
+function print(v: number): string {
+  let seed = 977 + 131 * v;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const cx = 50 + [-3, 4, 1][v], cy = 66 + [2, -3, 5][v], out: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    const rx = 6 + i * 5.4, ry = rx * 1.28, below = 0.5 - i * 0.035 + (rnd() - 0.5) * 0.2;
+    const gaps = Array.from({ length: i > 1 ? 1 + (rnd() < 0.5 ? 1 : 0) : 0 }, () => [-below + rnd() * (Math.PI + 2 * below), 0.22 + rnd() * 0.18]);
+    let pen = false, d = '';
+    for (let k = 0; k <= 48; k++) {
+      const th = -below + (k / 48) * (Math.PI + 2 * below), x = cx + rx * Math.cos(th), y = cy - ry * Math.sin(th);
+      const cut = gaps.some(([g, w]) => th > g && th < g + w);
+      if (cut) { pen = false; continue; }
+      d += `${pen ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`; pen = true;
+    }
+    out.push(d);
+  }
+  return out.join('');
+}
+const prints = [0, 1, 2].map((v) => ({ d: print(v), tilt: [-8, 6, 0][v] }));
 ---
-<Slide id="ch-classification" label="Which network is this?" builds={3} class="g2" ch={9}>
-  <h2>Which network is this?</h2>
-  <p class="g2-lede">One rule, three kinds of network. Does the pattern give the network away?</p>
+<Slide id="ch-classification" label="Which network is this?" builds={4} class="g2" ch={9}>
+  <div class="g2-head">
+    <h2>Which network is this?</h2>
+    <div class="g2-rules" role="group" aria-label="Rule">
+      {rules.map((r, i) => <button type="button" class="ctl" data-rule={r.id} aria-pressed={i ? 'false' : 'true'}>{r.name} <span set:html={phi(r.r, r.B, r.S)} /></button>)}
+    </div>
+  </div>
+  <div class="stack g2-lede">
+    <p data-b-off="3">One rule, three networks. Does what it does give the network away?</p>
+    <p data-b="3">We look for rules whose fingerprints are clearly <b>different</b>.</p>
+  </div>
   <div class="g2-grid">
-    <p class="g2-row g2-tep">nodes ↓<br />time →</p>
-    {types.map((ty, c) => (
+    {rows.map((r, k) => <p class="g2-row" data-b="2" style={`grid-row: ${k + 3}`}>{r.name}</p>)}
+    {TRIO.map((ty, c) => (
       <figure data-type={c} style={`grid-column: ${c + 2}`}>
         <figcaption>{ty.name}</figcaption>
-        <canvas class="tep" aria-label={`the pattern on a ${ty.name} network: nodes down the side, time across`}></canvas>
-        {rows.map((r) => <canvas class="hist" data-f={r.f} data-b={r.b} aria-label={`histogram of ${r.name} on the ${ty.name} network`}></canvas>)}
-      </figure>
-    ))}
-    {rows.map((r, k) => <p class="g2-row" data-b={r.b} style={`grid-row: ${k + 3}`}>{r.name}</p>)}
-  </div>
-  <p class="cite">Networks of 200 nodes, eight neighbours on average · the top two rows after G. H. B. Miranda et al. 2016</p>
-  <p class="illus">illustration</p>
-  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what its behaviour tells us about the network. Run one rule on three kinds of network with the same number of nodes and links on average: a random one, a scale-free one with a few hubs, and a ring with some links rewired. Each picture shows 50 of the nodes, top to bottom, and time from left to right. The textures differ: on the scale-free network some rows blink in stripes.</p>
-  <p slot="say">To turn a picture into numbers, we look at every node’s row. How evenly does it split its time between on and off (its Shannon entropy)? How compressible is it (its Lempel–Ziv complexity: how many new pieces you need to write it down)? And what share of its neighbours is on, round after round (the property Chapter 9 used)? On the scale-free network many nodes stay mostly on or mostly off, so its balance spreads out to the left. Each network gives three different shapes: together, a fingerprint that a simple classifier can learn. This way of classifying networks started with G. H. B. Miranda and colleagues in 2016; the thesis used 23 datasets rather than these toy networks.</p>
-</Slide>
-
-<Slide label="Why are some rules good at this?" builds={1} class="g3" ch={9}>
-  <h2>Why are some rules good at this?</h2>
-  <div class="g3-two">
-    {sides.map((sd, i) => (
-      <figure class="side" data-rule={i} data-b={i === 1 ? '1' : undefined}>
-        <p class="g3-name">{sd.name}</p>
-        <canvas class="diag" aria-label="the rule: where an off node is born and an on node survives, for every share of neighbours on"></canvas>
-        <div class="minis">
-          {types.map((ty) => (
-            <div class="mini">
-              <span>{ty.name}</span>
-              <canvas class="mtep" aria-label={`the pattern on a ${ty.name} network`}></canvas>
-              <canvas class="mfp" aria-label={`compressibility of the nodes on five ${ty.name} networks`}></canvas>
-            </div>
-          ))}
+        <div class="g2-net">
+          <canvas class="net" aria-label={`the rule running on the ${ty.name} network`}></canvas>
+          {c === 2 && <SimButton class="g2-btn" />}
         </div>
-        <p class="verdict">{sd.verdict}</p>
+        {rows.map((r, k) => <canvas class="hist" style={`grid-row: ${k + 3}`} data-f={r.f} data-b="2" aria-label={`${r.name} of the ${ty.name} network, over the last rounds`}></canvas>)}
+        <svg class="fp" data-b="3" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <g class="own" transform={`rotate(${prints[c].tilt} 50 66)`}><path d={prints[c].d} /></g>
+          <g class="same" transform={`rotate(${prints[0].tilt} 50 66)`}><path d={prints[0].d} /></g>
+        </svg>
       </figure>
     ))}
   </div>
-  <p class="cite">Patterns: 50 nodes, the first 50 rounds · histograms: compressibility on five networks of each kind, and their average</p>
-  <p class="illus">illustration</p>
-  <p slot="say">Not every rule is a good detective. On the left is a consensus-seeking rule, the flipped synchroniser from before. Whatever the network, it soon agrees: every row goes flat, and the fingerprints of all three kinds of network look the same. The pattern tells us almost nothing about the network.</p>
-  <p slot="say">On the right is a jagged rule, whose answer keeps changing as the share of neighbours on grows. It draws rich patterns that “feel” the network, and its three fingerprints are clearly different. Rules like this are thought to produce the richest behaviour; whether they are “complex” is a hypothesis we did not test.</p>
+  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what it tells us about the network. Here one rule runs on the three networks of before, a random one, a small-world ring and a scale-free one, 150 nodes each. The rule is the one G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way: <Fragment set:html={phi(9, 170, 340)} />, on their own intervals (closed on the left, so not quite our symmetric ones).</p>
+  <p slot="say">To turn what the network does into numbers, look at every node over the last 40 rounds. How evenly does it split its time between on and off: its Shannon entropy. How many new pieces does it take to write its row of ons and offs down: its Lempel–Ziv complexity. And what share of its neighbours is on, round after round: the neighbourhood density, which Chapter 9 used. Each network gets three histograms, live on the slide, and on the scale-free network they look different at once: its many nodes with only four links soon stay off for good, so its entropy has a second peak at 0.</p>
+  <p slot="say">Together, the three histograms are the network’s fingerprint, and a simple classifier can learn to tell the fingerprints apart. So we look for rules that give fingerprints that are clearly different. The switch at the top (and the last click) puts a consensus-seeking rule, the winner of before, in the place of Miranda’s: every network soon agrees on all off, every node does the same, and the three fingerprints become one. A consensus-seeking rule is a bad detective. The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine; this slide keeps the idea and shrinks the rest.</p>
 </Slide>
 
 <Slide label="Jaggedness" builds={2} class="g4" ch={9}>
@@ -69,85 +84,124 @@ const sides = [
   <div class="g4-two">
     {sides.map((sd, i) => (
       <figure class="jag" data-rule={i}>
-        <p class="g3-name">{sd.name}</p>
-        <canvas class="jdiag" aria-label="the rule with every change between neighbouring intervals marked"></canvas>
+        <p class="g4-name">{sd.name} <span set:html={phi(sd.x.r, sd.x.B, sd.x.S)} /></p>
+        <canvas class="jdiag" data-rule={`${sd.x.r},${sd.x.B},${sd.x.S}`} aria-label="the rule with every change between neighbouring intervals marked"></canvas>
       </figure>
     ))}
   </div>
   <p class="result" data-b="1"><b>Our result</b> On 13 of 23 datasets, more jagged rules tend to classify better. Searching by jaggedness finds a rule within 5% of the best while trying only 10–20% of the rules.</p>
   <p class="bridge" data-b="2">Consensus-seeking rules make bad detectives. But they are good at something else: <b>finding who matters</b>.</p>
-  <p class="cite">Chapter 9: L. C. de Oliveira, M. Rollier, J. M. Baetens, O. M. Bruno (under review)</p>
-  <p slot="say">What makes the difference can be read off the rule itself. Walk along the intervals, from few neighbours on to all of them, and count how often the rule changes its answer: that is its jaggedness. The consensus-seeking rule changes its mind less often; the jagged rule more often. A jagged rule is a sensitive rule: a small change in the neighbourhood often changes what a node does, the same preference that made the best synchroniser work.</p>
-  <p slot="say">This is our contribution to network classification, work led by Lucas C. de Oliveira. On 13 of the 23 datasets, more jagged rules tend to classify better (correlations between about 0.2 and 0.46), and the best rules sit in a middle-to-high band of jaggedness. That makes jaggedness a guide: searching by jaggedness finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well.</p>
+  <p slot="say">What makes the difference can be read off the rule itself. Walk along the intervals, from few neighbours on to all of them, and count how often the rule changes its answer: that is its jaggedness. The consensus-seeking rule changes its mind at 38% of the boundaries, Miranda’s rule at 94%. A jagged rule is a sensitive rule: a small change in the neighbourhood often changes what a node does.</p>
+  <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). On 13 of the 23 datasets, more jagged rules tend to classify better (correlations between about 0.2 and 0.46), and the best rules sit in a middle-to-high band of jaggedness. That makes jaggedness a guide: searching by jaggedness finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well.</p>
   <p slot="say">So consensus-seeking rules make bad detectives. But they turn out to be good at something else: finding which nodes matter.</p>
 </Slide>
 
 <style>
-  .g2-lede { font-size: calc(38 * var(--u)); }
-  .g2-grid { display: grid; grid-template-columns: calc(250 * var(--u)) repeat(3, 1fr); grid-template-rows: calc(44 * var(--u)) calc(200 * var(--u)) repeat(3, calc(128 * var(--u))); gap: calc(12 * var(--u)) calc(40 * var(--u)); }
-  .g2-grid figure { margin: 0; grid-row: 1 / span 5; display: grid; grid-template-rows: subgrid; justify-items: center; }
-  .g2-grid figcaption { font-size: calc(34 * var(--u)); font-weight: 700; }
-  .tep { width: calc(400 * var(--u)); height: calc(200 * var(--u)); }
-  .hist { width: calc(400 * var(--u)); height: calc(128 * var(--u)); }
-  .g2-row { grid-column: 1; display: flex; align-items: center; font-size: calc(32 * var(--u)); line-height: 1.2; font-weight: 700; }
-  .g2-tep { grid-row: 2; font-weight: 400; color: var(--muted); }
-
-  .g3-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); flex: 1; }
-  .side { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
-  .g3-name { font-size: calc(38 * var(--u)); font-weight: 700; }
-  .diag { width: calc(640 * var(--u)); height: calc(96 * var(--u)); }
-  .minis { display: flex; gap: calc(30 * var(--u)); }
-  .mini { display: flex; flex-direction: column; align-items: center; gap: calc(6 * var(--u)); font-size: calc(24 * var(--u)); }
-  .mtep { width: calc(210 * var(--u)); height: calc(210 * var(--u)); }
-  .mfp { width: calc(210 * var(--u)); height: calc(110 * var(--u)); }
-  .verdict { font-size: calc(34 * var(--u)); text-align: center; max-width: calc(760 * var(--u)); margin-top: calc(6 * var(--u)); }
+  .g2-head { display: flex; align-items: center; justify-content: space-between; gap: calc(40 * var(--u)); }
+  .g2-rules { display: flex; gap: calc(12 * var(--u)); }
+  .g2-rules .ctl { font-size: calc(28 * var(--u)); padding: calc(8 * var(--u)) calc(18 * var(--u)); }
+  .g2-rules .ctl[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sun); }
+  .g2-lede { font-size: calc(40 * var(--u)); }
+  .g2-grid {
+    display: grid; grid-template-columns: calc(250 * var(--u)) repeat(3, 1fr);
+    grid-template-rows: calc(44 * var(--u)) calc(330 * var(--u)) repeat(3, calc(86 * var(--u))); gap: calc(10 * var(--u)) calc(40 * var(--u));
+  }
+  .g2-grid figure { margin: 0; grid-row: 1 / span 5; display: grid; grid-template-rows: subgrid; justify-items: center; position: relative; }
+  .g2-grid figure > * { grid-column: 1; }
+  .g2-grid figcaption { font-size: calc(34 * var(--u)); font-weight: 700; grid-row: 1; }
+  .g2-net { position: relative; grid-row: 2; }
+  .net { width: calc(330 * var(--u)); height: calc(330 * var(--u)); }
+  .g2-net :global(.g2-btn) { right: calc(-70 * var(--u)); bottom: 0; }
+  .hist { width: 100%; height: 100%; }
+  .g2-row { grid-column: 1; display: flex; align-items: center; font-size: calc(30 * var(--u)); line-height: 1.15; font-weight: 700; }
+  .fp {
+    grid-row: 3 / span 3; width: 100%; height: 100%; pointer-events: none;
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+  }
+  .fp path { fill: none; stroke: var(--ink); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+  :global(.g2.alike) .fp .own, :global(.g2:not(.alike)) .fp .same { display: none; }
 
   .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); }
   .jag { margin: 0; display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+  .g4-name { font-size: calc(38 * var(--u)); font-weight: 700; }
   .jdiag { width: calc(820 * var(--u)); height: calc(250 * var(--u)); }
   :global(.g4) .result { margin-top: auto; }
   .bridge { font-size: calc(44 * var(--u)); font-weight: 400; line-height: 1.25; }
 </style>
 
 <script>
-  import { stage, onSize, type Stage } from '../../scripts/defence/stage';
-  import { label, pattern, px, py, type Plot } from '../../scripts/defence/plot';
-  import { TOY, FEATURES, toyNet, toyRun, startSeed } from '../../scripts/defence/toy';
-  import { type Rule } from '../../scripts/llna';
-  import classify from '../../data/defence/classify.json';
+  import { slide, sim, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
+  import { label } from '../../scripts/defence/plot';
+  import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
+  import { TRIO, trioNet, trioStart } from '../../scripts/defence/trio';
+  import { fingerprinter, type Feature, type Print } from '../../scripts/defence/print';
+  import { type Rule, step } from '../../scripts/llna';
 
-  const [cons, det] = classify.examples;
-  type Example = typeof det;
-  const ruleOf = (x: Example): Rule => ({ r: x.r, B: x.B, S: x.S, part: x.part as 'uni' | 'pal' });
-  const RANGE = { entropy: FEATURES.entropy, lz: FEATURES.lz, density: { lo: 0, hi: 1, bins: TOY.bins } };
-  const ENDS: Record<keyof typeof RANGE, [string, string]> = { entropy: ['all one way', 'half and half'], lz: ['low', 'high'], density: ['none', 'all'] };
-  type Feat = keyof typeof RANGE;
+  const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' }, consensus: { r: 9, B: 488, S: 464 } };
+  const FEATS: Feature[] = ['entropy', 'lz', 'density'];
 
-  /** Nodes down (a sample of `rows` of them, most neighbours first), rounds across: one square per node and round. */
-  const nodes = (st: Stage, net: ReturnType<typeof toyNet>, s: Uint8Array, rows: number, rounds: number) => pattern(st, net.order, rows, rounds, (t, i) => !!s[t * net.n + i]);
+  /** One histogram as bars on a common height `top`; nothing yet while its window is empty. */
+  function bars(st: Stage, h: number[] | null, top: number) {
+    const { ctx, t } = st, base = st.h - 4, bw = st.w / (h?.length ?? 10);
+    ctx.strokeStyle = t.muted; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, base); ctx.lineTo(st.w, base); ctx.stroke();
+    if (!h) return;
+    ctx.fillStyle = t.ink;
+    h.forEach((v, b) => { const y = base - (Math.min(v, top) / top) * (st.h - 10); ctx.fillRect(b * bw + 2, y, bw - 4, base - y); });
+  }
+  const l1 = (x: number[] | null, y: number[] | null) => (x && y ? x.reduce((s, v, i) => s + Math.abs(v - y[i]), 0) : 2);
 
-  /** A histogram as bars (one fingerprint), or as faint step lines with their average drawn thick (several). */
-  function histPlot(st: Stage, f: Feat, hs: number[][], top: number, ends = true) {
-    const { lo, hi, bins } = RANGE[f], p: Plot = { x: 4, y: 6, w: st.w - 8, h: st.h - (ends ? 40 : 14), x0: lo, x1: hi, y0: 0, y1: top }, { ctx, t } = st, bw = p.w / bins;
-    const steps = (h: number[]) => { ctx.beginPath(); h.forEach((v, b) => { const x = p.x + b * bw, y = py(p, Math.min(v, top)); if (b) ctx.lineTo(x, y); else ctx.moveTo(x, y); ctx.lineTo(x + bw, y); }); ctx.stroke(); };
-    if (hs.length === 1) { ctx.fillStyle = t.ink; hs[0].forEach((v, b) => ctx.fillRect(p.x + b * bw + 1.5, py(p, v), bw - 3, py(p, 0) - py(p, v))); }
-    else {
-      ctx.lineJoin = 'round'; ctx.strokeStyle = t.ink; ctx.lineWidth = 2; ctx.globalAlpha = 0.3;
-      hs.forEach(steps);
-      ctx.globalAlpha = 1; ctx.lineWidth = 5;
-      steps(hs[0].map((_, b) => hs.reduce((acc, h) => acc + h[b], 0) / hs.length));
+  // ── G2: the three networks, run by one rule; their fingerprints, live ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.g2')) {
+    const figs = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]')), buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
+    let pick = 'miranda', pics: Picture[] | null = null;
+    // the networks are built when the slide is first drawn, not at page load
+    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), 330, 10, k === 1 ? 3.2 : 3.8, k === 2 ? 0.6 : false)));
+    type Col = { net: HTMLCanvasElement; hists: HTMLCanvasElement[]; a: Uint8Array; b: Uint8Array; fp: ReturnType<typeof fingerprinter> | null; print: Print };
+    const cols: Col[] = figs.map((f) => ({ net: f.querySelector<HTMLCanvasElement>('canvas.net')!, hists: FEATS.map((x) => f.querySelector<HTMLCanvasElement>(`canvas.hist[data-f="${x}"]`)!), a: new Uint8Array(0), b: new Uint8Array(0), fp: null, print: { entropy: null, lz: null, density: null } }));
+    const reset = () => cols.forEach((c, k) => {
+      const p = pic()[k];
+      c.a = trioStart(k, p.net.n); c.b = new Uint8Array(p.net.n);
+      c.fp ??= fingerprinter(p.net); c.fp.reset(); c.fp.push(c.a); c.print = c.fp.print();
+    });
+    function paint() {
+      const ps = pic();
+      cols.forEach((c, k) => { const st = stage(c.net); if (st) drawNet(st, ps[k], c.a); });
+      // each row on one height, so the three columns compare
+      FEATS.forEach((f, r) => {
+        const top = Math.max(0.2, ...cols.map((c) => Math.max(0, ...(c.print[f] ?? [0]))));
+        cols.forEach((c) => { const st = stage(c.hists[r]); if (st) bars(st, c.print[f], top); });
+      });
+      // the three prints are drawn alike once the fingerprints really are
+      const same = FEATS.every((f) => l1(cols[0].print[f], cols[1].print[f]) < 0.05 && l1(cols[0].print[f], cols[2].print[f]) < 0.05);
+      s.classList.toggle('alike', same);
     }
-    ctx.strokeStyle = t.muted; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, py(p, 0)); ctx.lineTo(p.x + p.w, py(p, 0)); ctx.stroke();
-    if (!ends) return;
-    label(st, ENDS[f][0], px(p, lo), st.h - 14, { size: 22, color: t.muted });
-    label(st, ENDS[f][1], px(p, hi), st.h - 14, { size: 22, align: 'right', color: t.muted });
+    const rule = () => RULES[pick];
+    const run = ticker(s, 5, () => {
+      cols.forEach((c, k) => { step(c.a, pic()[k].net, rule(), c.b); [c.a, c.b] = [c.b, c.a]; c.fp!.push(c.a); c.print = c.fp!.print(); });
+    }, paint);
+    const choose = (id: string) => {
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === id)));
+      if (id === pick) return;
+      pick = id; reset(); paint();
+    };
+    buttons.forEach((b) => b.addEventListener('click', () => choose(b.dataset.rule!)));
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, { reset() { run.play(false); reset(); paint(); }, play() { run.play(true); } });
+    slide(s, {
+      // build 4 puts the consensus-seeking rule in; any step back or jump below it, Miranda's again
+      set(b: number, how: How) { if (b >= 4) choose('consensus'); else if (how !== 'next' || b === 0) choose('miranda'); },
+      enter() { pick = ''; choose('miranda'); },
+      leave() { run.play(false); },
+    });
+    reset();
+    for (const c of cols) { onSize(c.net, paint); c.hists.forEach((h) => onSize(h, paint)); }
   }
 
-  /** The rule as two rows of intervals, born (top) and survives (bottom); `marks` draws a tick at every change. */
-  function diagram(st: Stage, x: Example, left: number, marks: boolean) {
-    const { ctx, t } = st, gap = marks ? 30 : 8, top = marks ? 10 : 0, w = (st.w - left) / x.r, h = (st.h - gap - top - (marks ? 50 : 8)) / 2;
-    label(st, 'born', left - 14, top + h / 2, { size: marks ? 28 : 24, align: 'right', color: t.muted });
-    label(st, 'survives', left - 14, top + gap + 1.5 * h, { size: marks ? 28 : 24, align: 'right', color: t.muted });
+  /** The rule as two rows of intervals, born (top) and survive (bottom), with a red tick at every change of answer. */
+  function diagram(st: Stage, x: { r: number; B: number; S: number }, left: number) {
+    const { ctx, t } = st, gap = 30, top = 10, w = (st.w - left) / x.r, h = (st.h - gap - top - 50) / 2;
+    label(st, 'born', left - 14, top + h / 2, { size: 28, align: 'right', color: t.muted });
+    label(st, 'survives', left - 14, top + gap + 1.5 * h, { size: 28, align: 'right', color: t.muted });
     let changes = 0;
     for (const [row, mask, col] of [[0, x.B, t.accent], [1, x.S, t.ink]] as const) {
       const Y = top + row * (h + gap);
@@ -155,55 +209,21 @@ const sides = [
         const on = (mask >> i) & 1, X = left + i * w;
         ctx.fillStyle = on ? col : t.panel; ctx.fillRect(X + 2, Y, w - 4, h);
         if (!on) { ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(X + 3, Y + 1, w - 6, h - 2); }
-        if (marks && i > 0 && ((mask >> i) & 1) !== ((mask >> (i - 1)) & 1)) {
+        if (i > 0 && ((mask >> i) & 1) !== ((mask >> (i - 1)) & 1)) {
           changes++;
           ctx.strokeStyle = t.danger; ctx.lineWidth = 7; ctx.lineCap = 'round';
           ctx.beginPath(); ctx.moveTo(X, Y - 8); ctx.lineTo(X, Y + h + 8); ctx.stroke();
         }
       }
     }
-    if (marks) label(st, `jaggedness ${Math.round((100 * changes) / (2 * (x.r - 1)))}%`, left, st.h - 18, { size: 32, color: t.danger, weight: 700 });
+    label(st, `jaggedness ${Math.round((100 * changes) / (2 * (x.r - 1)))}%`, left, st.h - 18, { size: 32, color: t.danger, weight: 700 });
   }
 
-  // ── G1: one network of each kind: its pattern, then its three fingerprints, one per click ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.g2')) {
-    const figs = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]')).map((el) => {
-      const c = +el.dataset.type!;
-      return { c, tep: el.querySelector<HTMLCanvasElement>('canvas.tep')!, hists: Array.from(el.querySelectorAll<HTMLCanvasElement>('canvas.hist')) };
-    });
-    // the runs are made the first time the slide is drawn, not at page load
-    let runs: { net: ReturnType<typeof toyNet>; s: Uint8Array }[] | null = null;
-    const runsOf = () => (runs ??= figs.map(({ c }) => { const net = toyNet(c, 0); return { net, s: toyRun(net, ruleOf(det), startSeed(c, 0)).s }; }));
-    const shown = (f: Feat) => figs.map(({ c }) => det[f][c * TOY.perType]);
-    const tops = Object.fromEntries((Object.keys(RANGE) as Feat[]).map((f) => [f, Math.max(...shown(f).flat()) * 1.08])) as Record<Feat, number>;
-    for (const g of figs) {
-      onSize(g.tep, () => { const st = stage(g.tep); if (st) nodes(st, runsOf()[g.c].net, runsOf()[g.c].s, 50, TOY.T); });
-      for (const h of g.hists) onSize(h, () => { const st = stage(h), f = h.dataset.f as Feat; if (st) histPlot(st, f, [det[f][g.c * TOY.perType]], tops[f]); });
-    }
-  }
-
-  // ── G2: the consensus-seeking rule and the jagged rule: the rule, and for each kind of network its pattern and the
-  // compressibility histograms of its five networks ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.g3')) {
-    s.querySelectorAll<HTMLElement>('figure[data-rule]').forEach((fig) => {
-      const x = [cons, det][+fig.dataset.rule!], rule = ruleOf(x);
-      const diag = fig.querySelector<HTMLCanvasElement>('canvas.diag')!;
-      onSize(diag, () => { const st = stage(diag); if (st) diagram(st, x, 130, false); });
-      let runs: { net: ReturnType<typeof toyNet>; s: Uint8Array }[] | null = null;
-      const runsOf = () => (runs ??= [0, 1, 2].map((c) => { const net = toyNet(c, 0); return { net, s: toyRun(net, rule, startSeed(c, 0)).s }; }));
-      const top = Math.max(...x.lz.flat()) * 1.05;
-      fig.querySelectorAll<HTMLCanvasElement>('canvas.mtep').forEach((m, c) => onSize(m, () => { const st = stage(m); if (st) nodes(st, runsOf()[c].net, runsOf()[c].s, 50, 50); }));
-      fig.querySelectorAll<HTMLCanvasElement>('canvas.mfp').forEach((m, c) => onSize(m, () => {
-        const st = stage(m); if (st) histPlot(st, 'lz', x.lz.slice(c * TOY.perType, (c + 1) * TOY.perType), top, false);
-      }));
-    });
-  }
-
-  // ── G3: the two rules again, every change of answer between neighbouring intervals marked ──
+  // ── G4: the two rules of G2, every change of answer between neighbouring intervals marked ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.g4')) {
-    s.querySelectorAll<HTMLElement>('figure[data-rule]').forEach((fig) => {
-      const x = [cons, det][+fig.dataset.rule!], c = fig.querySelector<HTMLCanvasElement>('canvas')!;
-      onSize(c, () => { const st = stage(c); if (st) diagram(st, x, 150, true); });
+    s.querySelectorAll<HTMLCanvasElement>('canvas.jdiag').forEach((c) => {
+      const [r, B, S] = c.dataset.rule!.split(',').map(Number);
+      onSize(c, () => { const st = stage(c); if (st) diagram(st, { r, B, S }, 150); });
     });
   }
 </script>

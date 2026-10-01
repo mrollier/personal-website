@@ -138,7 +138,6 @@ const beyond = [
 <script>
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
-  import { pattern } from '../../scripts/defence/plot';
   import { curveOf, box, draw, STEPS } from '../../scripts/defence/cobweb';
   import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
   import { spark } from '../../scripts/defence/cover';
@@ -146,12 +145,12 @@ const beyond = [
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
-  import { toyNet } from '../../scripts/defence/toy';
+  import { TRIO, trioNet, RHO0 } from '../../scripts/defence/trio';
+  import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
   import { parse, mix, css } from '../../scripts/palette';
   import mosaicData from '../../data/defence/mosaic.json';
   import consensus from '../../data/defence/consensus.json';
   import { WINNER } from '../../scripts/defence/agree';
-  import classify from '../../data/defence/classify.json';
   import clamp from '../../data/defence/clamp.json';
 
   // ── I1: one small animation per answer, in one canvas, square cells throughout ──
@@ -194,25 +193,22 @@ const beyond = [
     return act;
   })();
 
-  // 9. the jagged rule on one network of each kind: the last 50 rounds of 50 nodes, rolling
+  // 9. Miranda et al.'s jagged rule on the talk's three networks (slide G2), running, each with its name
   const DETECT = (() => {
-    const det = classify.examples[1], rule: Rule = { r: det.r, B: det.B, S: det.S, part: 'uni' }, nets = [0, 1, 2].map((c) => toyNet(c, 0)), L = 50;
-    let st0: Uint8Array[] = [], out: Uint8Array[] = [], hist: Uint8Array[][] = [];
-    const names = classify.params.types.map((x) => x.name);
+    const rule: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, SIDE = 260;
+    let pics: Picture[] | null = null, st0: Uint8Array[] = [], out: Uint8Array[] = [];
+    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), SIDE, 8, k === 1 ? 2.6 : 3, k === 2 ? 0.6 : false)));
     return {
-      rate: 8,
-      reset() {
-        st0 = nets.map((net) => randomState(net.n, 0.5, fresh())); out = nets.map((net) => new Uint8Array(net.n)); hist = nets.map(() => []);
-        for (let k = 0; k < L; k++) this.advance();
-      },
-      advance() { nets.forEach((net, c) => { hist[c].push(st0[c].slice()); if (hist[c].length > L) hist[c].shift(); step(st0[c], net, rule, out[c]); [st0[c], out[c]] = [out[c], st0[c]]; }); },
+      rate: 5,
+      reset() { st0 = pic().map((p) => randomState(p.net.n, RHO0, fresh())); out = pic().map((p) => new Uint8Array(p.net.n)); },
+      advance() { pic().forEach((p, c) => { step(st0[c], p.net, rule, out[c]); [st0[c], out[c]] = [out[c], st0[c]]; }); },
       paint(st) {
-        const { ctx, t } = st, side = Math.min((st.w - 80) / 3, st.h - 60), c = side / L;
-        nets.forEach((net, k) => {
-          const x0 = (st.w - 3 * side - 80) / 2 + k * (side + 40), y0 = (st.h - side - 50) / 2;
-          pattern(st, net.order, L, L, (j, i) => !!hist[k][j]?.[i], x0, y0, c);
+        const { ctx, t } = st, gap = (st.w - 3 * SIDE) / 4, y0 = (st.h - SIDE - 50) / 2;
+        pic().forEach((p, k) => {
+          const x0 = gap + k * (SIDE + gap);
+          ctx.save(); ctx.translate(x0, y0); drawNet(st, p, st0[k]); ctx.restore();
           ctx.font = `400 28px ${t.sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink;
-          ctx.fillText(names[k], x0 + side / 2, y0 + side + 14);
+          ctx.fillText(TRIO[k].name, x0 + SIDE / 2, y0 + SIDE + 14);
         });
       },
     } satisfies Act;

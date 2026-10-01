@@ -101,7 +101,9 @@
   font-size: calc(22 * var(--u)); line-height: 1; color: var(--muted); opacity: 0.85; white-space: nowrap; transition: opacity 0.35s ease;
 }
 .slide .rhalf { display: flex; align-items: center; }
-.slide .rh { margin-right: calc(14 * var(--u)); opacity: 0.8; }
+.slide .rh { margin-right: calc(14 * var(--u)); opacity: 0.8; display: inline-grid; justify-items: end; }
+.slide .rh > span { grid-area: 1 / 1; }
+.slide .rh-bold { font-weight: 700; visibility: hidden; } /* as wide as the name in bold, whether it is bold or not */
 .slide .rhalf:has(.rch.cur) .rh { font-weight: 700; color: var(--ink); opacity: 1; } /* the half of the question we are in */
 .slide .rch { padding: calc(7 * var(--u)) calc(14 * var(--u)); border: calc(2 * var(--u)) solid var(--line); background: var(--bg); color: inherit; text-decoration: none; cursor: pointer; }
 .slide .rch:hover { border-color: var(--accent); color: var(--ink); }

@@ -1,33 +1,51 @@
 ---
-// F3–F4: the two curves that read a rule before it runs, the average next density and the average next defect, each
-// with a start the reader drags and a cobweb of a few steps showing where the network goes on average (the density in
-// blue, the defect in red, as on the mission slide); then one dashed line: the tangent at the unstable equilibrium (how
-// unstable) and at the origin (how sensitive); then a click brings in
-// the consensus-seeking rule, the one the next chapter goes looking for. Three rules to switch between, shared by both
-// slides, its name under them. Drawing in src/scripts/defence/cobweb.ts.
+// F2a–F4: what a rule says before it runs, Ch. 5, in two pairs. First a number on the rule's two rings, then the curve
+// it is a point or a slope of: the Hamming weight (the share of a node's 512 inputs that turn it on, so the average
+// next density from half on), then the average next density from any start (the mean-field curve); the Boolean
+// sensitivity (how many of a node's nine inputs change its next state when flipped, a red arrow on the rings for one
+// neighbour flipped), then the average next defect (the Derrida curve), whose tangent at the origin it is. Each curve
+// has a start the reader drags and a cobweb showing where the network goes on average (the density in blue, the defect
+// in red, as on the mission slide), then one dashed line: the tangent at the unstable equilibrium (how unstable) and at
+// the origin (how sensitive). On every slide the clicks bring in the Game of Life, the consensus-seeking rule the next
+// chapter goes looking for, and a random rule drawn once for the talk; three buttons switch between them, shared by
+// the four slides, the rule's name under them. Drawing in src/scripts/defence/cobweb.ts and donut.ts.
 import Slide from './Slide.astro';
-import { phi } from './tex';
+import { phi, tex, texify } from './tex';
 const rules = [
   { id: 'life', name: 'Game of Life' },
   { id: 'consensus', name: 'Consensus-seeking rule' },
   { id: 'random', name: 'Random rule' },
 ];
+const HW = String.raw`$\mathrm{HW}_8 = \frac{1}{2^9}\sum_{s\in\{0,1\}}\sum_{q=0}^{8}\binom{8}{q}\,\phi(s, q/8)$`;
+const BS = String.raw`$\mathrm{BS}_8 = \frac{1}{2^9}\sum_{s\in\{0,1\}}\sum_{q=0}^{8}\binom{8}{q}\big(\mathrm{IS}(s,q,8)+\mathrm{NS}(s,q,8)\big)$`;
 const slides = [
-  { kind: 'density', title: 'The average next density', cls: 'f3', builds: 2, say: [
-    'Can we say something about a rule before we run it? Take a network in which some share of the nodes is on: its density, from all off on the left to all on on the right. What is the density one round later, on average? That is this curve, the average next density, worked out from the rule alone, as if every node had eight neighbours picked at random. Follow it step by step, up to the curve and across to the diagonal, and this cobweb shows where the network would go on average. On this page you can drag the start (the dot on the bottom axis; the cobweb follows as a ghost and draws itself when you let go), and switch between the Game of Life, a consensus-seeking rule and a random rule; the ↺ next to Random rule draws another one. Under the buttons is the rule’s name.',
-    'Where the curve crosses the diagonal, the density stays put: an equilibrium. Some of them pull the network in, others push it away. The dashed line is the tangent at the unstable one: the steeper it is, the harder the network is pushed away. Its slope says how unstable a rule is. For the Game of Life it is 1.7, at a density of about a fifth; many random rules have no unstable equilibrium at all. All of this is an approximation that ignores who is next to whom, which is why we still simulate.',
-    'One more click brings in the consensus-seeking rule, the kind of rule the next chapter goes looking for. Its unstable equilibrium sits at one half, and the same click moves the start to 30% on: the network is pushed away from half and half, here towards all off (from a little over half, towards all on). How we found it comes after the next slide.',
+  { kind: 'density', view: 'rings', label: 'Hamming weight', title: 'The average next density', cls: 'f2a', builds: 2, num: 'Hamming weight', sym: String.raw`\mathrm{HW}_8`, first: '0.27', say: [
+    `Can we say something about a rule before we run it? Start with one number. Take a node and its eight neighbours, each on or off at random, as in a network that is half on: 512 possible inputs. The rule’s two rings say which of them turn the node on: born, round a node that is off, and survive, round one that is on. The share of the 512 inputs that turn it on is the Hamming weight, ${HW}: each slice counts as often as there are neighbourhoods in it, so the slices at the bottom of the rings, around half on, count the most. It is the average next density from half on. For the Game of Life it is 0.27: from half on, about a quarter of the nodes is on one timestep later. On this page the buttons switch between the Game of Life, a consensus-seeking rule and a random rule (the ↺ next to Random rule draws another one); the four slides of this chapter share the rule, and its name is under the buttons.`,
+    'One click brings in the consensus-seeking rule: 0.50. It treats on and off alike, so from half on it stays at half on, on average.',
+    'And a random rule, drawn once for this talk, $\\phi^9_{11,93}$: 0.48, close to one half, like most rules drawn at random. One number cannot say where the network goes from any other start; that is the curve of the next slide.',
+  ], aria: 'The rule as two rings, born round a node that is off and survive round a node that is on, with its Hamming weight under them' },
+  { kind: 'density', view: 'curve', label: 'The average next density', title: 'The average next density', cls: 'f3', builds: 3, say: [
+    'Where does the network go from any other start? Take a network in which some share of the nodes is on: its density, from all off on the left to all on on the right. What is the density one timestep later, on average? That is this curve, the average next density (the mean-field curve), worked out from the rule alone, as if every node had eight neighbours picked at random; at one half it passes through the Hamming weight. Follow it step by step, up to the curve and across to the diagonal, and this cobweb shows where the network would go on average. On this page you can drag the start (the dot on the bottom axis; the cobweb follows as a ghost and draws itself when you let go).',
+    'Where the curve crosses the diagonal, the density stays put: an equilibrium. Some of them pull the network in, others push it away. The dashed line is the tangent at the unstable one: the steeper it is, the harder the network is pushed away. Its slope says how unstable a rule is. For the Game of Life it is 1.7, at a density of about a fifth. All of this is an approximation that ignores who is next to whom, which is why we still simulate.',
+    'One more click brings in the consensus-seeking rule, the kind of rule the next chapter goes looking for. Its unstable equilibrium sits at one half, and the same click moves the start to 30% on: the network is pushed away from half and half, here towards all off (from a little over half, towards all on). How we found it comes after the next two slides.',
+    'And the random rule: it has no unstable equilibrium at all, like many random rules. From 30% on it jumps past one half and back, closer each time: whatever the start, the network ends up around half on.',
   ], aria: 'The average next density of the chosen rule against the density now, with a cobweb from the start and the diagonal' },
-  { kind: 'defect', title: 'The average next defect', cls: 'f4', builds: 3, say: [
-    'The second curve asks the same question about differences. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one round later, on average? That is the average next defect, again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
-    'The dashed line is the tangent at the origin: how many nodes a single difference reaches in one round, on average. Its slope says how sensitive a rule is: above one, a single difference spreads; below one, it dies out. For the Game of Life it is about three.',
-    'The next click brings back the consensus-seeking rule: more than six. A single difference spreads fast under this rule, and that will matter in the next chapter.',
-    'Our result: we worked out both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
+  { kind: 'defect', view: 'rings', label: 'Boolean sensitivity', title: 'The average next defect', cls: 'f4a', builds: 2, num: 'Boolean sensitivity', sym: String.raw`\mathrm{BS}_8`, first: '3.17', say: [
+    `The second number is about differences. Take the same node and its eight neighbours, and flip one of its nine inputs. Flip a neighbour, and the share of neighbours on moves one slice along the ring, one way or the other: the red arrows. Flip the node itself, and it moves to the other ring. Does the node’s next state change? Count the inputs whose flip changes it, averaged over all 512 inputs: that is the Boolean sensitivity, ${BS}, split into the node itself (IS) and its neighbours (NS), at most 9. For the Game of Life it is 3.17: of a node’s nine inputs, about three matter.`,
+    'The consensus-seeking rule: 6.40, twice as sensitive as the Game of Life.',
+    'The random rule: 4.71, about what a rule drawn at random has (half of all 262 144 rules lie between 3.6 and 5.4). What a single difference does over time is the curve of the next slide.',
+  ], aria: 'The rule as two rings, with a red arrow along each for one neighbour flipped, and its Boolean sensitivity under them' },
+  { kind: 'defect', view: 'curve', label: 'The average next defect', title: 'The average next defect', cls: 'f4', builds: 4, say: [
+    'The same question about differences, from any start. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one timestep later, on average? That is the average next defect (the Derrida curve), again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
+    'The dashed line is the tangent at the origin, and its slope is the Boolean sensitivity of the slide before: how many nodes a single difference reaches in one timestep, on average. Above one, a single difference spreads; below one, it dies out. For the Game of Life, 3.17.',
+    'The next click brings back the consensus-seeking rule: 6.40. A single difference spreads fast under this rule, and that will matter in the next chapter.',
+    'And the random rule: 4.71, in between.',
+    'Our result: we worked out both numbers and both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
   ], aria: 'The average next defect of the chosen rule against the defect now, with a cobweb from the start and the diagonal' },
 ];
 ---
 {slides.map((sl, i) => (
-  <Slide id={i ? undefined : 'ch-metrics'} label={sl.title} builds={sl.builds} class={`${sl.cls} avg`} ch={5}>
+  <Slide id={i ? undefined : 'ch-metrics'} label={sl.label} builds={sl.builds} class={`${sl.cls} avg`} ch={5}>
     <div class="row grow avg-row">
       <div class="col avg-side">
         <h2>{sl.title}</h2>
@@ -40,13 +58,18 @@ const slides = [
           ))}
         </div>
         <p class="avg-phi" set:html={phi(9, 8, 12, true)} />
-        {/* the density slide keeps an invisible copy of the defect slide's box, so the column sits the same on both */}
-        {sl.kind === 'defect' ? <p class="result" data-b="3"><b>Our result</b> Both curves, worked out for Life-like network automata: ready to filter the rules.</p>
+        {/* every slide but the last keeps an invisible copy of its box, so the column sits the same on all four */}
+        {i === slides.length - 1 ? <p class="result" data-b="4"><b>Our result</b> Both curves, worked out for Life-like network automata: ready to filter the rules.</p>
           : <p class="result avg-spacer" aria-hidden="true"><b>Our result</b> Both curves, worked out for Life-like network automata: ready to filter the rules.</p>}
       </div>
-      <canvas class="plot" data-kind={sl.kind} aria-label={sl.aria}></canvas>
+      {sl.view === 'curve' ? <canvas class="plot" data-kind={sl.kind} aria-label={sl.aria}></canvas> : (
+        <div class="col avg-ring">
+          <canvas class="rings" data-kind={sl.kind} aria-label={sl.aria}></canvas>
+          <p class={`avg-num ${sl.kind}`}><b>{sl.num}</b><span set:html={tex(`${sl.sym} = \\htmlClass{avg-v}{${sl.first}}`)} /></p>
+        </div>
+      )}
     </div>
-    {sl.say.map((t) => <p slot="say">{t}</p>)}
+    {sl.say.map((t) => <p slot="say" set:html={texify(t)} />)}
   </Slide>
 ))}
 
@@ -62,40 +85,94 @@ const slides = [
   .avg-spacer { visibility: hidden; }
   .avg-side .result { font-size: calc(34 * var(--u)); }
   .plot { flex: 1; min-width: 0; height: 100%; touch-action: none; }
+  /* the rings, and under them their number, in the colour of its curve */
+  .avg-ring { flex: 1; min-width: 0; align-items: center; justify-content: center; gap: calc(20 * var(--u)); }
+  .rings { width: 100%; height: calc(600 * var(--u)); }
+  .avg-num { display: flex; align-items: baseline; gap: calc(36 * var(--u)); font-size: calc(52 * var(--u)); }
+  .avg-num b { font-weight: 700; }
+  .avg-num.density b { color: var(--accent); }
+  .avg-num.defect b { color: var(--danger); }
+  .avg-num :global(.katex) { font-size: 1.15em; }
 </style>
 
 <script>
   import { slide } from '../../scripts/defence/deck';
   import { stage, size, onSize, pointer } from '../../scripts/defence/stage';
   import type { Rule } from '../../scripts/llna';
-  import { setPhi } from '../../scripts/defence/donut';
+  import { hammingWeight } from '../../scripts/llna';
+  import { sensitivity } from '../../scripts/genotype';
+  import { setPhi, drawRing, hop, type Ring } from '../../scripts/defence/donut';
   import { curveOf, tangentOf, box, draw, STEPS, type Kind, type Tangent } from '../../scripts/defence/cobweb';
   import { px, py } from '../../scripts/defence/plot';
 
-  // The rule is shared by both slides: a press on either changes both. Each slide opens on the Game of Life, and its
-  // click SWITCH brings in the consensus-seeking rule (Ch. 6's best on rewired grids, the one of the slides after);
-  // stepping back over that click brings back the Game of Life. A rule picked by hand stays until a click crosses it.
-  // Random rule draws a rule when it is chosen, and its ↺ another one.
+  // The rule is shared by the four slides: a press on any changes all. Each slide opens on the Game of Life, and its
+  // clicks bring in the consensus-seeking rule (Ch. 6's best on rewired grids, the one of the slides after) and then a
+  // random rule drawn once for the talk (its numbers are typical: the speaker text quotes them); stepping back over a
+  // click brings back the rule before. A rule picked by hand stays until a click crosses one of those builds. Random
+  // rule shows the last random rule, and its ↺ draws another one.
   const FIXED: Record<string, Rule> = { life: { r: 9, B: 8, S: 12 }, consensus: { r: 9, B: 488, S: 464 } };
-  let pick = 'life', rule: Rule = FIXED.life;
+  const DRAWN: Rule = { r: 9, B: 11, S: 93 };
+  let pick = 'life', rule: Rule = FIXED.life, random: Rule = DRAWN;
   const listeners: (() => void)[] = [];
   function choose(id: string, again = false) {
     if (id === pick && !again) return;
     pick = id;
-    rule = id === 'random' ? { r: 9, B: Math.floor(Math.random() * 512), S: Math.floor(Math.random() * 512) } : FIXED[id];
+    if (again) random = { r: 9, B: Math.floor(Math.random() * 512), S: Math.floor(Math.random() * 512) };
+    rule = id === 'random' ? random : FIXED[id];
     for (const f of listeners) f();
   }
+  /** What a click brings in: the rule of the build, the random one as drawn for the talk. */
+  function bring(id: string) {
+    const want = id === 'random' ? DRAWN : FIXED[id];
+    random = DRAWN;
+    if (pick !== id || rule !== want) { pick = ''; choose(id); }
+  }
+  /** The rule at build b of a slide whose clicks bring in the consensus-seeking rule at `at` and the random one after. */
+  const ruleAt = (b: number, at: number) => (b > at ? 'random' : b === at ? 'consensus' : 'life');
+  /** Whether going to build b crosses one of those clicks. */
+  const crosses = (b: number, how: string, at: number) => how === 'jump' || (how === 'next' ? b === at || b === at + 1 : b === at - 1 || b === at);
+  const wire = (s: HTMLElement, paint: () => void) => {
+    const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]')), reroll = s.querySelector<HTMLButtonElement>('[data-reroll]')!, name = s.querySelector('.avg-phi')!;
+    buttons.forEach((b) => b.addEventListener('click', () => choose(b.dataset.rule!)));
+    reroll.addEventListener('click', () => choose('random', true));
+    const mark = () => { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick))); reroll.hidden = pick !== 'random'; setPhi(name, rule); };
+    listeners.push(() => { mark(); paint(); });
+  };
 
-  const SWITCH = 2, STEP_MS = 260, MORPH_MS = 450, N = 240, START: Record<Kind, number> = { density: 0.5, defect: 0.05 };
+  // ── the rings with their number: the Hamming weight, or the Boolean sensitivity with a red arrow along each ring for
+  // one neighbour flipped (from the middle slice, into the next one either way) ──
+  const avg = Array.from(document.querySelectorAll<HTMLElement>('.slide.avg'));
+  for (const s of avg.filter((x) => x.querySelector('canvas.rings'))) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.rings')!, kind = c.dataset.kind as Kind, v = s.querySelector('.avg-v')!;
+    const AT = 1;
+    function paint() {
+      v.textContent = (kind === 'density' ? hammingWeight(rule, 8) : sensitivity(rule, 8).BS).toFixed(2);
+      const st = stage(c); if (!st) return;
+      const R = Math.min(st.w / 4 - 40, st.h / 2 - 50), w = R * 0.41;
+      const rings: Ring[] = [{ x: st.w / 2 - R - 70, y: st.h / 2, R, w, on: false }, { x: st.w / 2 + R + 70, y: st.h / 2, R, w, on: true }];
+      drawRing(st, rings[0], rule.r, rule.B); drawRing(st, rings[1], rule.r, rule.S);
+      if (kind === 'defect') for (const g of rings) hop(st, g, rule.r, 3.7, 5.3, st.t.danger);
+    }
+    wire(s, paint);
+    slide(s, {
+      set(b, how) {
+        if (crosses(b, how, AT)) bring(ruleAt(b, AT));
+        paint();
+      },
+    });
+    onSize(c, paint);
+  }
+
+  // ── the curves, each with a cobweb from a start the reader drags and, from the first click, its tangent ──
+  const STEP_MS = 260, MORPH_MS = 450, N = 240, START: Record<Kind, number> = { density: 0.5, defect: 0.05 };
   // where the switch to the consensus-seeking rule puts the start: at half on its density stays put, at 30% on it falls
   const AWAY: Record<Kind, number> = { density: 0.3, defect: 0.05 };
   /** A curve as samples, so a change of rule can morph one into the other. */
   const sample = (f: (x: number) => number) => Float64Array.from({ length: N + 1 }, (_, i) => f(i / N));
   const read = (a: Float64Array, x: number) => { const u = Math.max(0, Math.min(1, x)) * N, i = Math.min(N - 1, Math.floor(u)); return a[i] + (a[i + 1] - a[i]) * (u - i); };
 
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.avg')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.plot')!, kind = c.dataset.kind as Kind;
-    const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]')), reroll = s.querySelector<HTMLButtonElement>('[data-reroll]')!, name = s.querySelector('.avg-phi')!;
+  for (const s of avg.filter((x) => x.querySelector('canvas.plot'))) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.plot')!, kind = c.dataset.kind as Kind, AT = 2;
     let f = curveOf(rule, kind), red: Tangent | null = tangentOf(f, kind), at = 0, start = START[kind], progress = STEPS;
     let drag = false; // the start is being dragged
     // a morph from the samples `was` to the new curve, then the cobweb drawn step by step
@@ -116,15 +193,12 @@ const slides = [
     }
     const run = (m: 'morph' | 'web') => { cancelAnimationFrame(raf); mode = m; t0 = performance.now(); if (m === 'web') progress = 0; raf = requestAnimationFrame(frame); };
     const halt = () => { cancelAnimationFrame(raf); raf = 0; was = null; mode = 'still'; progress = STEPS; };
-    const mark = () => { buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick))); reroll.hidden = pick !== 'random'; setPhi(name, rule); };
-    listeners.push(() => {
+    wire(s, () => {
       // morph from whatever is on screen now to the new rule's curve
       const from = sample(shown);
       f = curveOf(rule, kind); red = tangentOf(f, kind); was = from; now = sample(f); e = 0;
-      mark(); run('morph');
+      run('morph');
     });
-    buttons.forEach((b) => b.addEventListener('click', () => choose(b.dataset.rule!)));
-    reroll.addEventListener('click', () => choose('random', true));
 
     // The start is dragged by its dot on the axis only. While it moves the cobweb is a ghost; let go, and it draws itself.
     const onDot = (ev: PointerEvent) => { const z = size(c), p = box(z.w, z.h), q = pointer(c, ev); return Math.hypot(q.x - px(p, start), q.y - py(p, 0)) < 40; };
@@ -137,11 +211,10 @@ const slides = [
 
     slide(s, {
       set(b, how) {
-        const fresh = b === 0 && how === 'jump', want = b >= SWITCH ? 'consensus' : 'life';
-        const cross = how === 'jump' || b === (how === 'next' ? SWITCH : SWITCH - 1);
+        const fresh = b === 0 && how === 'jump', cross = crosses(b, how, AT);
         at = b;
-        if (cross) start = (b >= SWITCH ? AWAY : START)[kind];
-        if (cross && pick !== want) { choose(want); return; }
+        if (cross) start = (b >= AT ? AWAY : START)[kind];
+        if (cross) { const was = rule; bring(ruleAt(b, AT)); if (rule !== was) return; }
         if (fresh) { run('web'); return; }
         paint();
       },

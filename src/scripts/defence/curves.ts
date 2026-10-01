@@ -4,7 +4,7 @@
 import { meanField, type Rule } from '../llna.ts';
 import { derridaCoeffs, derridaAt } from '../genotype.ts';
 
-export const K = 8, STEPS = 4;
+export const K = 8, STEPS = 6;
 export type Kind = 'density' | 'defect';
 export type Tangent = { x: number; y: number; slope: number };
 

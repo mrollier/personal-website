@@ -70,7 +70,12 @@ export function draw(st: Stage, p: Plot, v: View): void {
   if (segs >= pts.length - 1 && !v.ghost) { const [ex, ey] = pts[pts.length - 1]; dot(st, px(p, ex), py(p, ey), 9, t.ink); }
   dot(st, px(p, v.start), py(p, 0), v.handle ? 15 : 10, h, v.handle ? t.bg : undefined);
   if (v.red === undefined) return;
-  if (v.red === null) { label(st, 'no unstable equilibrium', p.x + 24, p.y + 30, { color: h, size: 34, weight: 600, bg: true }); return; }
+  if (v.red === null) {
+    // along the top, where the curve is not: the first of three places it stays below for the words' half width
+    const at = [0, 0.25, 0.48].find((a) => { for (let x = a; x <= a + 0.52; x += 0.01) if (v.f(x) > 0.86) return false; return true; }) ?? 0;
+    label(st, 'no unstable equilibrium', px(p, at) + 24, p.y + 30, { color: h, size: 34, weight: 600, bg: true });
+    return;
+  }
   tangent(st, p, v.red, h, 5, [16, 12]);
   dot(st, px(p, v.red.x), py(p, v.red.y), 11, h);
 }

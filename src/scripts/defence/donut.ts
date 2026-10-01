@@ -45,7 +45,25 @@ export function drawRing(st: Stage, g: Ring, r: number, mask: number): void {
   ctx.lineWidth = Math.max(4, nr * 0.1); ctx.strokeStyle = t.ink; ctx.stroke();
 }
 
-export type Picker = { readonly rule: Rule; setR(r: number): void; reset(rule: Rule): void; cousin(): void; paint(): void };
+/** A small curved arrow just outside ring `g`, a head at each end, from share x0/r to x1/r (in intervals): one input
+ * flipped. One neighbour more or fewer moves the share by 1/8, one interval at r = 9 (the sensitivity slide, and the
+ * detective slide at every change of answer). */
+export function hop(st: Stage, g: Ring, r: number, x0: number, x1: number, color: string): void {
+  const { ctx } = st, d = g.R + Math.max(16, g.w * 0.32), lw = Math.max(4, g.w * 0.08), head = lw * 3, half = head * 0.6;
+  const a0 = angle(x0 / r), a1 = angle(x1 / r), tuck = (0.8 * head) / d;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(g.x, g.y, d, a0 + tuck, a1 - tuck); ctx.stroke();
+  for (const [a, dir] of [[a0, -1], [a1, 1]] as const) {
+    // the tip on the arc, pointing along it, away from the middle
+    const x = g.x + Math.cos(a) * d, y = g.y + Math.sin(a) * d, tx = -Math.sin(a) * dir, ty = Math.cos(a) * dir, nx = Math.cos(a), ny = Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x - tx * head + nx * half, y - ty * head + ny * half); ctx.lineTo(x - tx * head - nx * half, y - ty * head - ny * half);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.lineCap = 'butt';
+}
+
+export type Picker ={ readonly rule: Rule; setR(r: number): void; reset(rule: Rule): void; cousin(): void; paint(): void };
 
 /** Two rings on one canvas, the born ring and the survive ring, whose intervals a click or a tap toggles. The rule is
  * kept as the density regions last chosen: a new resolution shows them as closely as its intervals allow, and going back

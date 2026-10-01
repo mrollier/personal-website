@@ -226,7 +226,7 @@ import { sensitivity, selfEquivalentRules, candidates, jaggedness, derrida } fro
 import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsTowardsHomogeneous, trial } from '../src/scripts/llna.ts';
 import { lattice } from '../src/scripts/net.ts';
 import { pearson } from '../src/scripts/stats.ts';
-import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts';
+import { curveOf, tangentOf, cobweb, STEPS, type Kind } from '../src/scripts/defence/curves.ts';
 import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
 {
   const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
@@ -295,6 +295,18 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
   const metric = R9(488, 464), tc = tan(metric, 'density'); near(tc.x, 0.5, 1e-3, 'consensus unstable equilibrium'); near(tc.slope, 1.148, 5e-3, 'consensus slope there');
   near(tan(life, 'defect').slope, sensitivity(life, 8).BS, 1e-3, 'Life defect tangent = BS8'); near(sensitivity(life, 8).BS, 3.17, 5e-3, 'Life BS8');
   near(tan(metric, 'defect').slope, 6.398, 1e-3, 'consensus defect tangent');
+  // the ring slides' numbers, and the random rule their clicks bring in (Metrics.astro), as the say slots quote them:
+  // Hamming weights 0.27, 0.50 and 0.48, Boolean sensitivities 3.17, 6.40 and 4.71; the random rule has no unstable
+  // equilibrium, and from 30% on its cobweb jumps past ½ and back, ending around half on; half of all 262 144 rules have
+  // a sensitivity between 3.6 and 5.4
+  const drawn = R9(11, 93), two = (x: number) => Math.round(x * 100) / 100;
+  assert.deepEqual([life, metric, drawn].map((r) => two(hammingWeight(r, 8))), [0.27, 0.5, 0.48], 'Hamming weights');
+  assert.deepEqual([life, metric, drawn].map((r) => two(sensitivity(r, 8).BS)), [3.17, 6.4, 4.71], 'Boolean sensitivities');
+  assert.equal(tangentOf(curveOf(drawn, 'density'), 'density'), null, 'the random rule has no unstable equilibrium');
+  const web = cobweb(curveOf(drawn, 'density'), 0.3, STEPS).filter((_, i) => i % 2).map(([, y]) => y);
+  assert.ok(web[0] > 0.5 && web[1] < 0.5 && Math.abs(web[web.length - 1] - 0.5) < 0.03, `the random rule's cobweb: ${web}`);
+  const all = Float64Array.from({ length: 512 * 512 }, (_, i) => sensitivity(R9(i >> 9, i & 511), 8).BS).sort();
+  assert.deepEqual([all[all.length >> 2], all[(3 * all.length) >> 2]].map((x) => Math.round(x * 10) / 10), [3.6, 5.4], 'the middle half of all rules');
   assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
   console.log('genotype anchors of the brief hold');
 }

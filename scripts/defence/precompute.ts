@@ -9,6 +9,7 @@ import { candidates, sensitivity, jaggedness } from '../../src/scripts/genotype.
 import { pearson, spearman, median } from '../../src/scripts/stats.ts';
 import { TOY, FEATURES, toyNet, toyFeatures, startSeed, separability, type Features } from '../../src/scripts/defence/toy.ts';
 import { agree, WINNER, THRESHOLD, LIMIT } from '../../src/scripts/defence/agree.ts';
+import { VILLAGE, villageNet } from '../../src/scripts/defence/village.ts';
 
 const out = new URL('../../src/data/defence/', import.meta.url);
 mkdirSync(out, { recursive: true });
@@ -114,10 +115,10 @@ function classify() {
   });
 }
 
-// ── clamp.json: one stubborn person on a scale-free network (H1, H2, backup Q3) ──
+// ── clamp.json: one stubborn person in a toy village (H1–H3, the closing slides, backup Q18) ──
 function clamp() {
-  const spec: NetSpec = { kind: 'ba', n: 100, m: 4 }, seed = 1, rule: Rule = { r: 9, B: 464, S: 488 }, T = 100, M = 100;
-  const net = buildNet(spec, seed, 'force'), n = net.n, rnd = makeRng(seed * 7919 + 1);
+  const seed = VILLAGE.seed, rule: Rule = { r: 9, B: 464, S: 488 }, T = 100, M = 100;
+  const net = villageNet(), n = net.n, rnd = makeRng(seed * 7919 + 1);
   const starts: Uint8Array[] = [];
   let down = 0;
   for (let m = 0; m < M; m++) {
@@ -152,18 +153,27 @@ function clamp() {
     if (hi !== undefined && lo !== undefined) demo = { start: c, hi, lo };
   }
   if (demo.start < 0) throw new Error('no start in which one of the top five flips the network and a quiet node does not');
+  // the closing summary's stubborn people, one after the other: the best-connected, the most important, a quiet one and
+  // H1's important one, each from the first start in which it does what it does in most starts (the whole village
+  // follows, or not)
+  const busiest = idx.slice().sort((a, b) => deg[b] - deg[a] || a - b)[0];
+  const cycle = [busiest, order[0], demo.lo, demo.hi].map((i) => {
+    const flips = rev[i] > 0.5, c = starts.findIndex((_, k) => (rhoT[i][k] === 0) === flips);
+    return { node: i, flips, bits: Array.from(starts[c]).join('') };
+  });
   const s0 = starts[demo.start], runs: Record<string, { rho: number; tick: number; consensus: boolean }> = { free: runFrom(net, rule, s0, T) };
   for (const [k, i] of [['lo', demo.lo], ['hi', demo.hi]] as const) { cl.fill(-1); cl[i] = 0; const x = s0.slice(); x[i] = 0; runs[k] = runFrom(net, rule, x, T, cl); }
   console.log(`clamp: ${starts.length}/${M} starts reach consensus (${down} complemented); η ${r3(Math.min(...eta))}–${r3(Math.max(...eta))}, median ${r3(median(eta))}; Spearman(η, degree) ${sp.toFixed(3)}, genuine clampings only ${spg.toFixed(3)}, confirmatory only ${spc.toFixed(3)}; demo start ${demo.start}: node ${demo.hi} (k ${deg[demo.hi]}, η ${r3(eta[demo.hi])}) flips it, node ${demo.lo} (k ${deg[demo.lo]}, η ${r3(eta[demo.lo])}) does not`);
   save('clamp.json', {
-    about: 'Dynamical importance on a toy scale-free network: every node clamped dead in turn under the consensus-seeking rule φ⁹₄₆₄,₄₈₈, over the random starts that reach consensus (those ending all-down complemented, as in the thesis). Illustration, not a thesis figure.',
-    params: { spec, seed, rule: { r: 9, B: 464, S: 488 }, T, M, rho0: 0.5, layout: 'buildNet force layout, stored so the browser lays out nothing', startRng: 'makeRng(seed · 7919 + 1)', eta: 'η_i = 1 − ⟨ρᵀ⟩ with node i clamped at 0 from the start (thesis Eq. 10.2)', genuine: 'starts in which node i had its hand up', confirmatory: 'starts in which it was already down' },
+    about: 'Dynamical importance in a toy village (src/scripts/defence/village.ts): every node clamped dead in turn under the consensus-seeking rule φ⁹₄₆₄,₄₈₈, over the random starts that reach consensus (those ending all-down complemented, as in the thesis). Illustration, not a thesis figure.',
+    params: { village: VILLAGE, rule: { r: 9, B: 464, S: 488 }, T, M, rho0: 0.5, layout: 'force layout from the seed (villageNet), stored so the browser lays out nothing', startRng: 'makeRng(seed · 7919 + 1)', eta: 'η_i = 1 − ⟨ρᵀ⟩ with node i clamped at 0 from the start (thesis Eq. 10.2)', genuine: 'starts in which node i had its hand up', confirmatory: 'starts in which it was already down' },
     summary: { starts: starts.length, complemented: down, etaMin: r3(Math.min(...eta)), etaMedian: r3(median(eta)), etaMax: r3(Math.max(...eta)), spearmanEtaDegree: r3(sp), spearmanGenuineDegree: r3(spg), spearmanConfirmatoryDegree: r3(spc) },
     xy: Array.from(net.xy, (v) => Math.round(v * 1e4) / 1e4),
     edges: net.edges,
     deg: Array.from(net.deg), eta: Array.from(eta, r3), reversal: Array.from(rev, r3),
     etaGenuine: Array.from(gen, (v) => (Number.isFinite(v) ? r3(v) : null)), etaConfirmatory: Array.from(conf, (v) => (Number.isFinite(v) ? r3(v) : null)),
     demo: { ...demo, bits: Array.from(s0).join(''), runs },
+    cycle,
   });
 }
 

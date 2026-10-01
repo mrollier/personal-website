@@ -1,90 +1,72 @@
 ---
-// F5–F8: the synchronisation task, 262 144 rules narrowed to 27 by the genotype alone; among them, the best ones are
-// sensitive (said intuitively, the numbers left off); the winner at work on a rewired grid; and the flip that turns a
-// synchroniser into a consensus-seeker.
+// F5 and F7, the mission of Ch. 6: from a random start, after a while every node the same colour. F5: all 262 144
+// rules, the 512 that are their own cousin (either colour may win), and the 27 whose average next density moves away
+// from half and half, found without a simulation; then how sensitive the 27 are: the simple threshold rule is one of
+// them and gets stuck, the winner is among the most sensitive. F7: the winner at work on a rewired grid, the threshold
+// rule on the same start, and twenty fresh networks. Data: src/data/defence/consensus.json (scripts/defence/precompute.ts);
+// the run and its verdict: src/scripts/defence/agree.ts.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
-import { tex } from './tex';
+import { texify, phi } from './tex';
 ---
-<Slide id="ch-synchronisation" label="A needle in a haystack" builds={4} class="f5" ch={6}>
+<Slide id="ch-synchronisation" label="Can the rule predict the behaviour?" builds={4} class="f5" ch={6}>
   <div class="row grow f5-row">
-    <canvas class="rules" aria-label="Every one of the 262 144 rules as one pixel: where it is born down, where it survives across"></canvas>
+    <canvas class="rules" aria-label="Every one of the 262 144 rules as one pixel: where it is born down, where it survives across"></canvas>
     <div class="col f5-side">
-      <h2>A needle in a haystack</h2>
-      <p class="lede">The task: from a random start, all nodes flash in step. All on, all off, all on, …</p>
+      <h2>Can the rule predict the behaviour?</h2>
+      <p class="lede">The mission: after a while, all nodes the same colour.</p>
       <ol class="steps">
-        <li data-b="1"><b>262 144</b> rules, one pixel each</li>
-        <li data-b="2"><b>512</b> look the same with on and off swapped, as the task does</li>
-        <li data-b="3"><b>27</b> leave half on, half off while flipping it, found <b>without a single simulation</b></li>
-        <li data-b="4">Simulated: <b>22</b> never synchronised once. One stands out.</li>
+        <li data-b="1"><b>262 144</b> rules, one pixel each</li>
+        <li data-b="2"><b>512</b> are their own cousin: either colour can win</li>
+        <li data-b="3"><b>27</b> move away from half and half, found <b>without a single simulation</b></li>
       </ol>
+      <canvas class="sens" data-b="4" aria-label="The 27 from less to more sensitive: the simple threshold rule near the low end, the winner near the high end"></canvas>
     </div>
   </div>
-  <p class="cite">The global synchronisation task: R. Das, J. P. Crutchfield, M. Mitchell, J. E. Hanson, 1995</p>
-  <p slot="say">What can the two curves do? A classic test for cellular automata is the global synchronisation task: starting from a random pattern, get every node to flash in step, all on, then all off, then all on again. No node can see the whole network, so this is hard for local rules.</p>
-  <p slot="say">Here are all 262 144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the average next density keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
-</Slide>
-
-<Slide label="We want sensitive rules" builds={1} class="f6" ch={6}>
-  <h2>We want sensitive rules</h2>
-  <div class="row grow f6-row">
-    <canvas class="scatter" aria-label="The 27 candidates: how sensitive they are against how unstable"></canvas>
-    <p class="lede f6-side" data-b="1">Sensitive: one neighbour more or less often changes what a node does next.</p>
-  </div>
-  <p slot="say">Why does that one rule win? Each of the 27 candidates is a dot here: to the right, more unstable rules, which leave the half-on, half-off state quickly (the red line on the density curve); upwards, more sensitive rules, whose output often changes when one neighbour changes (the red line on the defect curve). Ideally a rule would be both, but among the 27 you cannot have it all.</p>
-  <p slot="say">The winner is among the most sensitive rules, though not the most sensitive, and only moderately unstable. A sensitive rule does not freeze into patches that each keep their own rhythm, and that is what synchronisation needs. With only 27 rules this is an observation, not a law, but the same preference for sensitive rules comes back later in the talk.</p>
+  <p slot="say">Can we really use what a rule looks like to predict what it will do? A test, in the form of a mission: from a random start, after a while every node should have the same colour, all on or all off. The obvious candidates are threshold rules: do what most of your neighbours do. On a network they get stuck, in patches that each agree with themselves but never with each other.</p>
+  <p slot="say" set:html={texify('Here are all 262 144 rules at resolution 9, one pixel each. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: it must be its own cousin. That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Now we can afford to run every one of them.')} />
+  <p slot="say" set:html={texify('Running them shows what else matters, and the last picture puts the 27 in a row from less to more sensitive. The simple threshold rule is one of the 27: it even moves away from half and half the fastest of all, and still it gets stuck. The rules that work best are among the most sensitive: one neighbour more or less often changes what a node does, and that kicks it out of a local standoff. The best of them, $\\phi^9_{488,464}$, brought more than 96% of the rewired grids of the thesis (eight neighbours each) to agreement; most of the 27 do far worse, which is why we still simulate (Chapter 6, Physica D 2025).')} />
 </Slide>
 
 <Slide label="Watch it work" builds={3} class="f7" ch={6}>
   <div class="row grow f7-row">
     <div class="f7-box">
-      <canvas class="grid" aria-label="The winning rule on a rewired 30 by 30 grid"></canvas>
+      <canvas class="grid" aria-label="The chosen rule on a rewired 30 by 30 grid"></canvas>
       <SimButton class="f7-btn" />
     </div>
     <div class="col f7-side">
       <h2>Watch it work</h2>
+      <div class="f7-rules" role="group" aria-label="Rule">
+        <button type="button" class="ctl" data-rule="winner" aria-pressed="true">The winner <span set:html={phi(9, 488, 464)} /></button>
+        <button type="button" class="ctl" data-rule="threshold" aria-pressed="false">Simple threshold <span set:html={phi(9, 480, 496)} /></button>
+      </div>
       <canvas class="trace" aria-label="Share of nodes on, round by round"></canvas>
       <div class="trials" data-b="2">
-        <p><span data-won>0</span> of 20 fresh networks synchronised</p>
+        <p><span data-won>0</span> of 20 fresh networks agreed</p>
         <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}<SimButton class="f7-btn2" /></div>
       </div>
-      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262 144, without a single simulation. The best one synchronises most partly rewired networks.</p>
+      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262 144, without a single simulation. The best one brings most networks to agreement.</p>
     </div>
   </div>
-  <p class="cite">The winner on a <Fragment set:html={tex('30 \\times 30')} /> grid, 20% of links rewired</p>
-  <p class="illus">illustration</p>
-  <p slot="say">The winner at work, on a grid of 900 nodes where a fifth of the links have been rewired, starting from half on. At first the network looks chaotic; then patches start flashing, the patches fall into step, and from about round 31 the whole grid flashes gently together. The curve on the right shows the share of nodes that are on, round by round.</p>
-  <p slot="say">Then twenty fresh networks, each with its own random start: 19 of the 20 synchronise. In the thesis, on rewired rings of 1000 nodes with eight neighbours each, the winner succeeds about 80% of the time when a fifth of the links are rewired, up to 94% near 30%, and 39% when the links are fully random; on rewired grids it succeeds more than 95% of the time. It fails on the bare ring and always fails with only six neighbours: the network matters in ways the rule alone cannot see.</p>
-</Slide>
-
-<Slide label="Flip it: consensus" builds={2} class="f8" ch={6}>
-  <div class="row grow f8-row">
-    <canvas class="flip" aria-label="The average next density of the synchroniser turning over into that of a consensus-seeker"></canvas>
-    <div class="col f8-side">
-      <h2>Flip it: consensus</h2>
-      <p class="lede" data-b="1">Swap on and off in every answer: the network no longer flashes, it freezes, all on or all off. <b>Consensus-seeking rules.</b></p>
-      <p class="result" data-b="2"><b>Our result</b> Just as sensitive, and the same conditions find a consensus-seeking rule for almost every kind of network.</p>
-    </div>
-  </div>
-  <p slot="say">One more trick. Swap on and off in every answer of the rule, and its curve turns over: instead of flipping the network back and forth, it pushes the network to one side, all on or all off. The network freezes into agreement. These are consensus-seeking rules: here, consensus only means that every node ends up the same, not that the initial majority wins.</p>
-  <p slot="say">The flipped rules are exactly as sensitive as the synchronisers they came from, and the same conditions find a consensus-seeking rule for every kind of network in the thesis except the sparsest. They come back later, twice.</p>
+  <p slot="say">The winner at work, on a grid of 900 nodes in which a fifth of the links have been rewired (eight neighbours each), from a random start with half of the nodes on. Patches form and fight, and from round 31 every node is on. The curve on the right is the share of nodes that are on, round by round.</p>
+  <p slot="say">The buttons switch to the simple threshold rule, on the same network from the same start: within a dozen rounds it freezes into patches, each content with its own majority, a few nodes blinking at the borders. Then twenty fresh networks, each with its own start, for whichever rule is chosen: the winner brings 19 of the 20 to agreement, the threshold rule none. These grids are a small illustration; the thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks.</p>
 </Slide>
 
 <style>
   .f5-row { gap: calc(60 * var(--u)); align-items: center; }
   .rules { width: calc(860 * var(--u)); height: calc(900 * var(--u)); flex: none; }
-  .f5-side { gap: calc(30 * var(--u)); }
+  .f5-side { gap: calc(30 * var(--u)); flex: 1; }
   .steps { gap: calc(22 * var(--u)); font-size: calc(36 * var(--u)); }
-
-  .f6-row { gap: calc(60 * var(--u)); align-items: center; }
-  .scatter { width: calc(1060 * var(--u)); height: calc(780 * var(--u)); flex: none; }
-  .f6-side { flex: 1; }
+  .sens { width: 100%; height: calc(190 * var(--u)); }
 
   .f7-row { gap: calc(60 * var(--u)); align-items: center; }
   .f7-box { position: relative; flex: none; }
   :global(.f7) .grid { width: calc(780 * var(--u)); height: calc(780 * var(--u)); }
   .f7-box :global(.f7-btn) { right: calc(-32 * var(--u)); bottom: calc(-24 * var(--u)); }
   .f7-side { gap: calc(24 * var(--u)); flex: 1; }
+  .f7-rules { display: flex; gap: calc(14 * var(--u)); flex-wrap: wrap; }
+  .f7-rules .ctl { font-size: calc(30 * var(--u)); padding: calc(8 * var(--u)) calc(20 * var(--u)); }
+  .f7-rules .ctl[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sun); }
   .trace { width: 100%; height: calc(260 * var(--u)); }
   .trials p { font-size: calc(34 * var(--u)); }
   .dots { display: flex; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); position: relative; align-items: center; }
@@ -94,28 +76,25 @@ import { tex } from './tex';
   .dots i.no { background: var(--panel); border-color: var(--muted); }
   .dots i.run { border-color: var(--accent); }
   :global(.f7) .result { font-size: calc(34 * var(--u)); }
-
-  .f8-row { gap: calc(60 * var(--u)); align-items: center; }
-  .flip { width: calc(900 * var(--u)); height: calc(800 * var(--u)); flex: none; }
-  .f8-side { gap: calc(40 * var(--u)); }
 </style>
 
 <script>
-  import { slide, sim, type How } from '../../scripts/defence/deck';
+  import { slide, sim, buildOf } from '../../scripts/defence/deck';
   import { stage, onSize, ticker } from '../../scripts/defence/stage';
-  import { axes, curve, dot, label, px, py, type Plot } from '../../scripts/defence/plot';
+  import { axes, curve, dot, label, line, px, py, type Plot } from '../../scripts/defence/plot';
   import { makeRng, lattice } from '../../scripts/net';
-  import { type Rule, meanField, step, randomState, density, mirror } from '../../scripts/llna';
+  import { type Rule, randomState, density, mirror } from '../../scripts/llna';
+  import { agreement, WINNER, THRESHOLD, type Agreement } from '../../scripts/defence/agree';
   import { Raster } from '../../scripts/raster';
   import { parse, mix } from '../../scripts/palette';
-  import sync from '../../data/defence/sync.json';
+  import data from '../../data/defence/consensus.json';
 
-  const WIN: Rule = { r: 9, B: 23, S: 47 }, K = 8;
-  const cands = sync.candidates as { B: number; S: number; bs8: number; slope: number }[];
+  const cands = data.candidates as { B: number; S: number; bs8: number; slope: number }[];
+  const is = (c: { B: number; S: number }, r: Rule) => c.B === r.B && c.S === r.S;
 
-  // ── F5: the rule space, one pixel per rule ──
+  // ── F5: the rule space, one pixel per rule; then the 512, the 27, and the 27 by how sensitive they are ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f5')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas')!, ras = new Raster(512, 512);
+    const [c, sc] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas')), ras = new Raster(512, 512);
     let at = 0;
     function paint() {
       const st = stage(c); if (!st) return;
@@ -127,50 +106,46 @@ import { tex } from './tex';
       const faint = mix(parse(t.panel), parse(t.line), at >= 2 ? 0.4 : 0.75);
       ras.fill(faint); ras.flush(); ras.blit(ctx, { x: x0, y: y0, w: side, h: side }, true);
       const k = side / 512, at2 = (B: number, S: number) => [x0 + (S + 0.5) * k, y0 + (B + 0.5) * k];
+      // their own cousin: survive is the complement of born read backwards
       if (at >= 2) for (let B = 0; B < 512; B++) { const [x, y] = at2(B, 511 & ~mirror(B, 9)); dot(st, x, y, 3.2, t.accent); }
       if (at >= 3) for (const r of cands) { const [x, y] = at2(r.B, r.S); dot(st, x, y, 9, 'rgba(0,0,0,0)', t.danger); }
-      if (at >= 4) { const [x, y] = at2(23, 47); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); label(st, 'the winner', x + 26, y + 4, { size: 34, weight: 700, bg: true }); }
+      if (at >= 4) { const [x, y] = at2(WINNER.B, WINNER.S); dot(st, x, y, 16, 'rgba(0,0,0,0)', t.ink); dot(st, x, y, 6, t.danger); }
+    }
+    // the 27 in a row, from less to more sensitive (Boolean sensitivity at eight neighbours), equal ones stacked
+    function paintSens() {
+      const st = stage(sc); if (!st) return;
+      const { t } = st, x0 = 30, x1 = st.w - 40, y = 98, lo = 1, hi = 7.2, X = (v: number) => x0 + ((v - lo) / (hi - lo)) * (x1 - x0);
+      line(st, x0, y, x1, y, t.muted, 2);
+      st.ctx.fillStyle = t.muted; st.ctx.beginPath(); st.ctx.moveTo(x1 + 18, y); st.ctx.lineTo(x1, y - 9); st.ctx.lineTo(x1, y + 9); st.ctx.fill();
+      label(st, 'more sensitive', x1 + 18, y + 48, { size: 28, color: t.muted, align: 'right' });
+      const seen = new Map<number, number>();
+      const named = (r: Rule) => is(r, WINNER) || is(r, THRESHOLD); // these two sit on the line
+      for (const r of [...cands].sort((x, y) => +named(y) - +named(x))) {
+        const key = Math.round(r.bs8 * 20), n = seen.get(key) ?? 0; seen.set(key, n + 1);
+        const yy = y + (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 15;
+        const color = is(r, WINNER) ? t.danger : is(r, THRESHOLD) ? t.ink : t.line;
+        dot(st, X(r.bs8), yy, is(r, WINNER) || is(r, THRESHOLD) ? 12 : 8, color);
+      }
+      const th = cands.find((r) => is(r, THRESHOLD))!, wi = cands.find((r) => is(r, WINNER))!;
+      label(st, 'simple threshold: stuck', X(th.bs8), y + 52, { size: 30, weight: 600, align: 'center' });
+      label(st, 'the winner', X(wi.bs8), y - 46, { size: 30, weight: 700, color: t.danger, align: 'center' });
     }
     slide(s, { set(b) { at = b; paint(); } });
-    onSize(c, paint);
+    onSize(c, paint); onSize(sc, paintSens);
   }
 
-  // ── F6: the 27 candidates, how sensitive (Boolean sensitivity at eight neighbours) against how unstable (the slope of
-  // the average next density at its unstable equilibrium, ½), in words and without numbers ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.f6')) {
-    const sc = s.querySelector<HTMLCanvasElement>('canvas')!;
-    function paint() {
-      const st = stage(sc); if (!st) return;
-      const { t } = st, p: Plot = { x: 150, y: 20, w: st.w - 190, h: st.h - 110, x0: 0.9, x1: 2.6, y0: 0.5, y1: 7.5 };
-      axes(st, p, { xticks: [], yticks: [], xname: 'more unstable →', yname: 'more sensitive →' });
-      for (const r of cands) dot(st, px(p, Math.abs(r.slope)), py(p, r.bs8), 10, t.muted);
-      const mark = (B: number, S: number, text: string, color: string, dx: number, dy: number) => {
-        const r = cands.find((c) => c.B === B && c.S === S)!, x = px(p, Math.abs(r.slope)), y = py(p, r.bs8);
-        dot(st, x, y, 15, color); label(st, text, x + dx, y + dy, { size: 34, weight: 700, color, bg: true });
-      };
-      mark(23, 47, 'the winner', t.danger, 26, -30);
-      mark(79, 27, 'runner-up', t.accent, 26, 30);
-    }
-    onSize(sc, paint);
-  }
-
-  // ── F7: the winner on a rewired grid, then twenty fresh networks ──
+  // ── F7: the winner (or the threshold rule) on a rewired grid; then twenty fresh networks ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f7')) {
     const [grid, trace] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
-    const side = 30, N = side * side, p = 0.2, demo = sync.demo;
-    const net = lattice(side, 8, p, makeRng(demo.netSeed));
-    let a = new Uint8Array(N), b = new Uint8Array(N), rho: number[] = [], synced = -1;
-    const reset = () => { a = randomState(N, 0.5, makeRng(demo.startSeed)); rho = [density(a)]; synced = -1; };
-    /** The verdict of llna.ts, one round at a time: the first homogeneous round T decides, by the two rounds after it. */
-    const judge = (h: number[], limit: number): { done: boolean; ok: boolean; T: number } => {
-      let T = -1; for (let t = 0; t < h.length; t++) if (h[t] === 0 || h[t] === 1) { T = t; break; }
-      if (T < 0) return { done: h.length > limit, ok: false, T };
-      if (h.length < T + 3) return { done: false, ok: false, T };
-      return { done: true, ok: h[T + 1] === 1 - h[T] && h[T + 2] === h[T], T };
-    };
+    const side = 30, N = side * side, p = 0.2, demo = data.demo;
+    const net = lattice(side, 8, p, makeRng(demo.netSeed)), first = randomState(N, 0.5, makeRng(demo.startSeed));
+    const RULES: Record<string, Rule> = { winner: WINNER, threshold: THRESHOLD };
+    const buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
+    let pick = 'winner', run: Agreement, rho: number[] = [], end: { ok: boolean; tick: number } | null = null;
+    const reset = () => { run = agreement(net, RULES[pick], first); rho = [density(first)]; end = null; };
     function paintGrid() {
       const st = stage(grid); if (!st) return;
-      const { ctx, t } = st, cell = st.w / side;
+      const { ctx, t } = st, cell = st.w / side, a = run.state;
       ctx.fillStyle = t.panel; ctx.fillRect(0, 0, st.w, st.h); ctx.fillStyle = t.ink;
       for (let i = 0; i < N; i++) if (a[i]) ctx.fillRect((i % side) * cell, Math.floor(i / side) * cell, cell - 1.5, cell - 1.5);
     }
@@ -178,73 +153,52 @@ import { tex } from './tex';
       const st = stage(trace); if (!st) return;
       const { t } = st, T = Math.max(60, rho.length), q: Plot = { x: 150, y: 10, w: st.w - 170, h: st.h - 100, x0: 0, x1: T, y0: 0, y1: 1 };
       axes(st, q, { xticks: [[0, '0'], [T, String(T)]], yticks: [[0, '0'], [1, '1']], xname: 'round', yname: 'share on' });
-      curve(st, { ...q, x1: T }, () => 0.5, t.line, 2, [6, 8]);
+      curve(st, q, () => 0.5, t.line, 2, [6, 8]);
       st.ctx.strokeStyle = t.accent; st.ctx.lineWidth = 3; st.ctx.beginPath();
       rho.forEach((v, i) => { const X = px(q, i), Y = py(q, v); if (i) st.ctx.lineTo(X, Y); else st.ctx.moveTo(X, Y); });
       st.ctx.stroke();
-      if (synced >= 0) label(st, `in step from round ${synced}`, st.w - 10, 24, { size: 28, align: 'right', color: t.accent, weight: 600, bg: true });
+      if (end) label(st, end.ok ? `all the same from round ${end.tick}` : `stuck from round ${end.tick}`, st.w - 10, 24, { size: 28, align: 'right', color: end.ok ? t.accent : t.danger, weight: 600, bg: true });
     }
-    // Big patches flip together, so never more than 3 rounds a second (under the 3-flashes-a-second limit for a room),
-    // and 2 a second once the whole grid flashes in step.
-    const run = ticker(s, 3, () => {
-      step(a, net, WIN, b); [a, b] = [b, a]; rho.push(density(a));
-      if (synced < 0) { const v = judge(rho, 2 * N); if (v.done && v.ok) { synced = v.T; run.rate = 2; } }
-      if (rho.length > 400) return true;
+    // three rounds a second; it stops when the verdict is in
+    const ticks = ticker(s, 3, () => {
+      if (end) return true;
+      end = run.next(); rho.push(density(run.state));
+      return !!end;
     }, () => { paintGrid(); paintTrace(); });
-    // twenty trials, a slice of rounds per frame so no frame waits
+    // twenty trials of the chosen rule, a slice of rounds per frame so no frame waits
     const dots = Array.from(s.querySelectorAll<HTMLElement>('[data-dots] i')), won = s.querySelector<HTMLElement>('[data-won]')!;
     let job = 0;
     const clear = () => { cancelAnimationFrame(job); job = 0; dots.forEach((d) => d.className = ''); won.textContent = '0'; };
     function trials() {
       clear();
-      let i = 0, wins = 0, x = new Uint8Array(N), y = new Uint8Array(N), hist: number[] = [], tnet = lattice(side, 8, p, makeRng(sync.trials[0].netSeed));
-      const begin = () => { const tr = sync.trials[i]; tnet = lattice(side, 8, p, makeRng(tr.netSeed)); x = randomState(N, 0.5, makeRng(tr.startSeed)); hist = [density(x)]; dots[i].className = 'run'; };
+      const rule = RULES[pick], seeds = data.trials.winner;
+      let i = 0, wins = 0, tr: Agreement;
+      const begin = () => { const x = seeds[i]; tr = agreement(lattice(side, 8, p, makeRng(x.netSeed)), rule, randomState(N, 0.5, makeRng(x.startSeed))); dots[i].className = 'run'; };
       begin();
       const frame = () => {
         const t0 = performance.now();
         while (performance.now() - t0 < 4 && i < 20) {
-          step(x, tnet, WIN, y); [x, y] = [y, x]; hist.push(density(x));
-          const v = judge(hist, 2 * N);
-          if (v.done) { dots[i].className = v.ok ? 'ok' : 'no'; if (v.ok) wins++; won.textContent = String(wins); i++; if (i < 20) begin(); }
+          const v = tr.next();
+          if (v) { dots[i].className = v.ok ? 'ok' : 'no'; if (v.ok) wins++; won.textContent = String(wins); i++; if (i < 20) begin(); }
         }
         if (i < 20) job = requestAnimationFrame(frame);
       };
       job = requestAnimationFrame(frame);
     }
+    const mark = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick)));
+    // another rule: back to the same start, and what ran runs on; once the trials are up, they run again for it
+    buttons.forEach((b) => b.addEventListener('click', () => {
+      if (b.dataset.rule === pick) return;
+      pick = b.dataset.rule!; mark();
+      const going = ticks.playing; ticks.play(false); reset(); paintGrid(); paintTrace();
+      if (going) ticks.play(true);
+      if (buildOf(s) >= 2) trials(); else clear();
+    }));
     reset();
     const [gridBtn, trialBtn] = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]');
-    sim(gridBtn, 1, { reset() { run.play(false); reset(); run.rate = 3; paintGrid(); paintTrace(); }, play() { run.play(true); } });
+    sim(gridBtn, 1, { reset() { ticks.play(false); reset(); paintGrid(); paintTrace(); }, play() { ticks.play(true); } });
     sim(trialBtn, 2, { reset: clear, play: trials });
-    slide(s, { enter() { reset(); clear(); }, leave() { run.play(false); cancelAnimationFrame(job); } });
+    slide(s, { enter() { pick = 'winner'; mark(); reset(); clear(); }, leave() { ticks.play(false); cancelAnimationFrame(job); } });
     onSize(grid, paintGrid); onSize(trace, paintTrace);
-  }
-
-  // ── F8: the synchroniser's average next density turns over into the consensus-seeker's ──
-  for (const s of document.querySelectorAll<HTMLElement>('.slide.f8')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas')!;
-    let u = 0, raf = 0;
-    const f = (x: number) => meanField(WIN, K, x);
-    function paint() {
-      const st = stage(c); if (!st) return;
-      const { t } = st, p: Plot = { x: 150, y: 30, w: st.w - 190, h: st.h - 160, x0: 0, x1: 1, y0: 0, y1: 1 };
-      const ticks: [number, string][] = [[0, '0'], [0.5, '½'], [1, '1']];
-      axes(st, p, { xticks: ticks, yticks: ticks, xname: 'density now', yname: 'density next' });
-      curve(st, p, (x) => x, t.muted, 2, [10, 10]);
-      if (u > 0) curve(st, p, f, t.line, 3);
-      const e = u * u * (3 - 2 * u);
-      curve(st, p, (x) => (1 - e) * f(x) + e * (1 - f(x)), e > 0.5 ? t.danger : t.accent, 6);
-      label(st, e > 0.5 ? 'freezes: consensus' : 'flips: synchronisation', px(p, 0.04), py(p, 0.95), { size: 32, weight: 600, color: e > 0.5 ? t.danger : t.accent, bg: true });
-    }
-    // the curve turns over on the click to build 1; going back, or arriving, snaps it
-    const animate = () => {
-      cancelAnimationFrame(raf); u = 0; const t0 = performance.now() + 200;
-      const go = (now: number) => { u = Math.min(1, Math.max(0, (now - t0) / 1400)); paint(); raf = u < 1 ? requestAnimationFrame(go) : 0; };
-      raf = requestAnimationFrame(go);
-    };
-    slide(s, {
-      set(b: number, how: How) { if (b === 1 && how === 'next') animate(); else if (b < 2 || how !== 'next') { cancelAnimationFrame(raf); raf = 0; u = b >= 1 ? 1 : 0; paint(); } },
-      leave() { cancelAnimationFrame(raf); raf = 0; },
-    });
-    onSize(c, paint);
   }
 </script>

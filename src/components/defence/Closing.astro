@@ -11,7 +11,7 @@ const qd = qrPath(code), qsize = code.size + 8;
 const answers = [
   { half: 'What links rule and behaviour?', items: [
     { ch: 5, say: 'Two curves read off the rule, worked out for Life-like network automata.' },
-    { ch: 6, say: 'From 262 144 rules to 27 candidates, without a single simulation.' },
+    { ch: 6, say: 'From 262 144 rules to 27 that seek agreement, without a single simulation.' },
   ] },
   { half: 'Can we put that link to use?', items: [
     { ch: 9, say: 'More jagged, sensitive rules tend to tell networks apart better.' },
@@ -43,7 +43,7 @@ const beyond = [
     </div>
   </div>
   <p slot="say">Back to the research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? Four chapters answer it.</p>
-  <p slot="say">What links rule and behaviour: two curves that can be read off a rule before running it, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262 144 rules down to 27 candidates for the synchronisation task without a single simulation, and the best of them synchronises most partly rewired networks (Chapter 6).</p>
+  <p slot="say">What links rule and behaviour: two curves that can be read off a rule before running it, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262 144 rules down to 27 candidates for bringing a network to agreement, without a single simulation, and the best of them, one of the most sensitive, brings most partly rewired networks there (Chapter 6).</p>
   <p slot="say">Putting the link to use: more jagged, and so more sensitive, rules tend to tell networks apart better, which makes jaggedness a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
 </Slide>
 
@@ -149,7 +149,8 @@ const beyond = [
   import { toyNet } from '../../scripts/defence/toy';
   import { parse, mix, css } from '../../scripts/palette';
   import mosaicData from '../../data/defence/mosaic.json';
-  import sync from '../../data/defence/sync.json';
+  import consensus from '../../data/defence/consensus.json';
+  import { WINNER } from '../../scripts/defence/agree';
   import classify from '../../data/defence/classify.json';
   import clamp from '../../data/defence/clamp.json';
 
@@ -174,14 +175,14 @@ const beyond = [
     } satisfies Act;
   })();
 
-  // 6. the synchroniser on the rewired grid of slide F7: chaos, then the whole grid in step. Never more than
-  // 3 rounds a second, 2 once it flashes in step (the limit for a room)
-  const SYNC = (() => {
-    const side = 30, N = side * side, WIN: Rule = { r: 9, B: 23, S: 47 }, net = lattice(side, 8, 0.2, makeRng(sync.demo.netSeed));
+  // 6. the winner of the mission on the rewired grid of slide F7: patches, then the whole grid agrees; it holds the
+  // agreement a few seconds and starts again. Three rounds a second
+  const AGREE = (() => {
+    const side = 30, N = side * side, WIN: Rule = WINNER, net = lattice(side, 8, 0.2, makeRng(consensus.demo.netSeed));
     let a = new Uint8Array(N), b = new Uint8Array(N), after = -1;
     const act = {
       rate: 3,
-      reset() { a = randomState(N, 0.5, makeRng(sync.demo.startSeed)); after = -1; act.rate = 3; },
+      reset() { a = randomState(N, 0.5, makeRng(consensus.demo.startSeed)); after = -1; act.rate = 3; },
       advance() {
         step(a, net, WIN, b); [a, b] = [b, a];
         const r = density(a);
@@ -244,7 +245,7 @@ const beyond = [
     } satisfies Act;
   })();
 
-  const ACTS: Act[] = [WEB, SYNC, DETECT, STUB], CHS = [5, 6, 9, 10];
+  const ACTS: Act[] = [WEB, AGREE, DETECT, STUB], CHS = [5, 6, 9, 10];
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i1')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-group li'));
     const tiles = Array.from(s.querySelectorAll<HTMLElement>('.ribbon .rch')), btn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;

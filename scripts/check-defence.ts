@@ -166,6 +166,7 @@ import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsT
 import { lattice } from '../src/scripts/net.ts';
 import { pearson } from '../src/scripts/stats.ts';
 import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts';
+import { agree, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
 {
   const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
   const near = (a: number, b: number, tol: number, what: string) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
@@ -198,13 +199,27 @@ import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts'
   const replay = (netSeed: number, startSeed: number) => trial('fssp', lattice(30, 8, 0.2, makeRng(netSeed)), win, 0.5, makeRng(startSeed), 1800);
   const d = replay(sync.demo.netSeed, sync.demo.startSeed); assert.ok(d.ok); assert.equal(d.tick, sync.demo.tick);
   for (const t of sync.trials) { const v = replay(t.netSeed, t.startSeed); assert.equal(v.ok, t.ok); assert.equal(v.tick, t.tick); }
+  // the mission slides (F5, F7): the 27 consensus candidates are the 27 above turned over, and consensus.json agrees with a
+  // fresh computation; the threshold rule is one of them and moves away from ½ the fastest, yet the winner is far more
+  // sensitive; the demo and all forty trials replay as stored
+  const k27 = candidates(9, [8], 'consensus'), mission = JSON.parse(readFileSync(new URL('../src/data/defence/consensus.json', import.meta.url), 'utf8'));
+  assert.deepEqual(k27.map((r) => `${r.B},${r.S}`).sort(), c27.map((r) => { const f = complement(r); return `${f.B},${f.S}`; }).sort());
+  assert.deepEqual(mission.candidates.map((c: Rule) => `${c.B},${c.S}`).sort(), k27.map((r) => `${r.B},${r.S}`).sort());
+  for (const c of mission.candidates) { near(c.bs8, sensitivity(R9(c.B, c.S), 8).BS, 6e-4, 'consensus.json bs8'); near(c.slope, slope(R9(c.B, c.S)), 6e-4, 'consensus.json slope'); }
+  const steepest = k27.reduce((a, r) => (slope(r) > slope(a) ? r : a)); assert.deepEqual([steepest.B, steepest.S], [480, 496]);
+  near(sensitivity(R9(480, 496), 8).BS, 2.46, 5e-3, 'BS8 of the threshold rule'); near(sensitivity(R9(488, 464), 8).BS, 6.398, 5e-4, 'BS8 of the winner');
+  const again = (rule: Rule, netSeed: number, startSeed: number) => agree(lattice(30, 8, 0.2, makeRng(netSeed)), rule, randomState(900, 0.5, makeRng(startSeed)));
+  const dv = again(WINNER, mission.demo.netSeed, mission.demo.startSeed); assert.ok(dv.ok); assert.equal(dv.tick, mission.demo.tick);
+  assert.deepEqual(again(THRESHOLD, mission.demo.netSeed, mission.demo.startSeed), mission.demo.threshold);
+  for (const [rule, ts] of [[WINNER, mission.trials.winner], [THRESHOLD, mission.trials.threshold]] as const) for (const t of ts) assert.deepEqual(again(rule, t.netSeed, t.startSeed), { ok: t.ok, tick: t.tick });
+  assert.equal(mission.summary.winnerTrials, 19); assert.equal(mission.summary.thresholdTrials, 0); // as the say slot of F7 tells
   // the metrics slides' red lines, as their say slots quote them: Life unstable near a fifth with slope 1.7, sensitivity
   // about three; the consensus-seeker unstable at ½, sensitivity over six; the defect tangent is the Boolean sensitivity
   const life = R9(8, 12), tan = (rule: Rule, kind: Kind) => tangentOf(curveOf(rule, kind), kind)!;
   const tl = tan(life, 'density'); near(tl.x, 0.192, 1e-3, 'Life unstable equilibrium'); near(tl.slope, 1.74, 5e-3, 'Life slope there');
-  const tc = tan(probe, 'density'); near(tc.x, 0.5, 1e-3, 'consensus unstable equilibrium'); near(tc.slope, 1.477, 5e-3, 'consensus slope there');
+  const metric = R9(488, 464), tc = tan(metric, 'density'); near(tc.x, 0.5, 1e-3, 'consensus unstable equilibrium'); near(tc.slope, 1.148, 5e-3, 'consensus slope there');
   near(tan(life, 'defect').slope, sensitivity(life, 8).BS, 1e-3, 'Life defect tangent = BS8'); near(sensitivity(life, 8).BS, 3.17, 5e-3, 'Life BS8');
-  near(tan(probe, 'defect').slope, 6.398, 1e-3, 'consensus defect tangent');
+  near(tan(metric, 'defect').slope, 6.398, 1e-3, 'consensus defect tangent');
   assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
   console.log('genotype anchors of the brief hold');
 }

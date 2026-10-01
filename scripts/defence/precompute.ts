@@ -8,6 +8,7 @@ import { runFrom } from '../../src/scripts/consensus.ts';
 import { candidates, sensitivity, jaggedness } from '../../src/scripts/genotype.ts';
 import { pearson, spearman, median } from '../../src/scripts/stats.ts';
 import { TOY, FEATURES, toyNet, toyFeatures, startSeed, separability, type Features } from '../../src/scripts/defence/toy.ts';
+import { agree, WINNER, THRESHOLD, LIMIT } from '../../src/scripts/defence/agree.ts';
 
 const out = new URL('../../src/data/defence/', import.meta.url);
 mkdirSync(out, { recursive: true });
@@ -38,6 +39,34 @@ function sync() {
     params: { r: 9, k: 8, rule: { B: 23, S: 47 }, net: { kind: 'lat', side, degree, p }, rho0: 0.5, limit, trialSeeds: 'netSeed 101–120, startSeed 9101–9120', demoSearch: 'first netSeed s ≥ 1 with startSeed 7000 + s that synchronises within 60 ticks' },
     summary: { candidates: cands.length, pearsonAbsSlopeBs8: r3(r), trialsSynchronised: wins, trials: trials.length },
     candidates: cands, demo, trials,
+  });
+}
+
+// ── consensus.json: the mission of slides F5 and F7, every node the same colour: the 27 candidates (their own cousin,
+// and the average next density moves away from ½ towards all on or all off), how sensitive each is, and the winner and
+// the threshold rule on the rewired grid of "Watch it work", a demo and twenty fresh networks each ──
+function consensus() {
+  const cands = candidates(9, [8], 'consensus').map((rule) => ({ B: rule.B, S: rule.S, bs8: r3(sensitivity(rule, 8).BS), slope: r3(slope(rule, 8)) }));
+  if (cands.length !== 27) throw new Error(`expected 27 consensus candidates, got ${cands.length}`);
+  for (const r of [WINNER, THRESHOLD]) if (!cands.some((c) => c.B === r.B && c.S === r.S)) throw new Error(`φ⁹ ${r.B},${r.S} is not among the 27`);
+  const side = 30, degree = 8 as const, p = 0.2, N = side * side;
+  const run = (rule: Rule, netSeed: number, startSeed: number) => agree(lattice(side, degree, p, makeRng(netSeed)), rule, randomState(N, 0.5, makeRng(startSeed)));
+  // the demo: the first seed pair on which the winner agrees within 25–60 rounds (seconds at three a second) and the
+  // threshold rule, from the same start, gets stuck
+  let demo = { netSeed: 0, startSeed: 0, tick: 0, threshold: { ok: false, tick: 0 } };
+  for (let s = 1; s < 500 && !demo.netSeed; s++) {
+    const v = run(WINNER, s, 7000 + s), w = run(THRESHOLD, s, 7000 + s);
+    if (v.ok && v.tick >= 25 && v.tick <= 60 && !w.ok) demo = { netSeed: s, startSeed: 7000 + s, tick: v.tick, threshold: w };
+  }
+  if (!demo.netSeed) throw new Error('no demo seed');
+  const trials = (rule: Rule) => Array.from({ length: 20 }, (_, i) => { const netSeed = 101 + i, startSeed = 9101 + i, v = run(rule, netSeed, startSeed); return { netSeed, startSeed, ok: v.ok, tick: v.tick }; });
+  const won = trials(WINNER), stuck = trials(THRESHOLD), wins = (t: { ok: boolean }[]) => t.filter((x) => x.ok).length;
+  console.log(`consensus: 27 candidates; demo agrees at round ${demo.tick}, the threshold rule stops at ${demo.threshold.tick}; trials ${wins(won)}/20 and ${wins(stuck)}/20`);
+  save('consensus.json', {
+    about: 'Consensus candidates at r = 9, k = 8 (their own cousin, mean-field away from ½ to a homogeneous rest) and the winner φ⁹₄₈₈,₄₆₄ against the threshold rule φ⁹₄₈₀,₄₉₆ on a rewired 30 × 30 grid; illustration, not a thesis figure.',
+    params: { r: 9, k: 8, winner: { B: WINNER.B, S: WINNER.S }, threshold: { B: THRESHOLD.B, S: THRESHOLD.S }, net: { kind: 'lat', side, degree, p }, rho0: 0.5, limit: LIMIT, trialSeeds: 'netSeed 101–120, startSeed 9101–9120', demoSearch: 'first netSeed s ≥ 1 with startSeed 7000 + s on which the winner agrees within 25–60 rounds and the threshold rule does not' },
+    summary: { candidates: cands.length, winnerTrials: wins(won), thresholdTrials: wins(stuck), trials: 20 },
+    candidates: cands, demo, trials: { winner: won, threshold: stuck },
   });
 }
 
@@ -139,5 +168,6 @@ function clamp() {
 }
 
 if (want('sync')) sync();
+if (want('consensus')) consensus();
 if (want('classify')) classify();
 if (want('clamp')) clamp();

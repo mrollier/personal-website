@@ -195,11 +195,13 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
   assert.ok(f3[1].last < 60 && f3[1].on >= 0.9, `F3: the ring does not fill up and freeze: ${JSON.stringify(f3[1])}`);
   assert.ok(f3[2].on <= 0.1, `F3: the scale-free network lives on: ${f3[2].on}`);
   assert.deepEqual([stepOne(F3, 2), stepOne(F3, 4)], [0, 0], 'F3: a node with two or four links can be born');
-  // G2: under Miranda et al.'s rule (their uniform cut) all three stay lively and their fingerprints over the whole run
-  // of 100 timesteps differ, from the networks' own starts and from any of 40 others; nodes with four neighbours can
-  // never be born under it. Under the consensus-seeking winner all three are all off within twenty timesteps, and their
-  // fingerprints pile up at the low end: entropy and Lempel–Ziv in their lowest four bins, the density nearly all at 0.
-  const MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule, seed = -1) => nets.map((net, k) => {
+  // G2: under the good detective φ⁹₁₇₀,₄₈ all three stay lively and their fingerprints over the whole run of 100
+  // timesteps differ clearly, from the networks' own starts and from any of 40 others; nodes with two or four neighbours
+  // can never be born under it. Under the consensus-seeking winner all three are all off within twenty timesteps, the
+  // slide's run stops a second (twelve timesteps) after all three stand still, and their fingerprints are alike: each
+  // pair closer than the same pair under the detective from the same starts, the density piled up at 0 on all three. (MIR, Miranda et al.'s rule on their uniform cut, still runs
+  // the phones of the backup slide.)
+  const DET: Rule = { r: 9, B: 170, S: 48 }, MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule, seed = -1) => nets.map((net, k) => {
     const fp = fingerprinter(net), rnd = makeRng(seed);
     let a = seed < 0 ? trioStart(k, net.n) : randomState(net.n, 0.3, rnd), b = new Uint8Array(net.n), flips = 0, off = -1;
     fp.push(a);
@@ -207,12 +209,14 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     return { print: fp.print(), flips: flips / 20 / net.n, off };
   });
   const dist = (x: ReturnType<typeof prints>[number], y: ReturnType<typeof prints>[number]) => (['entropy', 'lz', 'density'] as const).reduce((acc, f) => acc + x.print[f]!.reduce((m, v, b) => m + Math.abs(v - y.print[f]![b]), 0), 0);
+  const pairs = [[0, 1], [0, 2], [1, 2]], detOwn = pairs.map(() => 0);
   for (const seed of [-1, ...Array.from({ length: 40 }, (_, i) => 5000 + i)]) {
-    const mir = prints(MIR, seed);
-    for (const m of mir) assert.ok(m.flips >= 0.3, `G2: Miranda et al.'s rule is not lively on a trio network (start ${seed})`);
-    for (const [x, y] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(mir[x], mir[y]) >= 0.5, `G2: fingerprints ${x} and ${y} look alike under Miranda's rule (start ${seed})`);
+    const det = prints(DET, seed);
+    if (seed < 0) pairs.forEach(([x, y], q) => (detOwn[q] = dist(det[x], det[y])));
+    for (const m of det) assert.ok(m.flips >= 0.3, `G2: the detective is not lively on a trio network (start ${seed})`);
+    for (const [x, y] of pairs) { const d = dist(det[x], det[y]); assert.ok(d >= 1, `G2: fingerprints ${x} and ${y} look alike under the detective (start ${seed})`); }
   }
-  assert.equal(stepOne(MIR, 4), 0, 'G2: a node with four neighbours can be born under Miranda\'s rule');
+  assert.deepEqual([stepOne(DET, 2), stepOne(DET, 4)], [0, 0], 'G2: a node with two or four neighbours can be born under the detective');
   // G5: the phones' hidden network has one hub of 34 links, and Miranda's rule keeps a third of the phones or more
   // switching every timestep, from the slide's start and from twenty others
   {
@@ -225,10 +229,21 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     }
   }
   const win = prints({ r: 9, B: 488, S: 464 });
-  const low = (h: number[]) => h.slice(0, 4).reduce((m, v) => m + v, 0);
-  for (const w of win) {
-    assert.ok(w.off >= 0 && w.off <= 20, 'G2: the winner does not bring a trio network to all off');
-    assert.ok(low(w.print.entropy!) > 0.999 && low(w.print.lz!) > 0.999 && w.print.density![0] >= 0.9, 'G2: the consensus fingerprints do not pile up at the low end');
+  for (const w of win) assert.ok(w.off >= 0 && w.off <= 20, 'G2: the winner does not bring a trio network to all off');
+  {
+    // the slide's own run of the consensus-seeking rule: all three in step, until twelve timesteps after none of them moved
+    const W: Rule = { r: 9, B: 488, S: 464 }, fps = nets.map((net) => fingerprinter(net));
+    let a = nets.map((net, k) => trioStart(k, net.n)), still = 0, t = 0;
+    a.forEach((x, k) => fps[k].push(x));
+    while (t < PRINT.T && still < 12) {
+      let moved = false;
+      a = a.map((x, k) => { const y = new Uint8Array(x.length); step(x, nets[k], W, y); if (!moved && y.some((v, i) => v !== x[i])) moved = true; fps[k].push(y); return y; });
+      still = moved ? 0 : still + 1; t++;
+    }
+    assert.ok(t <= 35 && a.every((x) => x.every((v) => !v)), `G2: the consensus run does not settle on all off within 35 timesteps (${t})`);
+    const ws = fps.map((fp) => ({ print: fp.print(), flips: 0, off: 0 }));
+    pairs.forEach(([x, y], q) => assert.ok(dist(ws[x], ws[y]) < 0.9 * detOwn[q], `G2: the consensus prints ${x} and ${y} are not alike (${dist(ws[x], ws[y]).toFixed(2)} against ${detOwn[q].toFixed(2)})`));
+    for (const w of ws) assert.ok(w.print.density![0] >= 0.7, 'G2: the consensus density does not pile up at 0');
   }
 }
 // D3: on the 16 × 16 small-world grid (network 31, start 70) the Game of Life is still busy after 300 rounds.
@@ -269,7 +284,7 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
   const probe = R9(464, 488);
   near(sensitivity(probe, 8).BS, 6.398, 5e-4, 'BS8 of 464,488'); near(slope(probe), 1.477, 5e-4, 'slope of 464,488');
   assert.ok(selfEquivalent(probe) && selfEquivalent(R9(488, 464)));
-  near(jaggedness(R9(170, 340)).Jbar, 0.94, 5e-3, 'Jbar 170,340'); near(jaggedness(R9(503, 120)).Jbar, 0.25, 1e-9, 'Jbar 503,120'); near(jaggedness(win).Jbar, 0.375, 1e-9, 'Jbar 23,47');
+  near(jaggedness(R9(170, 340)).Jbar, 0.94, 5e-3, 'Jbar 170,340'); near(jaggedness(R9(170, 48)).Jbar, 0.625, 1e-9, 'Jbar 170,48'); near(jaggedness(R9(503, 120)).Jbar, 0.25, 1e-9, 'Jbar 503,120'); near(jaggedness(win).Jbar, 0.375, 1e-9, 'Jbar 23,47');
   const top = c27.reduce((a, r) => (sensitivity(r, 8).BS > sensitivity(a, 8).BS ? r : a));
   assert.deepEqual([top.B, top.S], [175, 21]); near(sensitivity(top, 8).BS, 6.96, 5e-3, 'highest BS8 among the 27');
   // the precomputed file agrees with a fresh computation
@@ -322,8 +337,9 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
   assert.deepEqual([life, metric].map((r) => two(hammingWeight(r, 8))), [0.27, 0.5], 'Hamming weights');
   assert.deepEqual([life, metric].map((r) => two(sensitivity(r, 8).BS)), [3.17, 6.4], 'Boolean sensitivities');
   assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
-  // the detective slide counts the changes of answer on the rings: 6 of 16 for the consensus-seeking rule, 15 of 16 for Miranda's
-  assert.deepEqual([jaggedness(metric).J, jaggedness(R9(170, 340)).J], [6, 15], 'changes of answer on the detective slide');
+  // the detective slide counts the changes of answer on the rings: 6 of 16 for the consensus-seeking rule, 10 of 16 for
+  // the good detective (inside the band J̄ 0.5–0.9 of the best detectives; Miranda et al.'s rule has 15)
+  assert.deepEqual([jaggedness(metric).J, jaggedness(R9(170, 48)).J, jaggedness(R9(170, 340)).J], [6, 10, 15], 'changes of answer on the detective slide');
   console.log('genotype anchors of the brief hold');
 }
 
@@ -332,6 +348,7 @@ import { toyNet, toyFeatures, startSeed, lempelZiv, shannon, TOY } from '../src/
 import { runFrom } from '../src/scripts/consensus.ts';
 import { buildNet } from '../src/scripts/net.ts';
 import { villageNet } from '../src/scripts/defence/village.ts';
+import { aquifer, GW, GW_SCALE } from '../src/scripts/defence/groundwater.ts';
 {
   // the worked example of Miranda et al. 2016 (supplement S2): 0101…01 of length 20 is seven blocks, 7 ln 20 / 20 =
   // 1.049; Shannon entropy in bits: 0 for a node that never changes, 1 for one on half of the time, 0.811 for a quarter
@@ -362,16 +379,16 @@ import { villageNet } from '../src/scripts/defence/village.ts';
   assert.ok(clamp.summary.spearmanEtaDegree > 0.5 && clamp.summary.spearmanEtaDegree < 0.9);
   // H2 draws the very network the scores were computed on: its links are the network's, and its degrees count them;
   // against the average degree of the neighbours the score goes, if anything, the other way (the outskirts know
-  // well-connected people); and, as H2 and H3 say, the three villagers with the most contacts (21) are not among the
-  // ten most important
+  // well-connected people); and, as H2 says, the three villagers with the most contacts (21) are not among the ten
+  // most important
   const key = ([i, j]: number[]) => (i < j ? `${i}-${j}` : `${j}-${i}`);
   assert.deepEqual(clamp.edges.map(key).sort(), net.edges.map(key).sort(), 'H2 draws another network');
   assert.deepEqual(clamp.deg, neighbourDegree(clamp).map((_, i) => clamp.edges.filter((e: number[]) => e.includes(i)).length));
   assert.ok(knnSpearman(clamp) < -0.2, 'H2: the score goes with the average neighbour degree');
   const byEta = clamp.eta.map((_: number, i: number) => i).sort((a: number, b: number) => clamp.eta[b] - clamp.eta[a]);
   const busiest = clamp.deg.map((_: number, i: number) => i).sort((a: number, b: number) => clamp.deg[b] - clamp.deg[a] || a - b).slice(0, 3);
-  assert.deepEqual(busiest.map((i: number) => clamp.deg[i]), [21, 21, 21], 'H3: three villagers with 21 contacts');
-  assert.ok(busiest.every((i: number) => byEta.indexOf(i) >= 10), 'H3: a best-connected villager among the ten most important');
+  assert.deepEqual(busiest.map((i: number) => clamp.deg[i]), [21, 21, 21], 'H2: three villagers with 21 contacts');
+  assert.ok(busiest.every((i: number) => byEta.indexOf(i) >= 10), 'H2: a best-connected villager among the ten most important');
   // the closing summary's stubborn people replay: the best-connected one does not flip the village, the most important does
   assert.deepEqual(clamp.cycle.map((x: { node: number }) => x.node), [busiest[0], byEta[0], clamp.demo.lo, clamp.demo.hi], 'I1: who is stubborn');
   for (const x of clamp.cycle as { node: number; flips: boolean; bits: string }[]) {
@@ -381,4 +398,25 @@ import { villageNet } from '../src/scripts/defence/village.ts';
   }
   assert.deepEqual(clamp.cycle.map((x: { flips: boolean }) => x.flips), [false, true, false, true], 'I1: two follow, two do not');
   console.log('toy data for G and H replays');
+}
+
+// ── I2: the groundwater model of the beyond slide is stable, breathes with the seasons and is deepest along the wells ──
+{
+  // stable at the surface: D = 4·T/Sy·ΔT/ΔX² below 1 with T = Ks·H at H = 7.5 m
+  assert.ok((4 * GW.Ks * GW.base * GW.dt) / (GW.Sy * GW.dx * GW.dx) < 1, 'I2: the groundwater scheme is unstable');
+  const a = aquifer(), far = 42 * a.W + 2, month: number[] = [], wellLow: number[] = [];
+  let lo = Infinity, hi = -Infinity;
+  for (let m = 0; m < 12; m++) {
+    let sum = 0, k = 0, w = Infinity;
+    for (let d = 0; d < 30; d++) { a.advance(1); sum += a.head[far]; k++; for (const i of a.wells) w = Math.min(w, a.head[i]); for (const h of a.head) { lo = Math.min(lo, h); hi = Math.max(hi, h); } }
+    a.advance(365 / 12 - 30); month.push(sum / k); wellLow.push(w);
+  }
+  // far from the wells, as in the paper: about 6.5 m in spring, 6.0 m at the end of summer
+  const top = month.indexOf(Math.max(...month)), bottom = month.indexOf(Math.min(...month));
+  assert.ok(top >= 1 && top <= 4 && bottom >= 7 && bottom <= 9, `I2: the seasons are off (highest in month ${top}, lowest in ${bottom})`);
+  assert.ok(Math.max(...month) > 6.4 && Math.min(...month) < 6.1, 'I2: the water table hardly breathes');
+  // the wells draw the deepest trough, deeper in summer; nothing leaves the slide's colour scale by much or reaches the surface
+  assert.ok(Math.min(...wellLow.slice(6, 10)) < Math.min(...wellLow.slice(0, 4)) - 0.5, 'I2: the trough along the wells is no deeper in summer');
+  assert.ok(lo > GW_SCALE.lo - 0.2 && hi < GW.base - 0.3, `I2: the head leaves its range (${lo.toFixed(2)}–${hi.toFixed(2)} m)`);
+  console.log('groundwater model holds');
 }

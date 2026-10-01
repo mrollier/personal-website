@@ -13,7 +13,7 @@ import { remap, ends, intervalOf, cousin } from '../src/scripts/defence/rings.ts
 import { step, randomState, phi, type Rule as LlnaRule } from '../src/scripts/llna.ts';
 import { trioNet, trioStart } from '../src/scripts/defence/trio.ts';
 import { wildfire, FIRE, BARE, BURNING, BURNT } from '../src/scripts/defence/wildfire.ts';
-import { fingerprinter } from '../src/scripts/defence/print.ts';
+import { fingerprinter, PRINT } from '../src/scripts/defence/print.ts';
 import type { NetSpec } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
@@ -192,23 +192,30 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     assert.ok(run(k, { r: 9, B: 8, S: 12 }, 40).on <= 0.05, `F3: the Game of Life lives on on network ${k}`);
     assert.equal(run(k, { r: 9, B: 170, S: 170 }, 100).last, 100, `F3: Replicator stops on network ${k}`);
   }
-  // G2: under Miranda et al.'s rule (their uniform cut) all three stay lively and their fingerprints after 75 rounds
-  // differ; nodes with four neighbours can never be born under it. Under the consensus-seeking winner all three are
-  // all off within twenty rounds, and their fingerprints are one and the same.
-  const MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule) => nets.map((net, k) => {
-    const fp = fingerprinter(net); let a = trioStart(k, net.n), b = new Uint8Array(net.n), flips = 0, off = -1;
+  // G2: under Miranda et al.'s rule (their uniform cut) all three stay lively and their fingerprints over the whole run
+  // of 100 timesteps differ, from the networks' own starts and from any of 40 others; nodes with four neighbours can
+  // never be born under it. Under the consensus-seeking winner all three are all off within twenty timesteps, and their
+  // fingerprints pile up at the low end: entropy and Lempel–Ziv in their lowest four bins, the density nearly all at 0.
+  const MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule, seed = -1) => nets.map((net, k) => {
+    const fp = fingerprinter(net), rnd = makeRng(seed);
+    let a = seed < 0 ? trioStart(k, net.n) : randomState(net.n, 0.3, rnd), b = new Uint8Array(net.n), flips = 0, off = -1;
     fp.push(a);
-    for (let t = 1; t <= 75; t++) { step(a, net, rule, b); if (t > 55) for (let x = 0; x < net.n; x++) flips += a[x] ^ b[x]; [a, b] = [b, a]; fp.push(a); if (off < 0 && a.every((v) => !v)) off = t; }
+    for (let t = 1; t <= PRINT.T; t++) { step(a, net, rule, b); if (t > PRINT.T - 20) for (let x = 0; x < net.n; x++) flips += a[x] ^ b[x]; [a, b] = [b, a]; fp.push(a); if (off < 0 && a.every((v) => !v)) off = t; }
     return { print: fp.print(), flips: flips / 20 / net.n, off };
   });
   const dist = (x: ReturnType<typeof prints>[number], y: ReturnType<typeof prints>[number]) => (['entropy', 'lz', 'density'] as const).reduce((acc, f) => acc + x.print[f]!.reduce((m, v, b) => m + Math.abs(v - y.print[f]![b]), 0), 0);
-  const mir = prints(MIR);
-  for (const m of mir) assert.ok(m.flips >= 0.3, 'G2: Miranda et al.\'s rule is not lively on a trio network');
-  for (const [x, y] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(mir[x], mir[y]) >= 0.5, `G2: fingerprints ${x} and ${y} look alike under Miranda's rule`);
+  for (const seed of [-1, ...Array.from({ length: 40 }, (_, i) => 5000 + i)]) {
+    const mir = prints(MIR, seed);
+    for (const m of mir) assert.ok(m.flips >= 0.3, `G2: Miranda et al.'s rule is not lively on a trio network (start ${seed})`);
+    for (const [x, y] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(mir[x], mir[y]) >= 0.5, `G2: fingerprints ${x} and ${y} look alike under Miranda's rule (start ${seed})`);
+  }
   assert.equal(stepOne(MIR, 4), 0, 'G2: a node with four neighbours can be born under Miranda\'s rule');
   const win = prints({ r: 9, B: 488, S: 464 });
-  for (const w of win) assert.ok(w.off >= 0 && w.off <= 20, 'G2: the winner does not bring a trio network to all off');
-  for (const [x, y] of [[0, 1], [0, 2]]) assert.ok(dist(win[x], win[y]) < 1e-9, 'G2: the consensus fingerprints differ');
+  const low = (h: number[]) => h.slice(0, 4).reduce((m, v) => m + v, 0);
+  for (const w of win) {
+    assert.ok(w.off >= 0 && w.off <= 20, 'G2: the winner does not bring a trio network to all off');
+    assert.ok(low(w.print.entropy!) > 0.999 && low(w.print.lz!) > 0.999 && w.print.density![0] >= 0.9, 'G2: the consensus fingerprints do not pile up at the low end');
+  }
 }
 // D3: on the 16 × 16 small-world grid (network 31, start 70) the Game of Life is still busy after 300 rounds.
 {

@@ -32,6 +32,12 @@ const demos: { href: string; name: string; blurb: string; meta: Meta[] }[] = [
     meta: [{ text: 'CNSNS review paper', paper: 'ca-taxonomy' }, 'interactive'],
   },
   {
+    href: '/demos/nuca-cnn/',
+    name: 'The automaton is the network',
+    blurb: 'A cellular automaton written as a convolutional neural network with its weights set by hand: forty weights for one rule, one more layer when every cell has its own. Take an update apart, watch the paper\'s figures come out cell for cell, train the weights from scratch in your browser, and see what the benchmarks did and did not show.',
+    meta: [{ text: 'ACRI 2024 paper', paper: 'cnn-nonuniform' }, 'interactive'],
+  },
+  {
     href: '/demos/mobility/',
     name: 'Where the virus travelled',
     blurb: 'Did it matter where Belgians travelled in 2020, in a country this small and this connected? Pick any of the 43 arrondissements and see its commuters and the excess deaths side by side, week by week; watch a noisy curve of hospital admissions turn into a fan of 100 fits; and slide one province\'s epidemic over another\'s to see who ran ahead. All on public data, computed in the browser.',
@@ -45,7 +51,7 @@ const demos: { href: string; name: string; blurb: string; meta: Meta[] }[] = [
   },
 ];
 ---
-<Base title="Demos" description="Interactive demonstrations: my PhD defence and thesis, the Game of Life on networks, the five families of cellular automata and the identities between them, the spread of SARS-CoV-2 across Belgium, and gravitational-wave echoes from my MSc thesis." wide>
+<Base title="Demos" description="Interactive demonstrations: my PhD defence and thesis, the Game of Life on networks, the five families of cellular automata and the identities between them, cellular automata as neural networks, the spread of SARS-CoV-2 across Belgium, and gravitational-wave echoes from my MSc thesis." wide>
   <div class="measure">
     <h1>Demos</h1>
     <p>

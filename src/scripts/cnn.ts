@@ -40,12 +40,19 @@ export function readout(ch: Float32Array[], table: Uint8Array): Uint8Array {
 /** One global update of a Wolfram rule through the two layers. */
 export const cnnStep = (row: Uint8Array, rule: number, omega = 1) => readout(channels(row, omega), tableOf(rule));
 
-/** The non-uniform case: every rule's uniform update, then each cell takes the one its allocation names. */
-export function nucaStep(row: Uint8Array, rules: number[], alloc: Uint8Array, omega = 1): Uint8Array {
-  const ch = channels(row, omega), outs = rules.map((r) => readout(ch, tableOf(r))), W = row.length, out = new Uint8Array(W);
-  for (let x = 0; x < W; x++) out[x] = outs[Math.min(rules.length - 1, alloc[x])][x];
-  return out;
+/** The rule-table layer with one output channel per rule: the whole next row as if every cell followed that rule. */
+export function candidates(row: Uint8Array, rules: number[], omega = 1): Uint8Array[] {
+  const ch = channels(row, omega);
+  return rules.map((r) => readout(ch, tableOf(r)));
 }
+
+/** The selection layer: each cell keeps the channel of the rule its allocation names (an index into the rules). */
+export function select(cands: Uint8Array[], alloc: ArrayLike<number>): Uint8Array {
+  return Uint8Array.from(cands[0], (_, x) => cands[Math.min(cands.length - 1, alloc[x])][x]);
+}
+
+/** The non-uniform case: every rule's uniform update, then each cell takes the one its allocation names. */
+export const nucaStep = (row: Uint8Array, rules: number[], alloc: ArrayLike<number>, omega = 1): Uint8Array => select(candidates(row, rules, omega), alloc);
 
 /** Parameters of the emulator, Eqs. (7.1) and (7.2): the detectors, one rule table per rule, and the selection layer, which is
  * N_R × N when it is locally connected and N_R × N² when it is dense. */

@@ -37,6 +37,7 @@
   doi: 10.1007/978-3-031-71552-5_11
   url: https://arxiv.org/abs/2409.02722
   summary: "Non-uniform cellular automata are secretly convolutional neural networks, so we ran them in TensorFlow and simulated many large automata at once, fast."
+  demo: /demos/nuca-cnn/
 - id: seiqrd-vocs
   title: "A stochastic mobility-driven spatially explicit SEIQRD COVID-19 model with VOCs, seasonality, and vaccines"
   authors: "T. W. Alleman, M. Rollier, J. Vergeynst, J. M. Baetens"

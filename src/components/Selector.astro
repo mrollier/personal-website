@@ -1,0 +1,185 @@
+---
+// The extra layer that makes the CNN of an elementary CA emulate a non-uniform one (ACRI 2024, Sec. 2.2). For one update
+// it shows the input row, the candidate next rows (every rule applied to every cell, the rule-table layer with one channel
+// per rule), the allocation, and the output the selection layer keeps; beside it the allocation and spacetime diagram
+// over all ticks, and below the selection weights, locally connected (one per rule per cell) or dense (one per rule per
+// pair of cells). Presets are the paper's Figs 1 and 4, compared cell for cell with the published diagrams, or a random
+// νCA. Self-contained with src/scripts/cnn.ts, net.ts, raster.ts, palette.ts and figure.ts, and the figure data of
+// src/data/nuca-cnn.json. The URL query under `sel.` keeps the settings.
+import data from '../data/nuca-cnn.json';
+const figs = { fig1: data.fig1, fig4: data.fig4 };
+---
+<figure class="fig" id="sel" data-selector data-figs={JSON.stringify(figs)} tabindex="-1">
+  <canvas role="img" aria-label="One update of a non-uniform CA as a network layer, and its spacetime diagram"></canvas>
+  <div class="controls" role="group" aria-label="Which νCA">
+    <label>νCA <select name="preset">
+      <option value="fig1">Fig. 1: rules 30 and 90</option>
+      <option value="fig4">Fig. 4: eight rules, moving allocation</option>
+      <option value="random">random</option>
+    </select></label>
+    <label data-for="random">rules <select name="nr">{[2, 3, 4, 6, 8].map((v) => <option value={v} selected={v === 4}>{v}</option>)}</select></label>
+    <button name="again" type="button" data-for="random">new νCA</button>
+  </div>
+  <div class="controls" role="group" aria-label="View">
+    <label>update at tick <input name="tick" type="range" min="0" max="30" step="1" value="0" /> <output name="tv">0</output></label>
+    <label>selection layer <select name="mode"><option value="local">locally connected</option><option value="dense">dense</option></select></label>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 480px; background: var(--panel); border: 1px solid var(--line); cursor: pointer; }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
+  }
+  .controls label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; max-width: 100%; }
+  .controls select { max-width: 100%; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls input[type="range"] { width: 9rem; accent-color: var(--accent); margin: 0; }
+  .fig [hidden] { display: none !important; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .status :global(.ok) { color: var(--accent); font-weight: 600; }
+</style>
+
+<script>
+  import { candidates, select, paramCount } from '../scripts/cnn';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, ramp, type RGB } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label, type Box } from '../scripts/figure';
+
+  type Fig = { rules: number[]; alloc: number[] | number[][]; diagram: number[][] };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, status = $<HTMLOutputElement>('status');
+    const presetIn = $<HTMLSelectElement>('preset'), nrIn = $<HTMLSelectElement>('nr'), tickIn = $<HTMLInputElement>('tick'), tv = $<HTMLOutputElement>('tv'), modeIn = $<HTMLSelectElement>('mode');
+    const figs = JSON.parse(el.dataset.figs!) as Record<'fig1' | 'fig4', Fig>, knobs = Array.from(el.querySelectorAll<HTMLElement>('[data-for]'));
+    const url = urlState('sel', { preset: 'fig1', nr: '4', tick: '0', mode: 'local', seed: '1' });
+    let preset = ['fig1', 'fig4', 'random'].includes(url.get('preset')) ? url.get('preset') : 'fig1', nr = [2, 3, 4, 6, 8].includes(+url.get('nr')) ? +url.get('nr') : 4;
+    let tick = Math.max(0, Math.round(+url.get('tick')) || 0), mode = url.get('mode') === 'dense' ? 'dense' : 'local', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    const N = 32, T = 32;
+    let rules: number[] = [], allocs: number[][] = [], rows: Uint8Array[] = [], published: number[][] | null = null, diag: Box | null = null;
+
+    function build() {
+      if (preset === 'random') {
+        const rnd = makeRng(seed * 7919 + nr), pool: number[] = [];
+        while (pool.length < nr) { const r = Math.floor(rnd() * 256); if (!pool.includes(r)) pool.push(r); }
+        rules = pool; const a = Array.from({ length: N }, () => Math.floor(rnd() * nr));
+        allocs = Array.from({ length: T }, () => a); published = null;
+        rows = [Uint8Array.from({ length: N }, () => (rnd() < 0.5 ? 1 : 0))];
+      } else {
+        const f = figs[preset as 'fig1' | 'fig4'];
+        rules = f.rules; published = f.diagram;
+        allocs = Array.isArray(f.alloc[0]) ? (f.alloc as number[][]) : Array.from({ length: T }, () => f.alloc as number[]);
+        rows = [Uint8Array.from(f.diagram[0])];
+      }
+      for (let t = 1; t < T; t++) rows.push(select(candidates(rows[t - 1], rules), allocs[t - 1]));
+      tick = Math.min(T - 2, tick);
+    }
+
+    function paint() {
+      const w = c.getBoundingClientRect().width; if (w < 1) return;
+      const wide = w >= 700, pad = 10, lab = 64, gap = 18, cap = 16;
+      const leftW = wide ? w * 0.56 : w - 2 * pad, s = (leftW - lab - pad) / N; // cell size of the anatomy
+      const anatomyH = (rules.length + 3) * (s + 4) + 2 * 8 + cap;
+      const rightW = wide ? w - leftW - 2 * pad - gap : w - 2 * pad, ds = Math.min(rightW / (2 * N + 2), 7), diagH = cap + T * ds;
+      const NR = rules.length, matCols = mode === 'local' ? N : NR * N, matRows = mode === 'local' ? NR : N;
+      const ms = Math.min((w - 2 * pad - lab) / matCols, 6), matH = cap + 12 + matRows * ms;
+      const want = `${Math.ceil(pad + (wide ? Math.max(anatomyH, diagH) : anatomyH + gap + diagH) + gap + matH + pad)}px`;
+      if (c.style.height !== want) c.style.height = want;
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), ink = parse(t.ink), pan = parse(t.panel), acc = parse(t.accent), line = parse(t.line);
+      const shade = ramp([mix(pan, acc, 0.35), acc, mix(acc, ink, 0.6)]), ruleCol = (k: number): RGB => shade(NR > 1 ? k / (NR - 1) : 0.5);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, sz.w, sz.h);
+      ctx.font = `11px ${t.mono}`;
+
+      // the anatomy of one update: input, one candidate row per rule, allocation, output
+      const a = allocs[tick], cand = candidates(rows[tick], rules), out = rows[tick + 1];
+      let y = pad + cap;
+      label(ctx, `the update from tick ${tick} to ${tick + 1}`, pad, y - 5, t, { color: t.ink });
+      const strip = (vals: ArrayLike<number>, color: (x: number) => string, name: string, nameColor = t.muted) => {
+        for (let x = 0; x < N; x++) { ctx.fillStyle = color(x); ctx.fillRect(pad + lab + x * s, y, s - 0.5, s - 0.5); }
+        label(ctx, name, pad + lab - 6, y + s * 0.7, t, { align: 'right', color: nameColor });
+        y += s + 4;
+      };
+      const css = (rgb: RGB, alpha = 1) => `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${alpha})`;
+      strip(rows[tick], (x) => css(rows[tick][x] ? ink : line), 'input');
+      y += 8;
+      cand.forEach((row, k) => strip(row, (x) => (a[x] === k ? css(row[x] ? ink : line) : css(row[x] ? ink : line, 0.16)), `rule ${rules[k]}`, css(ruleCol(k))));
+      strip(a, (x) => css(ruleCol(a[x])), 'allocation');
+      y += 8;
+      strip(out, (x) => css(out[x] ? ink : line), 'output');
+      const bottomLeft = y;
+
+      // the whole run: allocation and diagram over all ticks, the current update marked
+      const ox = wide ? pad + leftW + gap : pad, oy = wide ? pad + cap : bottomLeft + gap + cap;
+      const allocR = new Raster(N, T), diagR = new Raster(N, T);
+      for (let r = 0; r < T; r++) for (let x = 0; x < N; x++) { allocR.set(r * N + x, ruleCol(allocs[r][x])); diagR.set(r * N + x, rows[r][x] ? ink : pan); }
+      allocR.flush(); diagR.flush();
+      const b1 = { x: ox, y: oy, w: N * ds, h: T * ds }, b2 = { x: ox + N * ds + 2 * ds, y: oy, w: N * ds, h: T * ds };
+      allocR.blit(ctx, b1); diagR.blit(ctx, b2); diag = b2;
+      for (const b of [b1, b2]) { ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(b.x - 0.5, b.y - 0.5, b.w + 1, b.h + 1); }
+      label(ctx, 'allocation', b1.x, oy - 5, t, { color: t.ink }); label(ctx, 'spacetime diagram', b2.x, oy - 5, t, { color: t.ink });
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.strokeRect(b2.x - 1, oy + tick * ds - 1, b2.w + 2, 2 * ds + 2);
+
+      // the selection weights: rows are output cells for the dense layer, rules for the locally connected one
+      const my = (wide ? Math.max(bottomLeft, oy + T * ds) : oy + T * ds) + gap + cap;
+      const matR = new Raster(matCols, matRows);
+      for (let r = 0; r < matRows; r++) for (let col = 0; col < matCols; col++) {
+        const on = mode === 'local' ? a[col] === r : col % N === r && a[r] === Math.floor(col / N);
+        matR.set(r * matCols + col, on ? (mode === 'local' ? ruleCol(r) : ruleCol(Math.floor(col / N))) : pan);
+      }
+      matR.flush();
+      const mb = { x: pad + lab, y: my, w: matCols * ms, h: matRows * ms };
+      matR.blit(ctx, mb); ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(mb.x - 0.5, mb.y - 0.5, mb.w + 1, mb.h + 1);
+      if (mode === 'dense') for (let k = 1; k < NR; k++) { ctx.strokeStyle = t.line; ctx.beginPath(); ctx.moveTo(mb.x + k * N * ms + 0.5, mb.y); ctx.lineTo(mb.x + k * N * ms + 0.5, mb.y + mb.h); ctx.stroke(); }
+      const nonzero = N, total = mode === 'local' ? NR * N : NR * N * N;
+      label(ctx, mode === 'local' ? `selection weights: ${NR} rules × ${N} cells` : `selection weights: ${N} cells × ${NR} rules × ${N} cells`, pad, my - 5, t, { color: t.ink });
+      label(ctx, mode === 'local' ? 'rule' : 'cell', pad + lab - 6, my + 10, t, { align: 'right' });
+
+      const agree = published ? rows.every((r, k) => r.every((v, x) => v === published![k][x])) : null;
+      status.innerHTML = `${NR} rules, ${N} cells. Selection: ${total.toLocaleString('en')} weights, ${nonzero} of them 1 for this allocation; with the 32 detector weights and ${8 * NR} rule-table weights, ${paramCount(N, NR, mode as 'local' | 'dense').toLocaleString('en')} in all (Eq. ${mode === 'local' ? 1 : 2}).`
+        + (agree === null ? '' : agree ? ` <span class="ok">The diagram matches the published Fig. ${preset === 'fig1' ? 1 : 4} cell for cell.</span>` : ' The diagram differs from the published figure.');
+      c.setAttribute('aria-label', status.textContent ?? '');
+    }
+
+    function show() {
+      presetIn.value = preset; nrIn.value = String(nr); modeIn.value = mode;
+      tickIn.max = String(T - 2); tickIn.value = String(tick); tv.value = String(tick);
+      for (const k of knobs) k.hidden = k.dataset.for !== preset;
+    }
+    const redo = (rebuild = true) => {
+      if (rebuild) build();
+      show(); paint();
+      for (const [k, v] of Object.entries({ preset, nr, tick, mode, seed })) url.set(k, String(v));
+    };
+    presetIn.addEventListener('change', () => { preset = presetIn.value; tick = 0; redo(); });
+    nrIn.addEventListener('change', () => { nr = +nrIn.value; redo(); });
+    modeIn.addEventListener('change', () => { mode = modeIn.value; redo(false); });
+    tickIn.addEventListener('input', () => { tick = +tickIn.value; redo(false); });
+    const again = () => { seed++; redo(); };
+    $('again').addEventListener('click', again);
+    c.addEventListener('click', (e) => { // a click on the diagram picks the update
+      if (!diag) return;
+      const r = c.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      if (x < diag.x || x > diag.x + diag.w || y < diag.y || y > diag.y + diag.h) return;
+      tick = Math.min(T - 2, Math.floor(((y - diag.y) / diag.h) * T)); redo(false);
+    });
+    keys(el, {
+      ArrowRight: () => { tick = Math.min(T - 2, tick + 1); redo(false); }, ArrowLeft: () => { tick = Math.max(0, tick - 1); redo(false); },
+      n: () => { if (preset === 'random') again(); },
+    });
+    build(); show();
+    watch(c, paint);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-selector]').forEach(mount);
+</script>

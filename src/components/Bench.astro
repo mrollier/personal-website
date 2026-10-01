@@ -1,0 +1,85 @@
+---
+// Fig. 5 of the ACRI 2024 paper: how long CellPyLib and the two CNNs take for 32 or more νCAs, in four scenarios, from
+// the archived 2024 timings (mean and standard deviation over ten repeats), with the 2026 re-run on the same laptop as
+// an optional overlay. Drawn at build time as SVG; hovering a point gives its value; the overlay is a checkbox and CSS.
+// Data from src/data/nuca-cnn.json (scripts/export-nuca.py).
+import data from '../data/nuca-cnn.json';
+type Series = { mean: number[]; std: number[] };
+type Row = { x: number[]; cellpylib: Series; local: Series; dense: Series };
+const PANELS: { key: 'Nrules' | 'T' | 'N' | 'S'; title: string; xlab: string; logx: boolean; logy: boolean }[] = [
+  { key: 'Nrules', title: '32 νCAs of 256 cells, 32 ticks', xlab: 'number of rules', logx: true, logy: false },
+  { key: 'T', title: '32 νCAs of 64 cells, 4 rules', xlab: 'number of ticks', logx: false, logy: false },
+  { key: 'N', title: '32 νCAs, 4 rules, 32 ticks', xlab: 'number of cells', logx: false, logy: false },
+  { key: 'S', title: 'νCAs of 32 cells, 4 rules, 32 ticks', xlab: 'number of νCAs', logx: true, logy: true },
+];
+const METHODS = [
+  { key: 'cellpylib', name: 'CellPyLib' },
+  { key: 'local', name: 'CNN, locally connected' },
+  { key: 'dense', name: 'CNN, dense' },
+] as const;
+const W = 330, H = 230, L = 46, R = 10, T = 26, B = 40;
+const f1 = (v: number) => v.toFixed(1);
+const fmt = (v: number) => (v >= 10 ? v.toFixed(1) : v >= 1 ? v.toFixed(2) : v.toPrecision(2));
+const panels = PANELS.map((p) => {
+  const rows = [data.bench['2024'][p.key], data.bench['2026'][p.key]] as Row[];
+  const xs = rows[0].x, all = rows.flatMap((r) => METHODS.flatMap((m) => r[m.key].mean.map((v, i) => [v - r[m.key].std[i], v + r[m.key].std[i]]).flat()));
+  const ymax = Math.max(...all), ymin = p.logy ? 0.01 : 0, top = p.logy ? 10 ** Math.ceil(Math.log10(ymax)) : Math.ceil(ymax / 2) * 2;
+  const X = (x: number) => L + ((p.logx ? Math.log2(x) - Math.log2(xs[0]) : x - xs[0]) / (p.logx ? Math.log2(xs.at(-1)!) - Math.log2(xs[0]) : xs.at(-1)! - xs[0])) * (W - L - R);
+  const Y = (y: number) => T + (1 - (p.logy ? (Math.log10(Math.max(y, ymin)) - Math.log10(ymin)) / (Math.log10(top) - Math.log10(ymin)) : y / top)) * (H - T - B);
+  const yticks = p.logy ? [0.01, 0.1, 1, 10, 100].filter((v) => v <= top) : Array.from({ length: top / 2 + 1 }, (_, i) => 2 * i);
+  const xticks = p.key === 'S' ? xs.filter((_, i) => i % 2 === 0) : p.key === 'T' ? xs.filter((_, i) => i % 3 === 0) : xs;
+  const lines = rows.map((r, year) => METHODS.map((m) => {
+    const s = r[m.key], pts = r.x.map((x, i) => [X(x), Y(s.mean[i])]);
+    const band = [...r.x.map((x, i) => [X(x), Y(s.mean[i] + s.std[i])]), ...r.x.map((x, i) => [X(x), Y(Math.max(ymin, s.mean[i] - s.std[i]))]).reverse()];
+    return {
+      cls: `${m.key} y${year ? 2026 : 2024}`,
+      d: 'M' + pts.map((q) => q.map(f1).join(',')).join(' L'), band: 'M' + band.map((q) => q.map(f1).join(',')).join(' L') + ' Z',
+      dots: r.x.map((x, i) => ({ cx: f1(pts[i][0]), cy: f1(pts[i][1]), tip: `${m.name}, ${p.xlab} ${x} (${year ? 2026 : 2024}): ${fmt(s.mean[i])} ± ${fmt(s.std[i])} s` })),
+    };
+  })).flat();
+  return { ...p, X, Y, yticks, xticks, lines };
+});
+---
+<figure class="bench">
+  <div class="legend">
+    {METHODS.map((m) => <span class={`key ${m.key}`}><i></i>{m.name}</span>)}
+    <label><input type="checkbox" name="y2026" /> the 2026 re-run, dashed</label>
+  </div>
+  <div class="grid">
+    {panels.map((p) => (
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Seconds to compute, ${p.title}, against the ${p.xlab}`}>
+        <text class="title" x={L} y="14">{p.title}</text>
+        {p.yticks.map((v) => <g><line class="grid-line" x1={L} x2={W - R} y1={f1(p.Y(v))} y2={f1(p.Y(v))} /><text class="tick" x={L - 5} y={f1(p.Y(v) + 3.5)} text-anchor="end">{v}</text></g>)}
+        {p.xticks.map((v) => <text class="tick" x={f1(p.X(v))} y={H - B + 14} text-anchor="middle">{v}</text>)}
+        <text class="axis" x={(L + W - R) / 2} y={H - 8} text-anchor="middle">{p.xlab}</text>
+        <text class="axis" transform={`translate(11 ${(T + H - B) / 2}) rotate(-90)`} text-anchor="middle">seconds{p.logy ? ' (log)' : ''}</text>
+        {p.lines.map((l) => <path class={`band ${l.cls}`} d={l.band} />)}
+        {p.lines.map((l) => <path class={`line ${l.cls}`} d={l.d} />)}
+        {p.lines.map((l) => l.dots.map((d) => <circle class={`dot ${l.cls}`} cx={d.cx} cy={d.cy} r="2.6"><title>{d.tip}</title></circle>))}
+      </svg>
+    ))}
+  </div>
+  <figcaption>Seconds to compute the diagrams, mean and standard deviation over ten repeats, on one laptop CPU (Intel i7-9850H). The 2024 timings are the paper's; hover a point for its value.</figcaption>
+</figure>
+
+<style>
+  .bench { margin: 1.5rem 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.5rem 1.2rem; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .title { font-family: var(--mono); font-size: 10.5px; fill: var(--ink); }
+  .tick, .axis { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); }
+  .grid-line { stroke: var(--line); stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; }
+  .band { stroke: none; opacity: 0.18; }
+  .dot { stroke: var(--bg); stroke-width: 0.8; }
+  .cellpylib { --c: var(--muted); } .local { --c: var(--sun); } .dense { --c: var(--accent); }
+  .line { stroke: var(--c); } .band, .dot { fill: var(--c); }
+  .y2026.line { stroke-dasharray: 5 3; stroke-width: 1.5; }
+  .y2026 { display: none; }
+  .bench:has([name="y2026"]:checked) .y2026 { display: inline; }
+  .legend { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-bottom: 0.6rem; align-items: center; }
+  .key i { display: inline-block; width: 1.4em; height: 3px; background: var(--c); vertical-align: middle; margin-right: 0.4em; }
+  .legend label { display: inline-flex; gap: 0.35rem; align-items: center; cursor: pointer; }
+  .legend input { accent-color: var(--accent); }
+  figcaption { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+</style>

@@ -1,0 +1,176 @@
+---
+// The emulator of an elementary CA trained from random weights, live (ACRI 2024, Fig. 3, and the training study of
+// mrollier/emulating-and-learning-CAs). Left, as in the paper's figure: the squared error on each cell of the published
+// rule-54 example, one row per epoch of 64 steps, on a log scale. Right: the loss, the eight neighbourhoods with what the
+// network answers (stuck ones marked), and the learned detector weights. Two recipes, the 2024 one and the reliable one,
+// and a button that trains every rule with eight seeds and counts the exact networks. Self-contained with
+// src/scripts/training.ts, net.ts, raster.ts, palette.ts, figure.ts and src/data/nuca-cnn.json. URL query under `train.`.
+import data from '../data/nuca-cnn.json';
+---
+<figure class="fig" id="train" data-training data-x={JSON.stringify(data.fig3.x)} tabindex="-1">
+  <canvas role="img" aria-label="Training a small network to emulate a cellular automaton rule"></canvas>
+  <div class="controls" role="group" aria-label="Training">
+    <label>rule <input name="rule" type="number" min="0" max="255" value="54" inputmode="numeric" /></label>
+    <label>recipe <select name="recipe"><option value="2024">2024: ReLU, tanh, squared error</option><option value="reliable">reliable: softplus, logit, cross-entropy</option></select></label>
+    <button name="train" type="button">train again</button>
+    <button name="seed" type="button">new seed</button>
+    <button name="all" type="button">every rule, eight seeds</button>
+    <progress name="prog" max="1" value="0" hidden></progress>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+  <output name="tally" class="status"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 420px; background: var(--panel); border: 1px solid var(--line); }
+  .controls, .status {
+    font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
+  }
+  .controls label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; max-width: 100%; }
+  .controls select { max-width: 100%; }
+  .controls button, .controls select {
+    font: inherit; color: var(--ink); background: none; border: 1px solid var(--line);
+    padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation;
+  }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls input[type="number"] { font: inherit; width: 4.5em; color: var(--ink); background: var(--bg); border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  progress { width: 8rem; height: 0.6rem; accent-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+</style>
+
+<script>
+  import { init, step, forward, predict, exact, stuck, train, SETTINGS, type Net, type Recipe } from '../scripts/training';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, ramp } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label, reducedMotion } from '../scripts/figure';
+
+  const EPOCH = 64; // steps per row of the error map, as the 2024 recipe's 64 batches per epoch
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, status = $<HTMLOutputElement>('status'), tally = $<HTMLOutputElement>('tally');
+    const ruleIn = $<HTMLInputElement>('rule'), recipeIn = $<HTMLSelectElement>('recipe'), allBtn = $<HTMLButtonElement>('all'), prog = $<HTMLProgressElement>('prog');
+    const X = JSON.parse(el.dataset.x!) as number[], N = X.length;
+    const url = urlState('train', { rule: '54', recipe: '2024', seed: '1' });
+    let rule = Math.min(255, Math.max(0, Math.round(+url.get('rule')) || 0)), recipe: Recipe = url.get('recipe') === 'reliable' ? 'reliable' : '2024', seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let net!: Net, losses: number[] = [], errs: Float64Array[] = [], firstExact = -1, raf = 0, job = 0;
+    const nb = (x: number) => (X[(x + N - 1) % N] << 2) | (X[x] << 1) | X[(x + 1) % N];
+    const Y = X.map((_, x) => (rule >> nb(x)) & 1);
+
+    /** The squared error on every cell of the example, now. */
+    const errorRow = () => { const out = [0, 1, 2, 3, 4, 5, 6, 7].map((n) => forward(net, n).out); return Float64Array.from(X, (_, x) => (out[nb(x)] - ((rule >> nb(x)) & 1)) ** 2); };
+
+    function restart() {
+      cancelAnimationFrame(raf);
+      net = init(recipe, makeRng(seed * 7919 + rule)); losses = []; errs = [errorRow()]; firstExact = exact(net, rule) ? 0 : -1;
+      const steps = SETTINGS[recipe].steps, run = () => {
+        for (let k = 0; k < EPOCH && net.t < steps; k++) { losses.push(step(net, rule)); if (firstExact < 0 && exact(net, rule)) firstExact = net.t; }
+        errs.push(errorRow()); paint();
+        if (net.t < steps) raf = requestAnimationFrame(run);
+      };
+      if (reducedMotion()) { while (net.t < steps) { for (let k = 0; k < EPOCH; k++) { losses.push(step(net, rule)); if (firstExact < 0 && exact(net, rule)) firstExact = net.t; } errs.push(errorRow()); } paint(); }
+      else raf = requestAnimationFrame(run);
+    }
+
+    function paint() {
+      const w = c.getBoundingClientRect().width; if (w < 1) return;
+      const wide = w >= 680, pad = 10, cap = 16, epochs = SETTINGS[recipe].steps / EPOCH;
+      const leftW = wide ? w * 0.42 : w - 2 * pad, s = leftW / N, mapH = (epochs + 1) * s * 0.5;
+      const rightH = 330, want = `${Math.ceil(wide ? Math.max(pad + cap + 3 * s + mapH + 30, rightH) : pad + cap + 3 * s + mapH + 40 + rightH)}px`;
+      if (c.style.height !== want) c.style.height = want;
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), ink = parse(t.ink), pan = parse(t.panel), acc = parse(t.accent), danger = parse(t.danger);
+      const heat = ramp([pan, acc, danger]);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, sz.w, sz.h);
+
+      // the error map: input row, one row per epoch, target row
+      let y = pad + cap;
+      label(ctx, `rule ${rule}: squared error per cell, one row per epoch`, pad, y - 5, t, { color: t.ink });
+      const row = (v: ArrayLike<number>, yy: number) => { for (let x = 0; x < N; x++) { ctx.fillStyle = v[x] ? t.ink : t.bg; ctx.fillRect(pad + x * s, yy, s - 0.5, s - 0.5); } };
+      row(X, y); y += s + 4;
+      const R = new Raster(N, epochs + 1);
+      R.fill(pan);
+      errs.forEach((e, r) => { for (let x = 0; x < N; x++) R.set(r * N + x, heat(Math.max(0, 1 + Math.log10(Math.max(e[x], 1e-4)) / 4))); });
+      R.flush(); R.blit(ctx, { x: pad, y, w: N * s, h: mapH });
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(pad - 0.5, y - 0.5, N * s + 1, mapH + 1);
+      y += mapH + 4; row(Y, y);
+      label(ctx, 'input, then 40 epochs, then the target · error from 10⁻⁴ (pale) to 1 (red)', pad, y + s + 12, t, { size: 10 });
+
+      // right: loss curve, the eight neighbourhoods, the detector weights
+      const rx = wide ? pad + leftW + 24 : pad, rw = wide ? sz.w - rx - pad : sz.w - 2 * pad;
+      let ry = wide ? pad + cap : y + s + 40;
+      const lh = 110, steps = SETTINGS[recipe].steps, lo = -6, hi = 1;
+      const Lx = (i: number) => rx + 36 + (i / steps) * (rw - 40), Ly = (v: number) => ry + lh * (1 - (Math.max(lo, Math.min(hi, Math.log10(Math.max(v, 1e-12)))) - lo) / (hi - lo));
+      label(ctx, `loss (${recipe === 'reliable' ? 'cross-entropy' : 'squared error'}, log scale) over ${steps} steps`, rx, ry - 5, t, { color: t.ink });
+      ctx.strokeStyle = t.line; ctx.strokeRect(rx + 36.5, ry + 0.5, rw - 40, lh);
+      for (const e of [0, -2, -4, -6]) label(ctx, `10${e === 0 ? '⁰' : e === -2 ? '⁻²' : e === -4 ? '⁻⁴' : '⁻⁶'}`, rx + 32, Ly(10 ** e) + 4, t, { align: 'right', size: 10 });
+      ctx.strokeStyle = t.accent; ctx.lineWidth = 2; ctx.beginPath();
+      losses.forEach((v, i) => (i ? ctx.lineTo(Lx(i), Ly(v)) : ctx.moveTo(Lx(i), Ly(v)))); ctx.stroke();
+      if (firstExact > 0) { ctx.strokeStyle = t.ink; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Lx(firstExact), ry); ctx.lineTo(Lx(firstExact), ry + lh); ctx.stroke(); ctx.setLineDash([]); label(ctx, 'exact', Lx(firstExact) + 3, ry + 11, t, { size: 10, color: t.ink }); }
+      ry += lh + 30;
+
+      const cw = Math.min(46, (rw - 70) / 8), stuckSet = stuck(net, rule);
+      label(ctx, 'the eight neighbourhoods: target, and what the network answers', rx, ry - 8, t, { color: t.ink });
+      for (let n = 7; n >= 0; n--) {
+        const x0 = rx + 70 + (7 - n) * cw, f = forward(net, n), target = (rule >> n) & 1, right = predict(net, n) === target;
+        for (let j = 0; j < 3; j++) { ctx.fillStyle = (n >> (2 - j)) & 1 ? t.ink : t.bg; ctx.fillRect(x0 + 4 + j * 11, ry, 10, 10); }
+        ctx.fillStyle = target ? t.ink : t.bg; ctx.fillRect(x0 + 15, ry + 16, 10, 10); ctx.strokeStyle = t.line; ctx.strokeRect(x0 + 15.5, ry + 16.5, 9, 9);
+        const bh = 40; ctx.fillStyle = t.line; ctx.fillRect(x0 + 15, ry + 32, 10, bh); ctx.fillStyle = right ? t.accent : t.danger; ctx.fillRect(x0 + 15, ry + 32 + bh * (1 - Math.max(0, Math.min(1, f.out))), 10, bh * Math.max(0, Math.min(1, f.out)));
+        if (stuckSet.includes(n)) { ctx.strokeStyle = t.danger; ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, ry - 3, cw - 4, bh + 38); ctx.lineWidth = 1; }
+      }
+      label(ctx, 'pattern', rx + 64, ry + 9, t, { align: 'right', size: 10 }); label(ctx, 'target', rx + 64, ry + 25, t, { align: 'right', size: 10 }); label(ctx, 'answer', rx + 64, ry + 56, t, { align: 'right', size: 10 });
+      ry += 100;
+
+      const ws = Math.min(14, (rw - 70) / 8);
+      label(ctx, 'learned detectors, one column each: weights for left, self and right, then the bias', rx, ry - 6, t, { color: t.ink });
+      let mx = 0; for (let i = 0; i < 32; i++) mx = Math.max(mx, Math.abs(net.p[i]));
+      for (let k = 0; k < 8; k++) for (let j = 0; j < 4; j++) {
+        const v = j < 3 ? net.p[3 * k + j] : net.p[24 + k], tt = mx ? v / mx : 0;
+        const col = tt >= 0 ? mix(pan, acc, tt) : mix(pan, danger, -tt);
+        ctx.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`; ctx.fillRect(rx + 70 + k * (ws + 2) * 1.6, ry + j * (ws * 0.7 + 1), ws * 1.5, ws * 0.7);
+      }
+      label(ctx, 'blue +, red −', rx + 64, ry + 12, t, { align: 'right', size: 10 });
+
+      const done = net.t >= steps;
+      status.value = firstExact >= 0
+        ? `Exact after ${firstExact} steps: every neighbourhood, so every row of every length, comes out right.${done ? '' : ' Still training.'}`
+        : done ? `Not exact after ${steps} steps.${stuckSet.length ? ` Stuck: ${stuckSet.map((n) => n.toString(2).padStart(3, '0')).join(', ')}, which should give 1 but sit at or below 0 behind the ReLU, so they get no gradient.` : ''}` : `Training: step ${net.t} of ${steps}.`;
+      c.setAttribute('aria-label', status.value);
+    }
+
+    /** Every rule with eight seeds, a rule per frame so the page stays responsive. */
+    function all() {
+      const my = ++job, r0 = recipe;
+      let ok = 0, n = 0, worst = 0, rr = 0;
+      allBtn.disabled = true; prog.hidden = false; prog.value = 0;
+      const next = () => {
+        if (my !== job) return;
+        for (let s = 1; s <= 8; s++) { const k = train(init(r0, makeRng(s * 7919 + rr)), rr); n++; if (k >= 0) { ok++; worst = Math.max(worst, k); } }
+        prog.value = ++rr / 256;
+        if (rr < 256) { setTimeout(next, 0); return; }
+        allBtn.disabled = false; prog.hidden = true;
+        tally.value = `${r0 === 'reliable' ? 'Reliable' : '2024'} recipe on this page: ${ok} of ${n} runs exact (${((100 * ok) / n).toFixed(1)}%)${ok ? `, the slowest after ${worst} steps` : ''}. The training study: ${r0 === 'reliable' ? '262,144 of 262,144 with this recipe' : '46.7% with this head and no pretraining filter, 88.3% with the filter of 2024, and never rule 1'}.`;
+      };
+      tally.value = ''; next();
+    }
+
+    function show() { ruleIn.value = String(rule); recipeIn.value = recipe; }
+    const redo = () => { show(); url.set('rule', String(rule)); url.set('recipe', recipe); url.set('seed', String(seed)); restart(); };
+    ruleIn.addEventListener('change', () => { rule = Math.min(255, Math.max(0, Math.round(+ruleIn.value) || 0)); Y.splice(0, N, ...X.map((_, x) => (rule >> nb(x)) & 1)); redo(); });
+    recipeIn.addEventListener('change', () => { recipe = recipeIn.value as Recipe; tally.value = ''; job++; allBtn.disabled = false; prog.hidden = true; redo(); });
+    $('train').addEventListener('click', () => restart());
+    $('seed').addEventListener('click', () => { seed++; redo(); });
+    allBtn.addEventListener('click', all);
+    keys(el, { n: () => { seed++; redo(); }, r: () => restart() });
+    show();
+    let started = false;
+    watch(c, () => { if (!started) { started = true; restart(); } else paint(); });
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-training]').forEach(mount);
+</script>

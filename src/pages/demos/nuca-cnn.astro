@@ -1,0 +1,401 @@
+---
+import Base from '../../layouts/Base.astro';
+import NuCaPainter from '../../components/NuCaPainter.astro';
+import CnnRow from '../../components/CnnRow.astro';
+import Selector from '../../components/Selector.astro';
+import Training from '../../components/Training.astro';
+import Bench from '../../components/Bench.astro';
+import Tex from '../../components/Tex.astro';
+import data from '../../data/nuca-cnn.json';
+import { getCollection } from 'astro:content';
+// The paper this page is built on lives in the publications collection, so its links stay in one place.
+const pubs = (await getCollection('publications')).map((p) => p.data);
+const paper = pubs.find((p) => p.id === 'cnn-nonuniform');
+const classification = pubs.find((p) => p.id === 'cnn-classification');
+const doi = `https://doi.org/${paper?.doi ?? '10.1007/978-3-031-71552-5_11'}`;
+const arxiv = paper?.url ?? 'https://arxiv.org/abs/2409.02722';
+const classDoi = `https://doi.org/${classification?.doi ?? '10.1007/978-3-031-81097-8_3'}`;
+const repo = 'https://github.com/mrollier/emulating-and-learning-CAs';
+const tree = `${repo}/tree/${data.source.commit}`;
+// One tab per step of the argument; the hash picks the tab, so a step can be linked.
+const tabs = [
+  { id: 'question', name: 'The question' },
+  { id: 'forty', name: 'Forty weights' },
+  { id: 'layer', name: 'One more layer' },
+  { id: 'learning', name: 'Learning the weights' },
+  { id: 'faster', name: 'Faster?' },
+  { id: 'verdict', name: 'Verdict' },
+];
+---
+<Base title="The automaton is the network" description="A non-uniform cellular automaton written as a convolutional neural network with its weights set by hand, exact to the last bit: the 40 weights, the extra layer that picks each cell's rule, training the weights live, and the benchmarks of my ACRI 2024 paper." wide>
+  <div class="measure">
+    <h1>The automaton is the network</h1>
+    <p>
+      A cellular automaton updates every cell from a small window around it. A convolutional neural network, the kind
+      behind most image recognition, computes every pixel of its next layer from a small window around it. The two are
+      close relatives, and the family resemblance is useful both ways: neural networks need lots of examples of
+      cellular automata to learn to classify them, and cellular automata could use the heavily optimised software that
+      neural networks run on. For the elementary cellular automaton the match was known to be exact. My question was the
+      non-uniform one, where every cell may follow its own rule, which is exactly what breaks the defining habit of a
+      convolution: the same weights everywhere.
+    </p>
+    <p>
+      The answer is in a <a href={doi}>conference paper</a> with Aisling Daly, Odemir Bruno and Jan Baetens, for the
+      cellular-automata conference ACRI 2024. In one sentence:
+    </p>
+    <p class="claim">
+      A non-uniform cellular automaton fits exactly in a convolutional neural network, with one extra layer that picks
+      each cell's rule; a deep-learning framework then simulates many large non-uniform automata faster than a
+      dedicated cellular-automaton package.
+    </p>
+    <p>
+      The first half is a construction, and the page runs it: the network's weights are written down by hand, nothing is
+      learned, and the result agrees with a direct simulation bit for bit, down to the paper's own figures. The second
+      half is a benchmark, and there the story continued after the paper: I came back to it two years later with better
+      ways of timing, and the <a href="#faster">Faster?</a> tab tells both parts. The tabs follow the paper: why bother,
+      the 40 weights of the elementary case, the one layer the non-uniform case adds, training those weights instead of
+      writing them down, and the speed.
+    </p>
+    <p>
+      The code is public, in <a href={repo}>mrollier/emulating-and-learning-CAs</a>, with a test for every claim of the
+      paper; the published figure inputs and timings on this page come from it. Everything else is computed in your
+      browser.
+    </p>
+  </div>
+
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Steps">
+      <ul role="tablist" aria-orientation="vertical">
+        {tabs.map((t, i) => <li><a role="tab" id={`tab-${t.id}`} href={`#${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="panels">
+
+      <section role="tabpanel" id="question" aria-labelledby="tab-question" tabindex="0">
+      <div class="measure">
+        <h2>The question</h2>
+        <p>
+          An elementary cellular automaton is a row of cells, each 0 or 1, that all update at once, each from itself and
+          its two neighbours, all by the same rule. Relax any of that and you land in one of the families of <a href="/demos/taxonomy/">the taxonomy</a>. Let different cells follow different rules and you have a
+          non-uniform cellular automaton, a νCA. In general the allocation of rules to cells may change over time too;
+          the paper, like most of the literature, keeps it fixed in time and lets it vary in space, on a finite ring of
+          cells. Pick the rules and paint the allocation:
+        </p>
+      </div>
+      <NuCaPainter />
+      <div class="measure">
+        <p>
+          The freedom is enormous. A ring of <Tex tex="N" /> cells with one elementary rule has <Tex tex="2^N" /> starting
+          rows for each of the 256 rules; with <Tex tex="N_R" /> rules to allocate, there are
+        </p>
+        <Tex block tex="2^N \times N_R^{\,N}" />
+        <p>
+          combinations of a start and an allocation. So much variety leaves little room for general theorems, except in
+          special cases far from any application, and the way forward is empirical: simulate many of them and sort what
+          they do. Sorting spacetime diagrams is, at heart, recognising images, which is what convolutional networks are
+          good at, and training such a network takes a great many examples. Both ends of that pipeline call for fast,
+          massive simulation.
+        </p>
+        <p>
+          Here the locality of a convolution helps twice. A network can be trained to recognise cellular automata, and it
+          can also <em>be</em> one: Gilpin showed in 2019 that the update of any cellular automaton fits in the
+          architecture of a convolutional network, either by choosing the weights cleverly or by training them. The
+          next tab does the choosing for the elementary case; the one after adds what the non-uniform case needs.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="forty" aria-labelledby="tab-forty" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Forty weights</h2>
+        <p>
+          One update of an elementary cellular automaton takes two layers. The first reads each cell's neighbourhood and
+          says which of the eight possible patterns it is. The paper describes it in two steps: a convolution of width 3
+          with the fixed weights (4, 2, 1), which turns the three cells into a number from 0 to 7, followed by a one-hot
+          encoding, eight channels of which exactly one is 1. The code does both at once, with eight detector channels
+          and a ReLU, <Tex tex="\max(0, \cdot)" />. Channel <Tex tex="i" /> looks for the pattern whose bits
+          spell <Tex tex="i" />, with weight 1 on the cells that should be 1, weight <Tex tex="-\omega" /> on the cells
+          that should be 0, and as bias 1 minus the number of 1s in the pattern, <Tex tex="h_i" />:
+        </p>
+        <Tex block tex="d_i(x) = \max\Bigl(0,\ \sum_{j=-1}^{1} w_{ij}\, s_{x+j} + 1 - h_i\Bigr), \qquad w_{ij} = \begin{cases} 1 & \text{if bit } j \text{ of } i \text{ is } 1, \\ -\omega & \text{otherwise.} \end{cases}" />
+        <p>
+          On its own pattern the sum is exactly 1; on any other it is at most 0, as long as <Tex tex="\omega \ge 1" />.
+          The second layer is a convolution of width 1 whose eight weights are the rule table <Tex tex="\phi(i)" />, so
+          that the next state is
+        </p>
+        <Tex block tex="s'_x = \sum_{i=0}^{7} \phi(i)\, d_i(x)." />
+        <p>
+          That is 3 weights and a bias for each of the eight detectors, plus the eight entries of the rule table: 40
+          numbers, none of them learned, and the cost grows only with the number of cells. The figure spells the
+          arithmetic out on the example of the paper's Fig. 2, rule 54 on 32 cells; show the sums before the ReLU and drag <Tex tex="\omega" /> to see that the answer does not move.
+        </p>
+      </div>
+      <CnnRow rule={54} n={32} start={data.fig3.x} />
+      <div class="measure">
+        <p>
+          Feeding the output back in gives the next tick, and so on: the network performs one global update per pass, and
+          a spacetime diagram of <Tex tex="T" /> rows takes <Tex tex="T-1" /> passes. There is no shortcut through time.
+          Every update needs the one before it, a form of the computational irreducibility of cellular automata, so the
+          ticks cannot be farmed out in parallel; only the cells and the samples can.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="layer" aria-labelledby="tab-layer" tabindex="0" hidden>
+      <div class="measure">
+        <h2>One more layer</h2>
+        <p>
+          In a convolution every cell is treated with the same weights. In a νCA they are not, so something has to give.
+          The paper keeps the two layers above and adds a third. The rule-table layer gets one output channel per rule:
+          the whole next row as if every cell followed rule 1, the whole next row as if every cell followed rule 2, and so
+          on. Then a selection layer keeps, for each cell, the channel of the rule it was allocated. That is wasteful,
+          computing every rule everywhere, but it keeps the network easy to read, and it leaves room to train more
+          weights than strictly needed, which is how deep learning usually works.
+        </p>
+        <p>
+          The selection can be written in two ways. A locally connected layer is a convolution whose weights are not
+          shared, one weight per rule per cell. A dense layer flattens the <Tex tex="N_R" /> candidate rows into one
+          vector of <Tex tex="N_R N" /> numbers and connects every one of them to every output cell: a matrix of <Tex tex="N_R N \times N" /> weights set by hand to 0 or 1, almost all of them 0. The locally connected layer is
+          the dense one with the useless connections cut. Leaving out the zero biases, the two networks have
+        </p>
+        <Tex block tex="(3+1) \times 8 + 8 N_R + N_R N \qquad \text{and} \qquad (3+1) \times 8 + 8 N_R + N_R N^2" />
+        <p>
+          parameters, 352 and 8288 for the eight rules and 32 cells of the paper's Fig. 4. The figure takes one update
+          apart: the input, the candidate row of every rule with the cells that keep it highlighted, the allocation, the
+          output. Beside it, the run over all ticks; below, the selection weights. Fig. 1 of the paper, rules 30 and 90,
+          comes first; Fig. 4 adds an allocation that moves one cell per tick, which only means swapping the selection
+          weights between updates. Both diagrams come out cell for cell as published.
+        </p>
+      </div>
+      <Selector />
+      <div class="measure">
+        <p>
+          For comparison the paper takes CellPyLib, the usual Python package for cellular automata. A νCA is easy to set
+          up there: an array says which rule applies where and when, and its <code>evolve</code> method does the rest. But
+          a non-uniform rule defeats the cache that CellPyLib keeps of neighbourhoods it has already seen
+          (<code>memoize</code>), the shortcut that normally makes it fast. With an allocation that does not change in
+          time, the network's weights never change either: it is built once and fed any number of starting rows.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="learning" aria-labelledby="tab-learning" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Learning the weights</h2>
+        <p>
+          The weights can be computed, but for cellular automata without a known rule they would have to be learned, and
+          the paper shows in its Fig. 3 that the same architecture can be trained: start from random weights, show it
+          rows and their images under rule 54, and let gradient descent shrink the error until the network gets every
+          cell right. The figure below does that in your browser. The network has 41 numbers (the trained rule-table
+          layer gets a bias), and since it sees only three cells at a time, the eight neighbourhoods are all it can learn
+          from, so they are its training batch. On the left, as in the paper's figure, the error on each cell of the
+          published example after every epoch of 64 steps.
+        </p>
+      </div>
+      <Training />
+      <div class="measure">
+        <p>
+          The figure opens with the paper's recipe, minus one trick described below, and that recipe does not always
+          work. In the training study I added to the
+          repository this year, after the paper, it reached an exact network in 88% of runs over all rules and seeds,
+          and only thanks to a filter that throws away unpromising starts; without the filter, 47%. Rule 1 never works.
+          The culprit is the output: a ReLU on the rule-table layer, before the tanh. A neighbourhood that should give 1
+          but starts below 0 gets no gradient through the ReLU and stays stuck there, and the figure marks such
+          neighbourhoods in red. Rule 1 is the extreme case: its only 1 comes from 000, where inputs of 0 and biases of 0
+          leave every channel at exactly 0 from the start. Drop that ReLU, read the output as a logit with cross-entropy
+          as the loss, feed the states as ±1 and use softplus detectors, and the same 41 parameters train to an exact
+          network in every one of 262,144 runs, every rule with 1024 seeds.
+        </p>
+        <p>
+          The button under the figure repeats the experiment here, every rule with eight seeds and the eight
+          neighbourhoods as the batch. It finds about 47 to 48% for the paper's head without the filter (a run or two can
+          land differently between browsers), close to the study's 46.7%, and all 2048 runs exact for the reliable recipe. One more finding: trained networks are exact, but none of the
+          4.5 million exact ones in the study had found the one-hot detectors of the previous tab. Gradient descent finds
+          its own, distributed code, as the weights under the figure show.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="faster" aria-labelledby="tab-faster" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Faster?</h2>
+        <p>
+          Computing every rule for every cell and then throwing most of it away should be slow, and a program written for
+          νCAs alone would certainly beat it. The bet of the paper is a different one: TensorFlow, like PyTorch, is
+          developed at such a scale that its out-of-the-box speed might win anyway, with less effort. The paper times
+          CellPyLib and the two networks in four scenarios, varying one quantity at a time:
+        </p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">scenario</th><th scope="col">rules</th><th scope="col">ticks</th><th scope="col">cells</th><th scope="col">νCAs</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">more rules</th><td>1 to 256</td><td>32</td><td>256</td><td>32</td></tr>
+            <tr><th scope="row">more ticks</th><td>4</td><td>10 to 100</td><td>64</td><td>32</td></tr>
+            <tr><th scope="row">more cells</th><td>4</td><td>32</td><td>32 to 256</td><td>32</td></tr>
+            <tr><th scope="row">more νCAs</th><td>4</td><td>32</td><td>32</td><td>1 to 1024</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="measure">
+        <p>
+          Each νCA starts from its own random row with the same allocation, so each network is built once, and every time
+          is the mean of ten runs on one laptop.
+        </p>
+      </div>
+      <Bench />
+      <div class="measure">
+        <p>
+          The paper reads four things off these curves. The number of rules hardly matters, except for the dense network
+          at the high end, and for few rules the dense network is clearly the fastest. All three methods grow linearly
+          with the number of ticks. CellPyLib's time is proportional to the number of cells, the locally connected
+          network's too but after a higher fixed cost, and the dense network's barely grows at all. And with many νCAs
+          the networks pay off: from about a hundred of them on they are the fastest, and at 1024 they take 8 seconds
+          where CellPyLib takes 39. Its conclusion is that TensorFlow is
+          the better choice for many νCAs of many cells, which is exactly what an empirical study or the training of a
+          classifier needs, and, more surprisingly, that the dense network beats the locally connected one almost
+          everywhere, although the latter is the former with most connections cut. The framework is so well optimised
+          for big matrix products that the bigger model wins.
+        </p>
+        <h3>Two years later</h3>
+        <p>
+          In September 2026 I re-ran the benchmark on the same laptop, and the dashed lines show it: the crossovers and
+          the order of the three methods hold. Then I timed it differently, and the picture changed more. The networks
+          had been run with one <code>model.predict</code> call per tick, and each such call costs about 40 ms whatever
+          the size of the network: the fixed cost of a few seconds in the curves is that overhead, not the network.
+          Run without that overhead, compiled into a single function, the fastest of the networks is 13 to 2000 times
+          faster than in the paper and beats CellPyLib by a factor of 30 to 480; even the simplest fix beats CellPyLib at
+          every point. But plain vectorised numpy, a table lookup per cell per tick, is faster still, in 97 of the 102
+          settings measured: the networks win only for a handful of small diagrams, and then need several hundred
+          diagrams to earn back their compilation. The full
+          report is in the <a href={`${tree}/experiments/benchmarks/REPORT.md`}>repository</a>.
+        </p>
+        <p>
+          So the paper's comparison stands, and with more room than it claimed. What it measured, though, is the ease of a
+          framework against a package that cannot cache, not the fastest way to simulate a νCA. The paper says as much in
+          its last lines, which do not claim TensorFlow is the computationally optimal solution, only an educational,
+          ergonomic and flexible one.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="verdict" aria-labelledby="tab-verdict" tabindex="0" hidden>
+      <div class="measure">
+        <h2>What it adds up to</h2>
+        <p>
+          The paper's main conclusion:
+        </p>
+        <p class="claim">
+          A non-uniform cellular automaton fits exactly in a convolutional neural network, with one extra layer that picks
+          each cell's rule; a deep-learning framework then simulates many large non-uniform automata faster than a
+          dedicated cellular-automaton package.
+        </p>
+        <p>
+          The first half is exact, and stays exact: 40 hand-set weights for the elementary case, a selection layer for the
+          non-uniform one, and agreement with a direct simulation in every cell, here and in the repository's tests. Non-uniformity
+          of the rule is, to the framework, nothing more than weights that are not shared; the automaton is the
+          architecture. The second half holds against CellPyLib, even more clearly once the networks are run properly, but
+          it is not the last word on speed: a lookup table in numpy is faster. The value of the construction lies
+          elsewhere. A cellular automaton written in the vocabulary of a deep-learning framework can be trained, combined
+          with learned layers and run on the same hardware, and the same weights that simulate it are the ones a network
+          would have to learn to recognise it.
+        </p>
+        <p>
+          Both directions continued. On networks instead of rows, the same idea becomes a graph neural network: each node
+          averages its neighbours' states and looks the result up in its rule, which ran every simulation of the later
+          chapters of <a href="/demos/thesis/#cnn">my thesis</a>. And the other way round, a <a href={classDoi}>companion
+          chapter</a> asks what a convolutional network learns when it is not told the rule but must sort automata by
+          their behaviour.
+        </p>
+        <p>
+          A caveat about this page. The networks here are written in plain JavaScript, not TensorFlow; they do the same
+          arithmetic, and the figures check it against the published diagrams, but none of the speed claims are timed in
+          your browser. The timings are the repository's.
+        </p>
+
+        <h2>Read more</h2>
+        <ul class="pubs">
+          <li>
+            <a href={doi}>Efficient simulation of non-uniform cellular automata with a convolutional neural network</a>
+            <div class="meta"><strong>M. Rollier</strong>, A. J. Daly, O. M. Bruno, J. M. Baetens</div>
+            <div class="meta">Cellular Automata (ACRI 2024), Lecture Notes in Computer Science 14978, pp. 121–131, 2024 · <a href={arxiv}>preprint</a></div>
+          </li>
+          <li>
+            <a href={repo}>mrollier/emulating-and-learning-CAs</a>
+            <div class="meta">The code: the emulators, every figure, a test per claim, and the training and benchmark studies of 2026. This page uses release 1.0.1.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.1103/PhysRevE.100.032402">Cellular automata as convolutional neural networks</a>
+            <div class="meta">W. Gilpin, Physical Review E 100, 032402, 2019. The general construction, and how such networks learn.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.21105/joss.03608">CellPyLib: a Python library for working with cellular automata</a>
+            <div class="meta">L. M. Antunes, Journal of Open Source Software 6, 3608, 2021. The benchmark the paper compares with.</div>
+          </li>
+        </ul>
+        <p class="meta">
+          Keys once a figure has focus: the arrows step through the updates, n draws a new νCA or a new seed, r trains
+          again. The address bar follows the settings, so a view can be linked.
+        </p>
+      </div>
+      </section>
+
+    </div>
+  </div>
+</Base>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .panels { min-width: 0; }
+  [role="tabpanel"]:focus { outline: none; }
+  [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
+  .claim { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 1rem; font-size: 1.1rem; font-weight: 600; }
+  .table-wrap { overflow-x: auto; margin: 0.5rem 0 1rem; }
+  table { border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid var(--line); }
+  thead th { font-family: var(--mono); font-size: 0.8rem; font-weight: normal; color: var(--muted); }
+  tbody th { font-weight: 600; white-space: nowrap; }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>
+
+<script>
+  // The hash picks the tab: a tab's own id, or the id of anything inside a tab. Arrow keys walk the list.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+  const box = document.querySelector<HTMLElement>('.tabbed')!;
+
+  function show(id: string, scroll: boolean) {
+    let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+    if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+    if (i < 0) i = 0;
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+    // an anchor inside a tab scrolls to it; a tab change only scrolls back up when the reader was deep in the previous one
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+  }
+  const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  document.querySelector('[role="tablist"]')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+  });
+</script>

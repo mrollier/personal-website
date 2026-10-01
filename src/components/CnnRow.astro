@@ -5,10 +5,10 @@
 // gives the same exact answer. Self-contained with src/scripts/cnn.ts, eca.ts, wolfram.ts, palette.ts, figure.ts
 // and EcaTable.astro. The URL query under `cnn.` overrides the props.
 import EcaTable from './EcaTable.astro';
-type Props = { rule?: number; n?: number };
-const { rule = 54, n = 32 } = Astro.props;
+type Props = { rule?: number; n?: number; start?: number[] }; // start: a row to open with instead of a random one
+const { rule = 54, n = 32, start } = Astro.props;
 ---
-<figure class="fig" id="cnnrow" data-cnnrow data-rule={rule} data-n={n} tabindex="-1">
+<figure class="fig" id="cnnrow" data-cnnrow data-rule={rule} data-n={n} data-start={start && JSON.stringify(start)} tabindex="-1">
   <canvas role="img" aria-label="A row of cells, the eight detector channels, and the next row"></canvas>
   <div class="controls" role="group" aria-label="Rule and input">
     <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
@@ -71,7 +71,8 @@ const { rule = 54, n = 32 } = Astro.props;
     const d = el.dataset, url = urlState('cnn', { rule: d.rule!, n: d.n!, omega: '1', pre: '0', seed: '1' });
     let rule = Math.min(255, Math.max(0, Math.round(+url.get('rule')) || 0)), n = Math.min(96, Math.max(8, Math.round(+url.get('n')) || 32));
     let omega = Math.min(4, Math.max(1, +url.get('omega') || 1)), showPre = url.get('pre') === '1', seed = Math.max(1, Math.round(+url.get('seed')) || 1), tick = 0;
-    let row = seedRow(n, 'random', rng(seed));
+    const given = d.start ? (JSON.parse(d.start) as number[]) : null;
+    let row = given && seed === 1 && n === given.length ? Uint8Array.from(given) : seedRow(n, 'random', rng(seed));
     function rng(s: number) { let x = (s * 2654435761) >>> 0 || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
 
     function paint() {

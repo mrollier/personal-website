@@ -1,0 +1,129 @@
+---
+// The network that reads the rule (Ch. 8, Sec. 8.3.1, Figs 8.5 and 8.8): eight hand-set 3 × 2 detectors, one per
+// neighbourhood followed by a 1, light up where their T-tetromino sits in the diagram; the maximum of each channel is
+// one bit of the rule table, and a 256-node layer with fixed weights names the rule, hence the class. 2,360 numbers,
+// none learned. The augmentations show what it reads instead: the complement, the mirror image, or nonsense.
+// Self-contained with src/scripts/lpcnn.ts, eca.ts, wolfram.ts, raster.ts, palette.ts, figure.ts.
+import data from '../data/lp-cnn.json';
+type Props = { rule?: number };
+const { rule = 120 } = Astro.props;
+---
+<figure class="fig" id="reader" data-reader data-rule={rule} data-lp={data.lp.join('')} tabindex="-1">
+  <canvas role="img" aria-label="A spacetime diagram, the eight detector channels of the hand-set network, and the rule it reads"></canvas>
+  <div class="controls" role="group" aria-label="Diagram">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <button name="random" type="button">random rule</button>
+    <button name="restart" type="button">new start</button>
+    <label>augment <select name="aug">
+      <option value="">nothing</option>
+      <option value="invert">invert</option>
+      <option value="mirror">mirror</option>
+      <option value="coarse">coarse-grain 2 × 2</option>
+      <option value="noise">5% noise</option>
+    </select></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 470px; background: var(--panel); border: 1px solid var(--line); touch-action: manipulation; }
+  @media (max-width: 640px) { canvas { height: min(980px, calc(150vw + 200px)); } }
+  .controls, .status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.7rem; }
+  .controls label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; max-width: 100%; }
+  .controls input[type="number"] { width: 4.5em; font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls button, .controls select { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation; max-width: 100%; }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) { position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: auto; width: auto; height: 100dvh; background: var(--bg); }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 420px; height: auto; }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow, evolve, clampRule } from '../scripts/eca';
+  import { equivalents } from '../scripts/wolfram';
+  import { CLASSES, classColours, image, augment, channel, readRule, type Augment } from '../scripts/lpcnn';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, css } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label, fullscreen, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, ruleIn = $<HTMLInputElement>('rule'), augIn = $<HTMLSelectElement>('aug'), status = $<HTMLOutputElement>('status');
+    const lp = Array.from(el.dataset.lp!, Number), W = 64, T = 64;
+    const url = urlState('read', { rule: el.dataset.rule!, aug: '', seed: '1' });
+    let rule = clampRule(+url.get('rule')), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let aug = (['invert', 'mirror', 'coarse', 'noise'].includes(url.get('aug')) ? url.get('aug') : '') as Augment | '';
+    let x = new Float32Array(0), chans: Float32Array[] = [], read = { maxima: [] as number[], scores: new Float64Array(256), rule: 0 };
+    const big = new Raster(W, T), small = Array.from({ length: 8 }, () => new Raster(W, T - 1));
+
+    function build() {
+      const clean = image(evolve(seedRow(W, 'random', makeRng(seed * 13 + 1)), rule, T - 1));
+      x = aug ? augment(clean, W, aug, makeRng(seed * 7 + 2)) : clean;
+      chans = Array.from({ length: 8 }, (_, n) => channel(x, W, n));
+      read = readRule(x, W);
+    }
+    function verdict() {
+      const r = read.rule, e = equivalents(rule), same = lp[r] === lp[rule];
+      const who = r === rule ? 'the rule that drew it' : r === e.complement ? `the complement of rule ${rule}` : r === e.mirror ? `the mirror image of rule ${rule}` : r === e.both ? `rule ${rule} mirrored and inverted` : `not rule ${rule}`;
+      return `Reads rule ${r}, ${who}: ${CLASSES[lp[r]]}${same ? (r === rule ? '' : ', the right class all the same') : `, where rule ${rule} is ${CLASSES[lp[rule]]}`}.`;
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), cols = classColours(t), { w, h } = sz, pad = 12, wide = w >= 700;
+      const ink = parse(t.ink), bg = parse(t.bg), acc = parse(t.accent), faint = mix(bg, ink, 0.13);
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - 24, w * 0.4) : w - 2 * pad;
+      const d: Box = { x: pad, y: pad, w: side, h: side };
+      for (let i = 0; i < W * T; i++) big.set(i, mix(bg, ink, x[i]));
+      big.flush(); big.blit(ctx, d);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.w - 1, d.h - 1);
+      label(ctx, `${aug ? `${augIn.options[augIn.selectedIndex].text} · ` : ''}rule ${rule}, time down`, d.x, d.y + d.h + 14, t);
+      // the eight channels, case 111 first
+      const area: Box = wide ? { x: d.x + d.w + 2 * pad, y: pad, w: w - d.w - 4 * pad, h: h - 2 * pad } : { x: pad, y: d.y + d.h + 28, w: w - 2 * pad, h: h - d.h - 40 - pad };
+      const per = 4, tw = (area.w - (per - 1) * 8) / per, th = tw * (T - 1) / W, tight = tw < 110, gap = tight ? 46 : 34;
+      label(ctx, tight ? 'the eight detectors, lit where their T sits' : 'the eight detectors after the ReLU: lit where their T-tetromino sits', area.x, area.y + 10, t, { color: t.ink });
+      for (let k = 0; k < 8; k++) {
+        const n = 7 - k, box: Box = { x: area.x + (k % per) * (tw + 8), y: area.y + 22 + Math.floor(k / per) * (th + gap), w: tw, h: th }, ch = chans[n], r = small[n];
+        for (let i = 0; i < W * (T - 1); i++) r.set(i, ch[i] > 0 ? mix(faint, acc, Math.min(1, 0.35 + 0.65 * ch[i])) : x[i] > 0.5 ? faint : bg);
+        r.flush(); r.blit(ctx, box);
+        ctx.strokeStyle = t.line; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+        const m = read.maxima[n];
+        label(ctx, `${(n >> 2) & 1}${(n >> 1) & 1}${n & 1} → 1`, box.x, box.y + box.h + 12, t, { color: t.ink });
+        label(ctx, `max ${m === 0 || m === 1 ? m : m.toFixed(2)}`, tight ? box.x : box.x + box.w, box.y + box.h + (tight ? 25 : 12), t, { align: tight ? 'left' : 'right', color: m > 0 ? t.accent : t.muted });
+      }
+      // the octuple, the rule, the class
+      const oy = area.y + 22 + 2 * (th + gap) + 6, cell = Math.min(26, (area.w - 140) / 8);
+      label(ctx, 'maxima, 111 first:', area.x, oy + cell * 0.7, t);
+      for (let k = 0; k < 8; k++) {
+        const n = 7 - k, v = read.maxima[n], bx = area.x + 128 + k * (cell + 2);
+        ctx.fillStyle = css(mix(bg, ink, Math.min(1, v))); ctx.fillRect(bx, oy, cell, cell);
+        ctx.strokeStyle = t.line; ctx.strokeRect(bx + 0.5, oy + 0.5, cell - 1, cell - 1);
+      }
+      const r = read.rule, sorted = Array.from(read.scores.keys()).sort((a, b) => read.scores[b] - read.scores[a]).slice(0, 3);
+      ctx.fillStyle = css(cols[lp[r]]); ctx.fillRect(area.x, oy + cell + 14, 10, 10);
+      label(ctx, `the 256-node layer: rule ${r}, ${CLASSES[lp[r]]}`, area.x + 15, oy + cell + 23, t, { color: t.ink, size: 12 });
+      label(ctx, `best scores: ${sorted.slice(0, tight ? 2 : 3).map((i) => `rule ${i}: ${read.scores[i].toFixed(2).replace(/\.00$/, '')}`).join(' · ')}`, area.x, oy + cell + 42, t);
+      const v = verdict();
+      label(ctx, v.length > 70 && area.w < 520 ? v.slice(0, v.indexOf(':') + 1) : v, area.x, oy + cell + 62, t, { color: lp[r] === lp[rule] ? t.ink : t.danger });
+      status.value = v;
+      c.setAttribute('aria-label', `Rule ${rule}${aug ? `, ${aug}` : ''}. ${v}`);
+    }
+    function redo() { ruleIn.value = String(rule); augIn.value = aug; url.set('rule', String(rule)); url.set('aug', aug); url.set('seed', String(seed)); build(); paint(); }
+    ruleIn.addEventListener('change', () => { rule = clampRule(+ruleIn.value); redo(); });
+    $('random').addEventListener('click', () => { rule = Math.floor(Math.random() * 256); redo(); });
+    $('restart').addEventListener('click', () => { seed++; redo(); });
+    augIn.addEventListener('change', () => { aug = augIn.value as Augment | ''; redo(); });
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { n: () => { seed++; redo(); }, ArrowRight: () => { rule = (rule + 1) % 256; redo(); }, ArrowLeft: () => { rule = (rule + 255) % 256; redo(); }, f: full.toggle });
+    watch(c, paint);
+    ruleIn.value = String(rule); augIn.value = aug; build();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-reader]').forEach(mount);
+</script>

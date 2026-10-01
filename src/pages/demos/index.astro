@@ -38,6 +38,12 @@ const demos: { href: string; name: string; blurb: string; meta: Meta[] }[] = [
     meta: [{ text: 'ACRI 2024 paper', paper: 'cnn-nonuniform' }, 'interactive'],
   },
   {
+    href: '/demos/cnn-classification/',
+    name: 'Is the network cheating?',
+    blurb: 'Neural networks sort cellular automata by behaviour almost perfectly, but every picture also spells out the rule that drew it. Scan a diagram for its rule table, run a network that reads the rule with no training at all, then a small one built so that it cannot, and see how far altered pictures push it towards the behaviour.',
+    meta: [{ text: 'book chapter, 2025', paper: 'cnn-classification' }, 'interactive'],
+  },
+  {
     href: '/demos/mobility/',
     name: 'Where the virus travelled',
     blurb: 'Did it matter where Belgians travelled in 2020, in a country this small and this connected? Pick any of the 43 arrondissements and see its commuters and the excess deaths side by side, week by week; watch a noisy curve of hospital admissions turn into a fan of 100 fits; and slide one province\'s epidemic over another\'s to see who ran ahead. All on public data, computed in the browser.',

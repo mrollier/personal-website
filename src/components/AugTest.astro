@@ -1,0 +1,88 @@
+---
+// Who reads what, per alteration (added for this page, not in the chapter): the hand-set reader of Sec. 8.3.1 against the
+// retrained networks of src/data/lp-cnn.json, on fresh diagrams, two starts for each of the 256 rules, scored on the class
+// (of 5) and on the rule up to mirror and colour swap (of 88). Runs in the browser on a button press, a few diagrams per
+// frame. Self-contained with src/scripts/lpcnn.ts, eca.ts, wolfram.ts, net.ts.
+const ROWS = [
+  { key: '', name: 'none' },
+  { key: 'invert', name: 'inverted' },
+  { key: 'mirror', name: 'mirrored' },
+  { key: 'coarse', name: 'coarse-grained 2 × 2' },
+  { key: 'noise', name: '5% noise' },
+];
+---
+<figure class="augtest" data-augtest>
+  <div class="controls">
+    <button name="run" type="button">run the test</button>
+    <output name="progress" aria-live="polite">2 × 256 fresh diagrams per row, a few seconds in all</output>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr><th scope="col" rowspan="2">alteration</th><th scope="colgroup" colspan="2">class, of 5</th><th scope="colgroup" colspan="2">rule up to symmetry, of 88</th></tr>
+        <tr><th scope="col">reader</th><th scope="col">network</th><th scope="col">reader</th><th scope="col">network</th></tr>
+      </thead>
+      <tbody>
+        {ROWS.map((r) => <tr data-aug={r.key}><th scope="row">{r.name}</th><td>·</td><td>·</td><td>·</td><td>·</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <figcaption>The reader is the hand-set network of the "Reading the rule" tab; the networks are the retrained class network (389 parameters) and rule network (664), both trained with inversion, mirroring and coarse-graining.</figcaption>
+</figure>
+
+<style>
+  .augtest { margin: 1.5rem 0; font-family: var(--mono); font-size: 0.85rem; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .controls button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .wrap { overflow-x: auto; }
+  table { border-collapse: collapse; }
+  th, td { padding: 0.3rem 0.8rem; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  thead th { font-weight: normal; color: var(--muted); font-size: 0.78rem; text-align: right; }
+  thead th[scope="colgroup"] { text-align: center; border-bottom-color: var(--muted); }
+  tbody th, thead th[rowspan] { text-align: left; font-weight: 600; }
+  thead th[rowspan] { font-weight: normal; vertical-align: bottom; }
+  td { min-width: 5.5rem; background: color-mix(in srgb, var(--accent) calc(var(--v, 0) * 70%), transparent); }
+  td.hi { color: var(--bg); }
+  figcaption { color: var(--muted); font-size: 0.8rem; margin-top: 0.4rem; }
+</style>
+
+<script>
+  import { seedRow, evolve } from '../scripts/eca';
+  import { equivalents } from '../scripts/wolfram';
+  import { image, augment, classify, readRule, type Augment, type Weights } from '../scripts/lpcnn';
+  import { makeRng } from '../scripts/net';
+  import data from '../data/lp-cnn.json';
+
+  const lp = data.lp, reps = data.reps, netClass = data.nets.class.weights as Weights, netIndep = data.nets.indep.weights as Weights;
+  const rep = (r: number) => equivalents(r).rep, argmax = (p: number[]) => p.reduce((b, v, i) => (v > p[b] ? i : b), 0);
+
+  function mount(el: HTMLElement) {
+    const run = el.querySelector<HTMLButtonElement>('[name="run"]')!, progress = el.querySelector<HTMLOutputElement>('[name="progress"]')!;
+    const rows = Array.from(el.querySelectorAll<HTMLTableRowElement>('tbody tr')), W = 64, STARTS = 2, PER = 256 * STARTS;
+    run.addEventListener('click', () => {
+      run.disabled = true;
+      const hits = rows.map(() => [0, 0, 0, 0]);
+      let k = 0;
+      const total = rows.length * PER;
+      const show = (i: number, done: number) => rows[i].querySelectorAll('td').forEach((td, c) => { const v = hits[i][c] / done; td.textContent = `${(100 * v).toFixed(1)}%`; td.style.setProperty('--v', String(v)); td.classList.toggle('hi', v > 0.6); });
+      function chunk() {
+        const end = Math.min(total, k + 24);
+        for (; k < end; k++) {
+          const i = Math.floor(k / PER), j = k % PER, rule = j % 256, s = Math.floor(j / 256) + 1, aug = rows[i].dataset.aug as Augment | '';
+          const clean = image(evolve(seedRow(W, 'random', makeRng(rule * 101 + s * 7919 + 17)), rule, W - 1));
+          const x = aug ? augment(clean, W, aug, makeRng(rule * 31 + s)) : clean, read = readRule(x, W).rule;
+          const c = argmax(classify(netClass, x, W).probs), r = reps[argmax(classify(netIndep, x, W).probs)];
+          hits[i][0] += +(lp[read] === lp[rule]); hits[i][1] += +(c === lp[rule]); hits[i][2] += +(rep(read) === rep(rule)); hits[i][3] += +(r === rep(rule));
+          if (j === PER - 1 || j % 64 === 63) show(i, j + 1);
+        }
+        progress.value = k < total ? `${k} of ${total} diagrams` : `done: ${total} diagrams; press again for the same diagrams`;
+        if (k < total) requestAnimationFrame(chunk); else run.disabled = false;
+      }
+      requestAnimationFrame(chunk);
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-augtest]').forEach(mount);
+</script>

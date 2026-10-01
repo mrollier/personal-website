@@ -1,0 +1,55 @@
+---
+// Which diagrams hide part of the rule (Ch. 8, Fig. 8.2, recomputed): of 262,144 diagrams drawn as the chapter drew
+// them, the ones in which some neighbourhood never occurs, per rule and per class, the class shares set against the
+// classes' sizes. Drawn at build time as SVG; hovering a bar gives its count. Data from src/data/lp-cnn.json
+// (scripts/train-lp-cnn.py).
+import data from '../data/lp-cnn.json';
+const s = data.scan.trainval_wrap, lp = data.lp, total = s.incomplete;
+const W = 640, H = 200, L = 34, R = 8, T = 22, B = 34;
+const ymax = Math.max(...s.perRule), top = Math.ceil(ymax / 4) * 4;
+const bw = (W - L - R) / 256, Y = (v: number) => T + (1 - v / top) * (H - T - B);
+const yticks = Array.from({ length: 5 }, (_, i) => Math.round((top * i) / 4));
+const sizes = [24, 97, 89, 10, 36], names = data.classes;
+const W2 = 300, cw = (W2 - L - R) / 5, Y2 = (v: number) => T + (1 - v) * (H - T - B);
+const f1 = (v: number) => v.toFixed(1);
+---
+<figure class="scan">
+  <div class="grid">
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Incomplete diagrams per rule, coloured by class">
+      <text class="title" x={L} y="13">incomplete diagrams per rule, of 1024 each</text>
+      {yticks.map((v) => <g><line class="grid-line" x1={L} x2={W - R} y1={f1(Y(v))} y2={f1(Y(v))} /><text class="tick" x={L - 5} y={f1(Y(v) + 3.5)} text-anchor="end">{v}</text></g>)}
+      {[0, 32, 64, 96, 128, 160, 192, 224, 255].map((r) => <text class="tick" x={f1(L + (r + 0.5) * bw)} y={H - B + 14} text-anchor="middle">{r}</text>)}
+      <text class="axis" x={(L + W - R) / 2} y={H - 6} text-anchor="middle">rule</text>
+      {s.perRule.map((v, r) => v > 0 && <rect class={`lp${lp[r]}`} x={f1(L + r * bw)} y={f1(Y(v))} width={f1(Math.max(bw, 1.2))} height={f1(Y(0) - Y(v))}><title>{`rule ${r} (${names[lp[r]]}): ${v} of 1024`}</title></rect>)}
+    </svg>
+    <svg viewBox={`0 0 ${W2} ${H}`} role="img" aria-label="Share of incomplete diagrams per class, against the share of rules in each class">
+      <text class="title" x={L} y="13">share per class</text>
+      {[0, 0.25, 0.5, 0.75, 1].map((v) => <g><line class="grid-line" x1={L} x2={W2 - R} y1={f1(Y2(v))} y2={f1(Y2(v))} /><text class="tick" x={L - 5} y={f1(Y2(v) + 3.5)} text-anchor="end">{`${v * 100}%`}</text></g>)}
+      {s.perClass.map((v, k) => (
+        <g class={`lp${k}`}>
+          <rect x={f1(L + k * cw + cw * 0.12)} y={f1(Y2(v / total))} width={f1(cw * 0.5)} height={f1(Y2(0) - Y2(v / total))}><title>{`${names[k]}: ${v} of the ${total} incomplete diagrams`}</title></rect>
+          <rect class="size" x={f1(L + k * cw + cw * 0.66)} y={f1(Y2(sizes[k] / 256))} width={f1(cw * 0.2)} height={f1(Y2(0) - Y2(sizes[k] / 256))}><title>{`${names[k]}: ${sizes[k]} of the 256 rules`}</title></rect>
+          <text class="tick" x={f1(L + (k + 0.5) * cw)} y={H - B + 14} text-anchor="middle">{['null', 'fixed', 'periodic', 'loc. ch.', 'chaotic'][k]}</text>
+        </g>
+      ))}
+      <text class="axis" x={(L + W2 - R) / 2} y={H - 6} text-anchor="middle">wide bar: incomplete · thin bar: rules</text>
+    </svg>
+  </div>
+  <figcaption>
+    {total} of {s.diagrams.toLocaleString('en')} diagrams ({(100 * total / s.diagrams).toFixed(2)}%) miss a neighbourhood, and {s.fewest === 7 ? 'none misses more than one' : `the worst shows only ${s.fewest} of the eight`}.
+    The missing one is 000 or 111 in {s.missing[0] + s.missing[7]} cases, 010 or 101 in the other {s.missing[2] + s.missing[5]}. Each diagram is 64 × 64 from a random start, scanned round the ring.
+  </figcaption>
+</figure>
+
+<style>
+  .scan { margin: 1.5rem 0; }
+  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 0.5rem 1.2rem; }
+  @media (max-width: 700px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .title { font-family: var(--mono); font-size: 10.5px; fill: var(--ink); }
+  .tick, .axis { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); }
+  .grid-line { stroke: var(--line); stroke-width: 1; }
+  rect { fill: var(--lp); }
+  rect.size { opacity: 0.45; }
+  figcaption { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+</style>

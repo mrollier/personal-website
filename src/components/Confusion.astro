@@ -1,0 +1,75 @@
+---
+// How the final class network errs (Ch. 8, Fig. 8.11): the chapter's confusion matrix on its 32,768 test diagrams, and
+// the same for the retraining of scripts/train-lp-cnn.py on fresh ones. Read along a row, a cell is the share of a
+// class predicted as each class (the diagonal is how often the class is recognised); down a column, the share of a
+// prediction that was each class, the normalisation of the chapter's figure. A radio button and CSS switch the two.
+import data from '../data/lp-cnn.json';
+import { PAPER_CONFUSION, CLASSES } from '../scripts/lpcnn';
+const mats = [
+  { title: "the chapter's network", m: PAPER_CONFUSION },
+  { title: 'my retrained copy', m: data.nets.class.confusion as number[][] },
+];
+const short = ['null', 'fixed', 'periodic', 'loc. ch.', 'chaotic'];
+const pct = (v: number) => (v >= 0.9995 ? '100' : v < 0.0005 ? '0' : (100 * v).toFixed(1));
+const cells = (m: number[][]) => m.map((row, i) => row.map((v, j) => {
+  const r = v / row.reduce((a, b) => a + b, 0), cs = m.reduce((s, q) => s + q[j], 0), c = cs ? v / cs : 0;
+  return { v, r, c, diag: i === j };
+}));
+const acc = (m: number[][]) => (100 * m.reduce((s, r, i) => s + r[i], 0) / m.flat().reduce((a, b) => a + b, 0)).toFixed(2);
+---
+<figure class="conf">
+  <div class="mode" role="radiogroup" aria-label="Normalise">
+    <label><input type="radio" name="conf-norm" value="row" checked /> share of each actual class (rows)</label>
+    <label><input type="radio" name="conf-norm" value="col" /> share of each prediction (columns, as in the chapter)</label>
+  </div>
+  <div class="pair">
+    {mats.map(({ title, m }) => (
+      <div class="one">
+        <div class="cap">{title}: <b>{acc(m)}%</b> of {m.flat().reduce((a, b) => a + b, 0).toLocaleString('en')} test diagrams right</div>
+        <table>
+          <thead><tr><th scope="col" class="corner">predicted →<br />actual ↓</th>{short.map((s, j) => <th scope="col" class={`lp${j}`}><i></i>{s}</th>)}</tr></thead>
+          <tbody>
+            {cells(m).map((row, i) => (
+              <tr>
+                <th scope="row" class={`lp${i}`}><i></i>{short[i]}</th>
+                {row.map((x, j) => (
+                  <td class={[x.diag && 'diag', x.r > 0.5 && 'dr', x.c > 0.5 && 'dc']} style={`--r:${x.r.toFixed(4)};--c:${x.c.toFixed(4)}`} title={`${CLASSES[i]} predicted as ${CLASSES[j]}: ${x.v} diagrams`}>
+                    <span class="row">{pct(x.r)}</span><span class="col">{pct(x.c)}</span><small>{x.v}</small>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ))}
+  </div>
+  <figcaption>Percentages, with the number of diagrams underneath. 128 test diagrams per rule, so the classes weigh in by their number of rules: 3,072 null diagrams, but only 1,280 locally chaotic.</figcaption>
+</figure>
+
+<style>
+  .conf { margin: 1.5rem 0; font-family: var(--mono); font-size: 0.78rem; }
+  .mode { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; color: var(--muted); margin-bottom: 0.6rem; }
+  .mode label { display: inline-flex; gap: 0.35rem; align-items: center; cursor: pointer; }
+  .mode input { accent-color: var(--accent); margin: 0; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem 1.5rem; }
+  .one { overflow-x: auto; }
+  .cap { color: var(--muted); margin-bottom: 0.3rem; min-height: 2.6em; }
+  .cap b { color: var(--ink); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 0.2rem 0.25rem; text-align: center; border: 1px solid var(--line); }
+  th { font-weight: normal; color: var(--muted); white-space: nowrap; }
+  th i { display: inline-block; width: 0.6em; height: 0.6em; background: var(--lp); margin-right: 0.3em; }
+  .corner { font-size: 0.68rem; text-align: right; line-height: 1.3; }
+  td { --v: var(--r); background: color-mix(in srgb, var(--accent) calc(var(--v) * 85%), var(--bg)); color: var(--ink); }
+  td.diag { font-weight: 600; }
+  td small { display: block; font-size: 0.68rem; opacity: 0.75; }
+  td .col { display: none; }
+  .conf:has([value="col"]:checked) td { --v: var(--c); }
+  .conf:has([value="col"]:checked) td .col { display: inline; }
+  .conf:has([value="col"]:checked) td .row { display: none; }
+  td.dr { color: var(--bg); }
+  .conf:has([value="col"]:checked) td { color: var(--ink); }
+  .conf:has([value="col"]:checked) td.dc { color: var(--bg); }
+  figcaption { color: var(--muted); margin-top: 0.5rem; }
+</style>

@@ -28,6 +28,7 @@
   doi: 10.1007/978-3-031-81097-8_3
   url: https://arxiv.org/abs/2409.02740
   summary: "Earlier networks that sorted cellular automata by behaviour were quietly cheating by learning the local rule. Ours looks at the actual pattern and still gets it right nearly always."
+  demo: /demos/cnn-classification/
 - id: cnn-nonuniform
   title: "Efficient simulation of non-uniform cellular automata with a convolutional neural network"
   authors: "M. Rollier, A. J. Daly, O. M. Bruno, J. M. Baetens"

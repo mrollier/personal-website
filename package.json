@@ -8,7 +8,7 @@
     "preview": "astro preview",
     "sync": "node scripts/sync.mjs",
     "test": "node scripts/check.ts",
-    "check": "npm run build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|discogs.com|goodreads.com|bandcamp.com|letterboxd.com|10.1103|10.2760|cv.pdf'",
+    "check": "npm run build && linkinator dist --recurse --skip 'michielrollier.be|linkedin.com|scholar.google|researchgate|soundcloud|discogs.com|goodreads.com|bandcamp.com|letterboxd.com|10.1103|10.1162|10.2760|cv.pdf'",
     "precompute": "node scripts/defence/precompute.ts"
   },
   "dependencies": {

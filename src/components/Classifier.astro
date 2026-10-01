@@ -1,0 +1,141 @@
+---
+// The trimmed network of Ch. 8 (Fig. 8.9) at work in the browser, as retrained by scripts/train-lp-cnn.py: four 2 × 2
+// convolutions, a max pool and a global max pool, 389 parameters for the class and 664 for the rule up to symmetry.
+// For any diagram, with any of the augmentations, it shows the class probabilities, the 88-way network's best guesses
+// for the rule, what the hand-set reader makes of the same picture, and the 8 × 8 windows where the four channels of the
+// last convolution peak, the only places the global pool lets through. Self-contained with src/scripts/lpcnn.ts, eca.ts,
+// wolfram.ts, raster.ts, palette.ts, figure.ts; weights from src/data/lp-cnn.json.
+type Props = { rule?: number };
+const { rule = 54 } = Astro.props;
+---
+<figure class="fig" id="classify" data-classifier data-rule={rule} tabindex="-1">
+  <canvas role="img" aria-label="A spacetime diagram and what the trimmed networks make of it"></canvas>
+  <div class="controls" role="group" aria-label="Diagram">
+    <label>rule <input name="rule" type="number" min="0" max="255" value={rule} inputmode="numeric" /></label>
+    <button name="random" type="button">random rule</button>
+    <button name="restart" type="button">new start</button>
+    <label>augment <select name="aug">
+      <option value="">nothing</option>
+      <option value="invert">invert</option>
+      <option value="mirror">mirror</option>
+      <option value="coarse">coarse-grain 2 × 2</option>
+      <option value="noise">5% noise</option>
+    </select></label>
+    <button name="full" type="button" aria-pressed="false">fullscreen</button>
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 430px; background: var(--panel); border: 1px solid var(--line); touch-action: manipulation; }
+  @media (max-width: 700px) { canvas { height: min(1000px, calc(100vw + 400px)); } }
+  .controls, .status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.7rem; }
+  .controls label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; max-width: 100%; }
+  .controls input[type="number"] { width: 4.5em; font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls button, .controls select { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation; max-width: 100%; }
+  .controls button:hover, .controls select:hover { border-color: var(--accent); }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+  .fig:is(:fullscreen, .full) { position: fixed; inset: 0; z-index: 10; padding: 1rem; margin: 0; overflow: auto; width: auto; height: 100dvh; background: var(--bg); }
+  .fig:is(:fullscreen, .full) canvas { flex: 1; min-height: 440px; height: auto; }
+  .fig::backdrop { background: var(--bg); }
+</style>
+
+<script>
+  import { seedRow, evolve, clampRule } from '../scripts/eca';
+  import { equivalents } from '../scripts/wolfram';
+  import { CLASSES, classColours, image, augment, classify, readRule, type Augment, type Weights } from '../scripts/lpcnn';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, mix, css, type RGB } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label, fullscreen, type Box } from '../scripts/figure';
+  import data from '../data/lp-cnn.json';
+
+  const lp = data.lp, reps = data.reps, netClass = data.nets.class.weights as Weights, netIndep = data.nets.indep.weights as Weights;
+  const orbit = (r: number) => { const e = equivalents(r); return [...new Set([r, e.mirror, e.complement, e.both])].sort((a, b) => a - b); };
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, ruleIn = $<HTMLInputElement>('rule'), augIn = $<HTMLSelectElement>('aug'), status = $<HTMLOutputElement>('status');
+    const W = 64, T = 64, url = urlState('cls', { rule: el.dataset.rule!, aug: '', seed: '1' });
+    let rule = clampRule(+url.get('rule')), seed = Math.max(1, Math.round(+url.get('seed')) || 1);
+    let aug = (['invert', 'mirror', 'coarse', 'noise'].includes(url.get('aug')) ? url.get('aug') : '') as Augment | '';
+    let x = new Float32Array(0), cls = classify(netClass, new Float32Array(W * T), W), ind = cls, read = 0;
+    const big = new Raster(W, T), maps = Array.from({ length: 4 }, () => new Raster(29, 29));
+
+    function build() {
+      const clean = image(evolve(seedRow(W, 'random', makeRng(seed * 13 + 1)), rule, T - 1));
+      x = aug ? augment(clean, W, aug, makeRng(seed * 7 + 2)) : clean;
+      cls = classify(netClass, x, W); ind = classify(netIndep, x, W); read = readRule(x, W).rule;
+    }
+    const argmax = (p: number[]) => p.reduce((b, v, i) => (v > p[b] ? i : b), 0);
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), cols = classColours(t), { w, h } = sz, pad = 12, wide = w >= 700;
+      const ink = parse(t.ink), bg = parse(t.bg), chanCols: RGB[] = [parse(t.accent), parse(t.danger), parse(t.sun), mix(parse(t.muted), ink, 0.3)];
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - 24, w * 0.42) : w - 2 * pad, d: Box = { x: pad, y: pad, w: side, h: side }, cs = side / W;
+      for (let i = 0; i < W * T; i++) big.set(i, mix(bg, ink, x[i]));
+      big.flush(); big.blit(ctx, d);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.w - 1, d.h - 1);
+      cls.peaks.forEach((p, o) => { ctx.strokeStyle = css(chanCols[o]); ctx.lineWidth = 2; ctx.strokeRect(d.x + 2 * p.j * cs + 1 + o, d.y + 2 * p.i * cs + 1 + o, 8 * cs - 2 - 2 * o, 8 * cs - 2 - 2 * o); });
+      ctx.lineWidth = 1;
+      label(ctx, `${aug ? `${augIn.options[augIn.selectedIndex].text} · ` : ''}rule ${rule}, ${CLASSES[lp[rule]]}${wide ? ' · boxes: where the four channels peak' : ''}`, d.x, d.y + d.h + 14, t);
+      const a: Box = wide ? { x: d.x + d.w + 2 * pad, y: pad, w: w - d.w - 4 * pad, h: h - 2 * pad } : { x: pad, y: d.y + d.h + 30, w: w - 2 * pad, h: h - d.h - 42 };
+      // the class network
+      const pc = cls.probs, best = argmax(pc), barW = a.w - 150;
+      label(ctx, 'the class network, 389 parameters', a.x, a.y + 10, t, { color: t.ink });
+      CLASSES.forEach((name, k) => {
+        const y = a.y + 22 + k * 20;
+        label(ctx, name, a.x, y + 11, t, { color: k === lp[rule] ? t.ink : t.muted });
+        ctx.fillStyle = css(mix(parse(t.panel), parse(t.line), 0.6)); ctx.fillRect(a.x + 110, y + 2, barW, 12);
+        ctx.fillStyle = css(cols[k]); ctx.fillRect(a.x + 110, y + 2, Math.max(1, barW * pc[k]), 12);
+        if (k === lp[rule]) { ctx.strokeStyle = t.ink; ctx.strokeRect(a.x + 109.5, y + 1.5, barW + 1, 13); }
+        label(ctx, `${(100 * pc[k]).toFixed(pc[k] > 0.995 || pc[k] < 0.005 ? 0 : 1)}%`, a.x + 114 + barW, y + 11, t, { color: t.ink });
+      });
+      // the rule network and the reader
+      let y = a.y + 22 + 5 * 20 + 20;
+      label(ctx, 'the rule network, 664 parameters: best three', a.x, y, t, { color: t.ink });
+      const top = ind.probs.map((p, i) => [p, i]).sort((p, q) => q[0] - p[0]).slice(0, 3), mine = equivalents(rule).rep;
+      top.forEach(([p, i], k) => {
+        const rep = reps[i], hit = rep === mine, txt = `${(100 * p).toFixed(0).padStart(3)}%  ${orbit(rep).join(', ')}`;
+        ctx.fillStyle = css(cols[lp[rep]]); ctx.fillRect(a.x, y + 9 + k * 17, 9, 9);
+        label(ctx, txt + (hit ? '  ← right' : ''), a.x + 14, y + 17 + k * 17, t, { color: hit ? t.ink : t.muted });
+      });
+      y += 3 * 17 + 26;
+      label(ctx, 'the hand-set reader of the previous tab', a.x, y, t, { color: t.ink });
+      ctx.fillStyle = css(cols[lp[read]]); ctx.fillRect(a.x, y + 9, 9, 9);
+      label(ctx, `rule ${read}, ${CLASSES[lp[read]]}`, a.x + 14, y + 17, t, { color: lp[read] === lp[rule] ? t.ink : t.danger });
+      // the four channels of the last convolution
+      y += 34;
+      const mw = Math.min(70, (a.w - 3 * 10) / 4);
+      if (y + mw + 14 <= a.y + a.h) {
+        label(ctx, 'the last layer: four channels, peaks ringed', a.x, y, t);
+        cls.peaks.forEach((p, o) => {
+          const box: Box = { x: a.x + o * (mw + 10), y: y + 8, w: mw, h: mw }, n = cls.side * cls.side, off = o * n;
+          let m = 1e-9; for (let i = 0; i < n; i++) m = Math.max(m, cls.last[off + i]);
+          for (let i = 0; i < n; i++) maps[o].set(i, mix(bg, chanCols[o], cls.last[off + i] / m));
+          maps[o].flush(); maps[o].blit(ctx, box);
+          ctx.strokeStyle = t.line; ctx.strokeRect(box.x + 0.5, box.y + 0.5, mw - 1, mw - 1);
+          const q = mw / cls.side; ctx.strokeStyle = t.ink; ctx.strokeRect(box.x + p.j * q - 1.5, box.y + p.i * q - 1.5, q + 3, q + 3);
+        });
+      }
+      const right = best === lp[rule], s = `The class network says ${CLASSES[best]} (${(100 * pc[best]).toFixed(0)}%)${right ? ', right' : `; it is ${CLASSES[lp[rule]]}`}. The rule network's best guess is ${orbit(reps[top[0][1]]).join(', ')}${reps[top[0][1]] === mine ? ', right' : ''}; the reader reads rule ${read}.`;
+      status.value = s;
+      c.setAttribute('aria-label', `Rule ${rule}${aug ? `, ${aug}` : ''}. ${s}`);
+    }
+    function redo() { ruleIn.value = String(rule); augIn.value = aug; url.set('rule', String(rule)); url.set('aug', aug); url.set('seed', String(seed)); build(); paint(); }
+    ruleIn.addEventListener('change', () => { rule = clampRule(+ruleIn.value); redo(); });
+    $('random').addEventListener('click', () => { rule = Math.floor(Math.random() * 256); redo(); });
+    $('restart').addEventListener('click', () => { seed++; redo(); });
+    augIn.addEventListener('change', () => { aug = augIn.value as Augment | ''; redo(); });
+    const full = fullscreen(el, $<HTMLButtonElement>('full'));
+    keys(el, { n: () => { seed++; redo(); }, ArrowRight: () => { rule = (rule + 1) % 256; redo(); }, ArrowLeft: () => { rule = (rule + 255) % 256; redo(); }, f: full.toggle });
+    watch(c, paint);
+    ruleIn.value = String(rule); augIn.value = aug; build();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-classifier]').forEach(mount);
+</script>

@@ -1,0 +1,470 @@
+---
+import Base from '../../layouts/Base.astro';
+import LpMap from '../../components/LpMap.astro';
+import TableHunt from '../../components/TableHunt.astro';
+import ScanStats from '../../components/ScanStats.astro';
+import RuleReader from '../../components/RuleReader.astro';
+import Classifier from '../../components/Classifier.astro';
+import Confusion from '../../components/Confusion.astro';
+import AugTest from '../../components/AugTest.astro';
+import Tex from '../../components/Tex.astro';
+import data from '../../data/lp-cnn.json';
+import { PAPER_AUGMENT, allNeighbourhoods } from '../../scripts/lpcnn';
+import { getCollection } from 'astro:content';
+// The chapter this page is built on lives in the publications collection, so its links stay in one place.
+const pubs = (await getCollection('publications')).map((p) => p.data);
+const paper = pubs.find((p) => p.id === 'cnn-classification');
+const doi = `https://doi.org/${paper?.doi ?? '10.1007/978-3-031-81097-8_3'}`;
+const arxiv = paper?.url ?? 'https://arxiv.org/abs/2409.02740';
+const lpPdf = 'https://content.wolfram.com/sites/13/2018/02/04-3-3.pdf';
+const pct = (v: number, d = 2) => `${(100 * v).toFixed(d)}%`;
+const ring = pct(allNeighbourhoods(64)), line = pct(allNeighbourhoods(64, false));
+const scan = data.scan, mine = data.nets;
+const n = (v: number) => v.toLocaleString('en');
+const conf = mine.class.confusion as number[][], recall = (k: number) => conf[k][k] / conf[k].reduce((x, y) => x + y, 0);
+// One tab per step of the argument; the hash picks the tab, so a step can be linked.
+const tabs = [ { id: 'question', name: 'The question' }, { id: 'giveaway', name: 'The giveaway' }, { id: 'reading', name: 'Reading the rule' }, { id: 'smaller', name: 'A smaller network' }, { id: 'altered', name: 'Altered pictures' }, { id: 'verdict', name: 'Verdict' },
+];
+const claim = 'A convolutional network that sorts elementary cellular automata by behaviour can read the rule straight off the pixels, and without precautions it does; a smaller network trained on altered pictures still gets the class right 98 times in 100, but the rule only 61 times: a shift towards the behaviour, not a clean break from the rule.';
+---
+<Base title="Is the network cheating?" description="What a convolutional network looks at when it sorts cellular automata by behaviour: the rule table hidden in every spacetime diagram, a network that reads it with no training, a smaller one built so that it cannot, and how far altered pictures push it. My chapter in Advances in Cellular Automata, with networks you can run." wide>
+  <div class="measure">
+    <h1>Is the network cheating?</h1>
+    <p>
+      An elementary cellular automaton draws a picture. A row of cells, each black or white, is updated over and over by
+      one small rule, and each new row goes under the last, so the picture is the automaton's history with time running
+      down. Some rules wipe the picture clean, some freeze it, some make it flash, some fill it with noise, and people
+      have sorted the 256 rules by these behaviours since the 1980s, by looking. Convolutional neural networks, the
+      workhorses of image recognition, have been trained to do the same from the pictures and score 98 to 100 percent.
+      My question was what such a network is actually looking at, because a spacetime diagram carries more than its
+      behaviour: it also carries the rule that drew it, written out in its pixels.
+    </p>
+    <p>
+      The answer is in a <a href={doi}>book chapter</a> with Aisling Daly and Jan Baetens, in <em>Advances in Cellular
+      Automata</em>, volume 2 (Springer, 2025). In one sentence:
+    </p>
+    <p class="claim">{claim}</p>
+    <p>
+      The tabs follow the chapter: the classes and the question, how a diagram gives its rule away, a network that reads
+      the rule without any training, a smaller network built so that it cannot, the altered pictures that push it
+      further, and how far all that gets.
+    </p>
+    <p>
+      The chapter's code is not public yet; it will be linked here. Until then, the networks you can run on this page are
+      a retraining of the chapter's final network, done for this page with the chapter's data recipe, layers, training
+      settings and alterations, keeping the best of three runs as the chapter kept the best of a few. Where its
+      accuracies differ from the chapter's, both are given. The chapter's own numbers are quoted as published, the scan
+      statistics come from the same retraining script, and the figures compute everything else in your browser.
+    </p>
+  </div>
+
+  <div class="tabbed">
+    <nav class="tabs" aria-label="Steps">
+      <ul role="tablist" aria-orientation="vertical">
+        {tabs.map((t, i) => <li><a role="tab" id={`tab-${t.id}`} href={`#${t.id}`} aria-controls={t.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="panels">
+
+      <section role="tabpanel" id="question" aria-labelledby="tab-question" tabindex="0">
+      <div class="measure">
+        <h2>The question</h2>
+        <p>
+          Elementary is the smallest interesting case: two states, and each cell updated from itself and its two
+          neighbours. A rule is then a table of eight entries, one per neighbourhood from 000 to 111, so there are <Tex tex="2^8 = 256" /> rules, each numbered by reading its table as a binary number. Wolfram's four classes are
+          the best-known way of sorting them, but they are judgement calls: the same rule can land in different classes
+          depending on who looks, and at which start. The chapter uses the five classes of Li and Packard (1990) instead,
+          which give every rule exactly one class. A picture's class is then fixed by its rule, which is what a training
+          set of labelled pictures needs.
+        </p>
+        <ul>
+          <li><em>Null</em>, 24 rules: everything turns one colour.</li>
+          <li><em>Fixed point</em>, 97 rules: the picture settles into a pattern that stays put, or shifts sideways.</li>
+          <li><em>Periodic</em>, 89 rules: it repeats every two or three steps.</li>
+          <li><em>Locally chaotic</em>, 10 rules: chaos, fenced in by walls that do not move.</li>
+          <li><em>Chaotic</em>, 36 rules: noise everywhere, or differences that spread.</li>
+        </ul>
+        <p>
+          Two symmetries never change the class: reading the rule in a mirror, and swapping black and white. Rule 110
+          seen in a mirror is rule 124, with its colours swapped it is rule 137, with both it is rule 193, and all four
+          are chaotic. Li and Packard count them as chaotic, though 110 is also famously complex. The two symmetries fold
+          the 256 rules into 88 classes of equivalent rules. Click around the map; the rule you pick is ringed, its
+          equivalents get a dashed ring.
+        </p>
+      </div>
+      <LpMap />
+      <div class="measure">
+        <p>
+          You can name most of these at a glance, and so, it seemed, could a convolutional network. Silverman (2019)
+          trained one on Wolfram's classes and scored 100 percent on his test set; Comelli and colleagues (2021) trained
+          one for eleven different classifications and reached 97.58 percent on Li and Packard's. The trouble is that a
+          classification is easy if you know the rule, and the picture can tell you the rule. So the chapter makes a
+          distinction. A feature of a diagram is <em>microscopic</em> if it fits inside one neighbourhood together with
+          its next state, a window of 3 by 2 cells, and <em>mesoscopic</em> if it spans many cells and many steps:
+          stripes, gliders, walls between regions that behave differently. A person classifies by the mesoscopic
+          features. Which ones does the network use, and can it be pushed from the first kind to the second?
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="giveaway" aria-labelledby="tab-giveaway" tabindex="0" hidden>
+      <div class="measure">
+        <h2>The giveaway</h2>
+        <p>
+          Take three neighbouring cells in a row and the cell below the middle one. The shape is a T-tetromino, and it
+          is one line of the rule table, read straight off the picture: this neighbourhood, this next state. Slide the T
+          along the first row and every neighbourhood it has not met yet fills in another line. Press play, or step
+          through the scan one cell at a time:
+        </p>
+      </div>
+      <TableHunt />
+      <div class="measure">
+        <p>
+          Every rule has one class, so the scan classifies. How often does it fall short? A row of 64 random cells,
+          wrapped round as the automaton's row is, contains all eight neighbourhoods with probability {ring}. That number
+          is exact: it counts the rows that leave out a given set of neighbourhoods as walks on the graph whose four
+          nodes are pairs of cells, and adds and subtracts those counts over all 256 sets. The chapter says "over 99
+          percent"; without the wrap it would be {line}, just under. The 63 rows that follow only add chances, unless the
+          rule wipes them out. On a fresh draw of the chapter's training set, 1024 diagrams of 64 by 64 for every rule:
+        </p>
+      </div>
+      <ScanStats />
+      <div class="measure">
+        <p>
+          The rules that hide something are the ones that destroy information: null rules erase the start after a
+          step or two, fixed-point rules freeze it, while chaotic rules keep producing every neighbourhood. When an
+          entry is missing it is nearly always 000 or 111, three equal cells in a row, which some rules simply never make
+          after the first row. The chapter shows two such diagrams: one of rule 59, periodic, without a single run of three
+          white cells, and one of rule 18, chaotic, without three black ones. Such diagrams are rare, but trying
+          start after start turns one of each up: <a href="?hunt.rule=59&hunt.seed=5410#giveaway">rule 59</a> and <a href="?hunt.rule=18&hunt.seed=451#giveaway">rule 18</a>. One
+          missing entry leaves two candidate rules, and they nearly always share a class. The chapter found a single
+          diagram among its 262,144 where they did not: rule 59 without its 000 could pass for rule 58, which is fixed
+          point.
+        </p>
+        <p class="note">
+          A note on the counting, added for this page. The chapter counts 370 incomplete diagrams in its training set and
+          33 in its test set. Its scan padded each row with a copy of the row's own first and last cell instead of
+          wrapping it round, which adds two windows per row. With that padding the fresh draw above has {n(scan.trainval_edge.incomplete)} incomplete diagrams, about the chapter's count; wrapped round, as the
+          automaton is, it has {n(scan.trainval_wrap.incomplete)}, about one diagram in {Math.round(scan.trainval_wrap.diagrams / scan.trainval_wrap.incomplete)}, and in {scan.trainval_wrap.ambiguous} of those the missing entry leaves the class undecided, against the chapter's one. Either way the scan
+          reads the rule from all but a few hundred of a quarter of a million diagrams.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="reading" aria-labelledby="tab-reading" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Reading the rule</h2>
+        <p>
+          The chapter first rebuilt the network of the earlier work: two convolutional layers of 16 channels each, with
+          filters 3 cells wide and 2 high, then a global max pool that keeps only each channel's largest value, a dense
+          layer of 256 nodes and five outputs, 7,301 parameters in all. Trained on 196,608 diagrams, it got the class
+          wrong in 6 of the 65,536 it had not seen, 99.99 percent right, and all six were borderline cases between null,
+          fixed point and periodic. Then it was asked for the rule instead of the class, and it named the exact rule in
+          99.85 percent of the unseen diagrams. A near-perfect class score is therefore no evidence of looking at
+          behaviour. The network can know the rule.
+        </p>
+        <p>
+          How it can know is easy to write down, because a 3 × 2 filter fits exactly one T-tetromino. Put +1 on each of
+          the three upper cells where the neighbourhood has a 1, −1 where it has a 0, +1 on the cell below, and set the
+          bias to minus the number of 1s in the neighbourhood. For the neighbourhood 110 followed by a 1 that is the
+          filter
+        </p>
+        <Tex block tex="\begin{pmatrix} 1 & 1 & -1 \\ 0 & 1 & 0 \end{pmatrix}, \quad \text{bias } -2," />
+        <p>
+          and its sum is 1 exactly where that T-tetromino sits, and 0 or less anywhere else. After a ReLU the channel is
+          a map of the places where 110 was followed by a 1. Eight such detectors, the global maximum of each, and the
+          eight maxima are the rule table: a 1 for every neighbourhood that is followed by a 1 somewhere in the picture.
+          A last layer of 256 nodes turns them into a rule number with fixed weights. Node <Tex tex="i" /> has weights
+          and bias
+        </p>
+        <Tex block tex="w_{i,j} = 2\,\mathrm{bin}(i)_j - 1, \qquad b_i = 1 - \sum_{j=0}^{7} \mathrm{bin}(i)_j," />
+        <p>
+          with <Tex tex="\mathrm{bin}(i)_j" /> the <Tex tex="j" />th binary digit of <Tex tex="i" />, so it scores 1 minus
+          the number of entries in which rule <Tex tex="i" /> differs from what the detectors saw, and the top node is
+          the rule that was read. Nothing is learned; the network is 2,360 numbers, all written down. On the chapter's
+          262,144 diagrams it named the rule in 99.87 percent of them. Its 331 errors are diagrams with a missing entry:
+          a neighbourhood that never occurs leaves its channel empty, which reads as a 0, and that is wrong whenever the
+          true entry is a 1. On the fresh draw of the previous tab, wrapped round, the reader also gets exactly {n(scan.trainval_wrap.handsetWrong)} wrong.
+        </p>
+      </div>
+      <RuleReader />
+      <div class="measure">
+        <p>
+          Things to try. Rule 120 is the chapter's Fig. 8.8: four channels light up, and 01111000 is 120 in binary.
+          Invert the colours of any diagram and the reader reads the complement; mirror it and it reads the mirror image.
+          Either way the class it then names is still right, since equivalent rules share their class, so the trick
+          survives two of the alterations of a later tab untouched. Coarse-graining and noise are another matter. The
+          detectors then fire at odd heights, or where the rule never put a T-tetromino, and what comes out is usually
+          another rule altogether.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="smaller" aria-labelledby="tab-smaller" tabindex="0" hidden>
+      <div class="measure">
+        <h2>A smaller network</h2>
+        <p>
+          If a network can read the rule, training will find out, since it is the shortest way to a perfect score. So
+          the chapter takes the possibility away, by three principles. The first filters are too small to hold a
+          T-tetromino, 2 × 2 instead of 3 × 2, and there are four channels, fewer than the eight neighbourhoods. The
+          network must see far enough to take in a stripe or a glider: a max pool halfway widens what one unit of the
+          last layer sees to 8 by 8 cells, against 5 by 3 for the default network. And after the global pool only four
+          numbers remain, feeding a dense layer of 16 nodes that has little room to store anything about 256 rules.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">layer</th><th scope="col">output</th><th scope="col">parameters</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">the diagram</th><td>64 × 64</td><td></td></tr>
+              <tr><th scope="row">2 × 2 convolution, 4 channels, ReLU</th><td>4 × 63 × 63</td><td>20</td></tr>
+              <tr><th scope="row">2 × 2 convolution, 4 channels, ReLU</th><td>4 × 62 × 62</td><td>68</td></tr>
+              <tr><th scope="row">2 × 2 max pool</th><td>4 × 31 × 31</td><td></td></tr>
+              <tr><th scope="row">2 × 2 convolution, 4 channels, ReLU</th><td>4 × 30 × 30</td><td>68</td></tr>
+              <tr><th scope="row">2 × 2 convolution, 4 channels, ReLU</th><td>4 × 29 × 29</td><td>68</td></tr>
+              <tr><th scope="row">global max pool</th><td>4</td><td></td></tr>
+              <tr><th scope="row">dense, 16 nodes, no activation</th><td>16</td><td>80</td></tr>
+              <tr><th scope="row">dense, softmax</th><td>5 classes</td><td>85</td></tr>
+              <tr><th scope="row">total</th><td></td><td>389</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          To name the rule instead, the two dense layers become a single softmax layer of 256 nodes (1,504 parameters),
+          or of 88 nodes, one per class of equivalent rules (664 parameters). Untouched by any alteration, this network
+          gets the class of 99.10 percent of the validation diagrams right. Asked for the rule, it gets 71.19 percent:
+          far below the default network's 99.85, and far above the 0.4 percent of a guess. Small filters slow the
+          reading down without preventing it, because two 2 × 2 filters in a row see 3 × 3 cells, enough for a
+          T-tetromino.
+        </p>
+        <p>
+          Below are the final networks, trained with the alterations of the next tab. Everything they say comes from
+          the networks running in your browser. The boxes on the diagram are the 8 × 8 windows that win the global pool,
+          one per channel of the last layer. They are the only parts of the picture that reach the output.
+        </p>
+      </div>
+      <Classifier />
+      <div class="measure">
+        <p>
+          Things to try, on the first start of each rule. Rule 54, the default, is complex in Wolfram's sense and chaotic
+          in Li and Packard's. The class network is sure of it whatever you do to the picture, coarse-graining included;
+          the rule network names its class of equivalent rules on the plain picture and loses it once the picture is
+          inverted or mirrored, although neither changes the class it was trained to name; and the reader reads the
+          complement, 147, on the inverted picture and rule 1 on the coarse-grained one. Rule 110 goes the other way
+          round: the rule network misses it on the plain picture and finds it on all three altered ones. The locally
+          chaotic rules 73 and 26 are where the class network is least sure of itself; try a few starts and alterations
+          and watch it waver.
+        </p>
+        <p class="meta status-line">
+          This retraining: {pct(mine.class.test)} of {n(32768)} fresh test diagrams in the right class, against the
+          chapter's 98.17%, and {pct(mine.indep.test)} in the right class of equivalent rules, against 61.25%; trained
+          with batches of 64, Adam at a learning rate of 0.001 and early stopping on {n(65536)} validation diagrams, by
+          scripts/train-lp-cnn.py in this site's repository.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="altered" aria-labelledby="tab-altered" tabindex="0" hidden>
+      <div class="measure">
+        <h2>Altered pictures</h2>
+        <p>
+          The other lever is the data. Alter each picture in a way that leaves its behaviour as a person would describe
+          it but changes the pixels, keep the label, and a network that leans on the pixels is punished. The usual reason
+          to alter training data is to have more of it; here there is no shortage, since every random start gives a new
+          diagram, so the purpose is to make the rule less useful than the behaviour. The chapter tries four alterations:
+          swapping black and white, mirroring left and right, coarse-graining by replacing each 2 × 2 block with its
+          average grey, and salt-and-pepper noise, a share of cells set to black or white at random. During training,
+          each diagram of a batch gets one of the <Tex tex="n" /> chosen alterations with probability <Tex tex="n/(n+1)" /> and stays as it is otherwise. All four are in the menus of the figures on the previous
+          tabs.
+        </p>
+        <p>
+          Inverting and mirroring turn a rule into an equivalent one with the same class. The class label stays true,
+          while the rule label no longer matches the picture shown. Mirroring often changes nothing at all, since 64
+          rules are their own mirror image; only 16 are their own complement, so inversion costs the rule more.
+          Coarse-graining breaks every T-tetromino, and noise writes contradictions into the table. The highest
+          validation accuracies the chapter reached, each trained separately (Tab. 8.3):
+        </p>
+        <div class="table-wrap">
+          <table class="aug">
+            <thead><tr><th scope="col">alteration</th><th scope="col">rule, of 256</th><th scope="col">up to symmetry, of 88</th><th scope="col">class, of 5</th></tr></thead>
+            <tbody>
+              {PAPER_AUGMENT.map((r) => (
+                <tr>
+                  <th scope="row">{r.name}</th>
+                  {[r.rule, r.indep, r.cls].map((v, k) => <td><span class="bar" style={`--w:${v}%`} data-k={k}></span>{v.toFixed(2)}%</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Every alteration costs some accuracy, the class least. Coarse-graining opens the widest gap: the rule falls to
+          fewer than one diagram in six while the class stays near 98 percent. Noise lowered everything without
+          favouring the class, so it was dropped; all four together made training harder than any one alone. Inversion
+          and mirroring leave the 88-way task almost untouched, or even help it, which is what you would expect of
+          alterations that move a rule within its own class of equivalents.
+        </p>
+        <p>
+          The same comparison can be run on this page's networks, next to the hand-set reader of the "Reading the rule"
+          tab, on fresh diagrams in your browser:
+        </p>
+      </div>
+      <AugTest />
+      <div class="measure">
+        <p>
+          On untouched, inverted or mirrored pictures the reader beats both networks at both tasks: it gets the class
+          every time and the rule up to symmetry nearly every time, where the rule network manages about 60 percent.
+          Inversion and mirroring hide nothing from a reader built for them. Coarse-graining does: the reader falls to
+          about one class in five and almost no rules, while the class network still gets close to nine classes in ten.
+          Noise, which neither network saw in training, hurts everything, the reader most. The trained networks are worse
+          than the reader at what the reader does, and their advantage shows only where the rule table has been
+          destroyed. Whether what they use instead is the behaviour a person sees is exactly the question accuracy alone
+          cannot answer.
+        </p>
+        <p>
+          Two common alterations were deliberately left out: shifting left or right, which a stack of convolutions
+          followed by a global maximum ignores anyway, and rotation, which swaps space and time and makes a picture that
+          is no automaton's diagram. The chapter says plainly that it did not check either expectation.
+        </p>
+        <p>
+          The final network was trained on all 262,144 diagrams with inversion, mirroring and coarse-graining. It puts
+          98.17 percent of the test diagrams in the right class. The same architecture, trained the same way with 88
+          outputs, names the rule up to symmetry for 61.25 percent of them. From the default network to this one, rule
+          recovery fell from over 99 percent to 61 while class accuracy lost less than two points.
+        </p>
+      </div>
+      </section>
+
+      <section role="tabpanel" id="verdict" aria-labelledby="tab-verdict" tabindex="0" hidden>
+      <div class="measure">
+        <h2>What it adds up to</h2>
+        <p>
+          Where the final network goes wrong (Fig. 8.11), next to the retraining that runs on this page:
+        </p>
+      </div>
+      <Confusion />
+      <div class="measure">
+        <p>
+          Read along the rows, four classes are recognised between 97.9 and 99.0 percent of the time, and the locally
+          chaotic one 92.8 percent: it is the smallest class, under 4 percent of the diagrams. The most common mistake is
+          a periodic diagram taken for a fixed point, 219 times: a flash with a period of two looks like stillness to a
+          network that pools over the whole picture and barely registers time. Read down the columns, as the chapter's
+          figure does, and 5 percent of the diagrams called locally chaotic were in fact chaotic, though only 1.4 percent
+          of the chaotic ones were called locally chaotic. The retraining errs in much the same way: a periodic diagram
+          taken for a fixed point is again its most common mistake ({conf[2][1]} diagrams), and the locally chaotic class
+          is again the hardest, recognised {pct(recall(3), 1)} of the time and taken for periodic more often than by the
+          chapter's network.
+        </p>
+        <p>
+          The chapter's answer comes in two halves. Without precautions a network relies on the rule, and earlier work
+          overlooked this: the high accuracies in the literature are not, on their own, evidence of pattern recognition.
+          Can the network be pushed towards the behaviour? A qualified yes. The chapter's main conclusion:
+        </p>
+        <p class="claim">{claim}</p>
+        <p>
+          The chapter also names its own limits. No rule was held out: every rule was in the training set and the test
+          set differed only in its starting rows, so the 98 percent measures how well the network handles new pictures
+          of familiar rules, not new rules, which is what the motivation asks for. Holding out whole classes of equivalent
+          rules is the obvious next experiment. The class and rule accuracies come from separately trained networks, one
+          with five outputs and one with 88; relative to chance, 61 percent out of 88 options is the stronger result.
+          And the small architecture was chosen by judgement, as the best of a few runs, with no estimate of the spread.
+          The lesson about method stands regardless: a classifier of automaton behaviour should be judged on how well it
+          recovers the rule as well as the class, with the rule-table scan as the baseline.
+        </p>
+        <p>
+          Beyond elementary rules, the classes still make sense for any black-and-white diagram of a row of cells, such
+          as those of non-uniform automata, where each cell has its own rule; the network that simulates those is on <a href="/demos/nuca-cnn/">a page of its own</a>. Discovering classes that the elementary rules never show is a
+          harder problem, because a network trained to separate five known classes has no reason to keep room for a sixth.
+          The chapter is also Chapter 8 of <a href="/demos/thesis/#cheating">my thesis</a>.
+        </p>
+
+        <h2>Read more</h2>
+        <ul class="pubs">
+          <li>
+            <a href={doi}>Convolutional neural networks for automated cellular automaton classification</a>
+            <div class="meta"><strong>M. Rollier</strong>, A. J. Daly, J. M. Baetens</div>
+            <div class="meta">Advances in Cellular Automata, vol. 2 (Springer), pp. 49–70, 2025 · <a href={arxiv}>preprint</a></div>
+          </li>
+          <li>
+            <a href={lpPdf}>The structure of the elementary cellular automata rule space</a>
+            <div class="meta">W. Li and N. Packard, Complex Systems 4, 281–297, 1990. The five classes; Table 2 gives the class of every rule.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.1162/isal_a_00175">Convolutional neural networks for cellular automata classification</a>
+            <div class="meta">E. Silverman, Artificial Life Conference Proceedings, 280–282, 2019. The network the chapter starts from.</div>
+          </li>
+          <li>
+            <a href="https://doi.org/10.5220/0010160004670474">Comparing elementary cellular automata classifications with a convolutional neural network</a>
+            <div class="meta">T. Comelli, F. Pinel and P. Bouvry, ICAART 2021, 467–474. Eleven classifications, one network.</div>
+          </li>
+        </ul>
+        <p class="meta">
+          Keys once a figure has focus: the arrows step through the rules, n draws a new start, f goes fullscreen. The
+          address bar follows the settings, so a view can be linked.
+        </p>
+      </div>
+      </section>
+
+    </div>
+  </div>
+</Base>
+
+<style>
+  .tabbed { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 0 2rem; align-items: start; margin-top: 1.5rem; }
+  .tabs { position: sticky; top: 1rem; min-width: 0; }
+  .tabs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; border-left: 1px solid var(--line); }
+  .tabs a {
+    display: block; padding: 0.3rem 0.8rem; margin-left: -1px; border-left: 2px solid transparent;
+    color: var(--muted); text-decoration: none; font-size: 0.95rem;
+  }
+  .tabs a:hover { color: var(--ink); }
+  .tabs a[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); font-weight: 600; }
+  .panels { min-width: 0; }
+  [role="tabpanel"]:focus { outline: none; }
+  [role="tabpanel"] > .measure > h2:first-child { margin-top: 0; }
+  .claim { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 1rem; font-size: 1.1rem; font-weight: 600; }
+  .note { border-left: 3px solid var(--line); padding-left: 1rem; color: var(--muted); font-size: 0.95rem; }
+  .table-wrap { overflow-x: auto; margin: 0.5rem 0 1rem; }
+  table { border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid var(--line); }
+  thead th { font-family: var(--mono); font-size: 0.8rem; font-weight: normal; color: var(--muted); }
+  tbody th { font-weight: 600; white-space: nowrap; }
+  .aug td { font-family: var(--mono); font-size: 0.85rem; white-space: nowrap; min-width: 9rem; }
+  .aug tbody th { vertical-align: bottom; }
+  .aug .bar { display: block; height: 6px; width: var(--w); background: var(--muted); margin-bottom: 0.2rem; }
+  .aug .bar[data-k="2"] { background: var(--accent); }
+  @media (max-width: 800px) {
+    .tabbed { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .tabs { top: 0; z-index: 5; background: var(--bg); padding: 0.4rem 0; }
+    .tabs ul { flex-direction: row; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; border-left: 0; border-bottom: 1px solid var(--line); gap: 0; }
+    .tabs a { white-space: nowrap; margin: 0 0 -1px; border-left: 0; border-bottom: 2px solid transparent; padding: 0.3rem 0.7rem; }
+    .tabs a[aria-selected="true"] { border-bottom-color: var(--accent); }
+  }
+</style>
+
+<script>
+  // The hash picks the tab: a tab's own id, or the id of anything inside a tab. Arrow keys walk the list.
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+  const box = document.querySelector<HTMLElement>('.tabbed')!;
+
+  function show(id: string, scroll: boolean) {
+    let i = tabs.findIndex((t) => t.getAttribute('aria-controls') === id), target: HTMLElement | null = null;
+    if (i < 0) { target = id ? document.getElementById(id) : null; const p = target?.closest<HTMLElement>('[role="tabpanel"]'); i = p ? panels.indexOf(p) : 0; }
+    if (i < 0) i = 0;
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; panels[k].hidden = k !== i; });
+    // an anchor inside a tab scrolls to it; a tab change only scrolls back up when the reader was deep in the previous one
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (scroll && scrollY > box.offsetTop) box.scrollIntoView({ block: 'start' });
+  }
+  const fromHash = () => show(decodeURIComponent(location.hash.slice(1)), true);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+
+  document.querySelector('[role="tablist"]')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key, i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+    if (i < 0) return;
+    const n = tabs.length, j = k === 'ArrowDown' || k === 'ArrowRight' ? (i + 1) % n : k === 'ArrowUp' || k === 'ArrowLeft' ? (i + n - 1) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); location.hash = tabs[j].getAttribute('aria-controls')!; tabs[j].focus();
+  });
+</script>

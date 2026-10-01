@@ -1,0 +1,117 @@
+---
+// The 256 elementary rules in Li and Packard's five classes (Ch. 8, Tab. 8.2): a 16 × 16 map of rule numbers coloured
+// by class, and the spacetime diagram of the rule picked on it, 64 × 64 from a random start, as the chapter's data were
+// drawn. The rule's mirror image and complement are ringed on the map: they share its class, which folds the 256 rules
+// into 88. Data from src/data/lp-cnn.json; self-contained with src/scripts/lpcnn.ts, eca.ts, wolfram.ts, figure.ts.
+import data from '../data/lp-cnn.json';
+const EXAMPLES = [168, 232, 178, 154, 161]; // Fig. 8.1, one per class
+---
+<figure class="fig" id="lpmap" data-lpmap data-lp={data.lp.join('')} tabindex="-1">
+  <canvas role="img" aria-label="The 256 elementary rules coloured by Li–Packard class, and the diagram of one of them"></canvas>
+  <div class="controls" role="group" aria-label="Rule">
+    <label>rule <input name="rule" type="number" min="0" max="255" value="110" inputmode="numeric" /></label>
+    <button name="restart" type="button">new start</button>
+    <span>the chapter's examples:</span>
+    {EXAMPLES.map((r, c) => <button type="button" data-rule={r} class={`lp${c}`}><i></i>{r}</button>)}
+  </div>
+  <output name="status" class="status" aria-live="polite"></output>
+</figure>
+
+<style>
+  .fig { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .fig:focus { outline: none; }
+  canvas { display: block; width: 100%; height: 440px; background: var(--panel); border: 1px solid var(--line); cursor: pointer; touch-action: manipulation; }
+  @media (max-width: 640px) { canvas { height: min(820px, calc(200vw + 30px)); } }
+  .controls, .status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.7rem; }
+  .controls label { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .controls input[type="number"] { width: 4.5em; font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.3em; }
+  .controls button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); padding: 0.1em 0.6em; cursor: pointer; touch-action: manipulation; }
+  .controls button:hover { border-color: var(--accent); }
+  .controls button i { display: inline-block; width: 0.7em; height: 0.7em; background: var(--lp); margin-right: 0.35em; }
+  .status { display: block; min-height: 1.4em; color: var(--ink); }
+</style>
+
+<script>
+  import { seedRow, evolve, clampRule } from '../scripts/eca';
+  import { equivalents } from '../scripts/wolfram';
+  import { CLASSES, classColours, textOn } from '../scripts/lpcnn';
+  import { makeRng } from '../scripts/net';
+  import { Raster } from '../scripts/raster';
+  import { parse, css } from '../scripts/palette';
+  import { fit, tokens, watch, urlState, keys, label, type Box } from '../scripts/figure';
+
+  function mount(el: HTMLElement) {
+    const $ = <T extends HTMLElement = HTMLElement>(n: string) => el.querySelector<T>(`[name="${n}"]`)!;
+    const c = el.querySelector('canvas')!, ctx = c.getContext('2d')!, ruleIn = $<HTMLInputElement>('rule'), status = $<HTMLOutputElement>('status');
+    const lp = Array.from(el.dataset.lp!, Number), sizes = [0, 0, 0, 0, 0];
+    lp.forEach((k) => sizes[k]++);
+    const url = urlState('map', { rule: '110', seed: '1' }), W = 64, T = 64, raster = new Raster(W, T);
+    let rule = clampRule(+url.get('rule')), seed = Math.max(1, Math.round(+url.get('seed')) || 1), rows: Uint8Array[] = [], grid: Box | null = null;
+
+    const build = () => { rows = evolve(seedRow(W, 'random', makeRng(seed * 31 + rule)), rule, T - 1); };
+    function describe() {
+      const e = equivalents(rule), same = [...new Set([e.mirror, e.complement, e.both])].filter((r) => r !== rule);
+      const parts = [e.mirror === rule ? 'its own mirror image' : `mirror image ${e.mirror}`, e.complement === rule ? 'its own complement' : `complement ${e.complement}`];
+      if (e.both !== rule && e.both !== e.mirror && e.both !== e.complement) parts.push(`both ${e.both}`);
+      return { e, same, text: `Rule ${rule} is ${CLASSES[lp[rule]]}; ${parts.join(', ')}${same.length ? ', the same class' : ''}.` };
+    }
+
+    function paint() {
+      const sz = fit(c); if (!sz) return;
+      const t = tokens(c), cols = classColours(t), { w, h } = sz, pad = 12, wide = w >= 640;
+      ctx.fillStyle = t.panel; ctx.fillRect(0, 0, w, h);
+      const side = wide ? Math.min(h - 2 * pad - 44, (w - 4 * pad) / 2) : Math.min(w - 2 * pad, (h - 3 * pad - 92) / 2);
+      const g: Box = { x: pad, y: pad, w: side, h: side }, d: Box = wide ? { x: w - pad - side, y: pad, w: side, h: side } : { x: pad, y: pad + side + 64, w: side, h: side };
+      grid = g;
+      const cs = side / 16, { e, text } = describe();
+      for (let r = 0; r < 256; r++) {
+        const x = g.x + (r % 16) * cs, y = g.y + Math.floor(r / 16) * cs, col = cols[lp[r]];
+        ctx.fillStyle = css(col); ctx.fillRect(x + 0.5, y + 0.5, cs - 1, cs - 1);
+        if (cs >= 20) label(ctx, String(r), x + cs / 2, y + cs / 2 + 3.5, t, { align: 'center', size: Math.min(10, cs * 0.4), color: textOn(col) });
+      }
+      const ring = (r: number, width: number, dash: number[]) => {
+        const x = g.x + (r % 16) * cs, y = g.y + Math.floor(r / 16) * cs;
+        ctx.setLineDash(dash); ctx.lineWidth = width; ctx.strokeStyle = t.bg; ctx.strokeRect(x + 1, y + 1, cs - 2, cs - 2);
+        ctx.strokeStyle = t.danger; ctx.strokeRect(x - 0.5, y - 0.5, cs + 1, cs + 1); ctx.setLineDash([]);
+      };
+      for (const r of new Set([e.mirror, e.complement, e.both])) if (r !== rule) ring(r, 1.5, [3, 2]);
+      ring(rule, 2.5, []);
+      // the legend: the class sizes
+      let lx = g.x, ly = g.y + g.h + 18;
+      ctx.font = `11px ${t.mono}`;
+      CLASSES.forEach((name, k) => {
+        const txt = `${name} ${sizes[k]}`, tw = ctx.measureText(txt).width + 26;
+        if (lx + tw > g.x + g.w && lx > g.x) { lx = g.x; ly += 16; }
+        ctx.fillStyle = css(cols[k]); ctx.fillRect(lx, ly - 8, 9, 9);
+        label(ctx, txt, lx + 13, ly, t, { color: t.ink });
+        lx += tw;
+      });
+      // the diagram
+      const ink = parse(t.ink), bg = parse(t.bg);
+      for (let y = 0; y < T; y++) raster.setRow(y, rows[y], ink, bg);
+      raster.flush(); raster.blit(ctx, d);
+      ctx.strokeStyle = t.line; ctx.lineWidth = 1; ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.w - 1, d.h - 1);
+      ctx.fillStyle = css(cols[lp[rule]]); ctx.fillRect(d.x, d.y + d.h + 8, 9, 9);
+      label(ctx, `rule ${rule}: ${CLASSES[lp[rule]]}`, d.x + 14, d.y + d.h + 17, t, { color: t.ink, size: 12 });
+      label(ctx, '64 cells, 64 rows from a random start, time down', d.x, d.y + d.h + 33, t);
+      status.value = text;
+      c.setAttribute('aria-label', `The 256 elementary rules coloured by class. ${text}`);
+    }
+    function redo() { ruleIn.value = String(rule); url.set('rule', String(rule)); url.set('seed', String(seed)); build(); paint(); }
+    const pick = (r: number) => { rule = clampRule(r); redo(); };
+    ruleIn.addEventListener('change', () => pick(+ruleIn.value));
+    $('restart').addEventListener('click', () => { seed++; redo(); });
+    el.querySelectorAll<HTMLButtonElement>('[data-rule]').forEach((b) => b.addEventListener('click', () => pick(+b.dataset.rule!)));
+    c.addEventListener('pointerdown', (ev) => {
+      if (!grid) return;
+      const b = c.getBoundingClientRect(), x = ev.clientX - b.left - grid.x, y = ev.clientY - b.top - grid.y;
+      if (x < 0 || y < 0 || x >= grid.w || y >= grid.h) return;
+      pick(Math.floor(y / (grid.h / 16)) * 16 + Math.floor(x / (grid.w / 16)));
+    });
+    keys(el, { ArrowRight: () => pick((rule + 1) % 256), ArrowLeft: () => pick((rule + 255) % 256), ArrowDown: () => pick((rule + 16) % 256), ArrowUp: () => pick((rule + 240) % 256), n: () => { seed++; redo(); } });
+    watch(c, paint);
+    ruleIn.value = String(rule); build();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-lpmap]').forEach(mount);
+</script>

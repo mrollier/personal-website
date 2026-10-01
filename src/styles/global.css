@@ -193,5 +193,12 @@ details.more > summary:hover { color: var(--ink); }
 .pile { columns: 2 22rem; column-gap: 2.5rem; padding-left: 1.2rem; font-size: 0.95rem; }
 .pile li { break-inside: avoid; margin-bottom: 0.2rem; }
 
+/* the five Li-Packard classes of elementary rules, as --lp on .lp0 … .lp4 (same as classColours in src/scripts/lpcnn.ts) */
+.lp0 { --lp: color-mix(in srgb, var(--muted) 45%, var(--bg)); }
+.lp1 { --lp: var(--accent); }
+.lp2 { --lp: var(--sun); }
+.lp3 { --lp: var(--danger); }
+.lp4 { --lp: var(--ink); }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (max-width: 640px) { .site-header nav { order: 1; flex-basis: 100%; } }

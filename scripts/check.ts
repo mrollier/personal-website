@@ -16,4 +16,5 @@ import './check-defence.ts';
 import './check-mobility.ts';
 import './check-taxonomy.ts';
 import './check-nuca.ts';
+import './check-lpcnn.ts';
 console.log('all checks passed');

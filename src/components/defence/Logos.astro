@@ -1,0 +1,21 @@
+---
+// The logos of the institutions behind the thesis, bottom left: on the title slide (A1) and again on the thank-you
+// slide (I3). The landscape keeps clear of them (scripts/defence/export-mosaic.py, from the boxes measured on A1).
+const logos = [
+  { src: 'ugent', alt: 'Ghent University', h: 128 },
+  { src: 'fbe', alt: 'Faculty of Bioscience Engineering', h: 58 },
+  { src: 'usp', alt: 'University of São Paulo', h: 66 },
+  { src: 'bionamix', alt: 'BionamiX', h: 66 },
+];
+---
+<div class="logos" data-keep-clear>
+  {logos.map((l) => <img src={`/demos/defence/logos/${l.src}.webp`} alt={l.alt} style={`height: calc(${l.h} * var(--u))`} />)}
+</div>
+
+<style>
+  .logos {
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(64 * var(--u));
+    display: flex; align-items: center; gap: calc(56 * var(--u));
+  }
+  .logos img { display: block; width: auto; }
+</style>

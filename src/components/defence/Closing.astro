@@ -4,10 +4,12 @@
 // thesis, one at a time in the middle of the slide: spatiotemporal modelling at BionamiX (a groundwater model, then a
 // wildfire, each started by the click that shows it),
 // influence maximisation, and inside artificial minds (a small neural network at work); and the close: the title's
-// slogan over the cover's landscape, brought together, then its colours drained away (the still life stays still), and
-// a QR code to the site (drawn at build time, no library at run time).
+// slogan over the cover's landscape and the logos of the title slide, the slogan brought together, then its colours
+// drained away with a QR code to the site (drawn at build time, no library at run time), and a last click that takes
+// away one cell: the still life breaks down for about a minute and comes to rest.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
+import Logos from './Logos.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
 const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
@@ -100,7 +102,7 @@ const halves = [
   <p slot="say">And next for me: what goes on inside artificial minds. A neural network is also simple operations, iterated: every node adds up what comes in, each input with its weight, adds a bias, and passes the sum on only if it is positive (a ReLU). Here a small one with random weights and biases, started with this click, processes one input after another: each link lights up with what it passes on, a node fills as it fires, and the largest output is ringed. Nobody writes down what a trained network does: the same gap between rule and behaviour, with very high stakes. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
 
-<Slide label="Thank you" builds={2} class="i3">
+<Slide label="Thank you" builds={3} class="i3">
   <canvas class="art" aria-hidden="true"></canvas>
   <div class="i3-t">
     <div class="slogan">
@@ -116,8 +118,10 @@ const halves = [
       </div>
     </div>
   </div>
+  <Logos />
   <p slot="say">The title once more, in two halves: the rich landscape is what we see, the behaviour; iterated simplicity is what we write down, the rule. This thesis brought those two worlds a little closer together.</p>
   <p slot="say">Thank you. The colours drain out of the landscape, as on the still-life slide: every cell simply alive or dead, and nothing changes. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
+  <p slot="say">The last click takes away one cell (ringed in red for a moment), and the still life breaks down, as on the still-life slide: the debris spreads over the landscape for about a minute, then slows down and comes to rest. Where it comes near the words and the logos it is faded, so they stay readable.</p>
 </Slide>
 
 <style>
@@ -176,13 +180,13 @@ const halves = [
   :global(.i3.thanked) .half.top { transform: translateY(0); }
   :global(.i3.thanked) .half.bottom { transform: translateY(calc(-240 * var(--u))); }
   :global(.i3.thanked) .worlds { transform: translateY(calc(-130 * var(--u))); }
-  .thanks { position: absolute; left: 0; top: calc(420 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .thanks { position: absolute; left: 0; top: calc(380 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
   /* a line that comes with a build waits until the halves have moved out of its way */
   :global(.i3) .worlds, :global(.i3) .thanks { transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1), opacity 0.3s ease; }
   :global(.i3) .worlds.on, :global(.i3) .thanks.on { transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1), opacity 0.6s ease 0.9s; }
   .ty { font-weight: 700; font-size: calc(72 * var(--u)); letter-spacing: -0.01em; }
   .qrrow { display: flex; gap: calc(30 * var(--u)); align-items: center; }
-  .qr { width: calc(270 * var(--u)); height: calc(270 * var(--u)); flex: none; }
+  .qr { width: calc(250 * var(--u)); height: calc(250 * var(--u)); flex: none; }
   .url { font-size: calc(44 * var(--u)); }
   .qrrow .small { max-width: calc(480 * var(--u)); }
 </style>
@@ -190,7 +194,8 @@ const halves = [
 <script>
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
-  import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { decodeMosaic, mosaicPainter, drain, BREAK, type MosaicJson } from '../../scripts/defence/mosaic';
+  import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, hammingWeight, density } from '../../scripts/llna';
   import { sensitivity } from '../../scripts/genotype';
@@ -263,7 +268,7 @@ const halves = [
   const PRINTS = (() => {
     const rule: Rule = { r: 9, B: 170, S: 48 }, S = 186, kinds: PrintKind[] = ['whorl', 'loop', 'tented'];
     let pics: Picture[] | null = null, a: Uint8Array[] = [], b: Uint8Array[] = [];
-    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), S, 6, k === 1 ? 2 : 2.4, k === 2 ? 0.6 : false)));
+    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), S, 6, k === 1 ? 2 : 2.4)));
     const lines = kinds.map((kd, k) => ridges(kd, 11 + k)), H = 150;
     // each print drawn once on a canvas of its own, at the pixels it is shown at: its fade towards the edge would wipe
     // the network under it
@@ -541,22 +546,53 @@ const halves = [
   }
 
   // ── I3: the slogan's two halves come together over the landscape; then thanks, and the colours drain away as on
-  // slide C3. Nothing runs: the still life stays still behind the questions ──
+  // slide C3; the last click (build 3) takes away one cell, ringed in red for a moment, and the Game of Life breaks the
+  // still life down: ten generations a second for a minute, then slower and slower until it stands still, so nothing
+  // flickers behind the questions. Cells near the words and the logos are faded, as on C3 behind its note ──
   const m = decodeMosaic(mosaicData as MosaicJson);
+  const spot = (BREAK.y + m.M) * m.PW + BREAK.x + m.M;
+  // a minute at full speed, then 30 generations more, each slower than the one before (about ten seconds)
+  const RUN = 600, EASE = 30;
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448', getComputedStyle(c).getPropertyValue('--bg').trim());
-    let stop = () => {};
-    const paint = () => { const st = stage(c); if (st) draw(st.ctx, m.live, 0, 0, st.w, st.h); };
+    const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, bg = getComputedStyle(c).getPropertyValue('--bg').trim(), draw = mosaicPainter(m, '#0c2448', bg);
+    const near = Array.from(s.querySelectorAll<HTMLElement>('.half, .worlds, .ty, .qr, .url, .small, .logos img'));
+    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0, idle = 0, taken = false, stop = () => {};
+    const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; idle = 0; taken = false; };
+    const paint = () => {
+      const st = stage(c); if (!st) return;
+      draw(st.ctx, live, 0, 0, st.w, st.h);
+      // the words and logos in sight, each with a faded margin round it
+      const box = c.getBoundingClientRect(), k = st.w / box.width, ctx = st.ctx;
+      ctx.globalAlpha = 0.72; ctx.fillStyle = bg; ctx.beginPath();
+      for (const e of near) {
+        if (e.closest('[data-b]:not(.on)')) continue;
+        const r = e.getBoundingClientRect();
+        ctx.roundRect((r.left - box.left) * k - 16, (r.top - box.top) * k - 12, r.width * k + 32, r.height * k + 24, 24);
+      }
+      ctx.fill(); ctx.globalAlpha = 1;
+      // the taken cell, ringed for a second; the ring fades over the next
+      if (taken && gens < 20) {
+        ctx.globalAlpha = Math.min(1, (20 - gens) / 10); ctx.strokeStyle = st.t.danger; ctx.lineWidth = 6; ctx.beginPath();
+        ctx.arc(((BREAK.x + 0.5) * st.w) / m.W, ((BREAK.y + 0.5) * st.h) / m.H, 34, 0, 2 * Math.PI); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    };
+    const run = ticker(s, 10, () => {
+      if (gens >= RUN && ++idle < 1 + Math.floor((gens - RUN) / 5)) return false;
+      idle = 0; gens++; life.step(live);
+      return gens >= RUN + EASE;
+    }, paint);
     slide(s, {
       set(b: number, how: How) {
         s.classList.toggle('together', b >= 1); s.classList.toggle('thanked', b >= 2);
         stop();
-        if (b >= 2 && how === 'next') { draw.plain.fill(0); stop = drain(draw, [1, 2, 3, 4, 5, 6, 7], paint); }
+        if (b < 3) { run.play(false); reset(); }
+        if (b === 2 && how === 'next') { draw.plain.fill(0); stop = drain(draw, [1, 2, 3, 4, 5, 6, 7], paint); }
         else draw.plain.fill(b >= 2 ? 1 : 0);
+        if (b === 3 && !taken) { taken = true; live[spot] = 0; life.touch(BREAK.x + m.M, BREAK.y + m.M); run.play(true); }
         paint();
       },
-      enter() { stop(); draw.plain.fill(0); },
-      leave() { stop(); },
+      enter() { stop(); run.play(false); reset(); draw.plain.fill(0); },
+      leave() { stop(); run.play(false); },
     });
     onSize(c, paint);
   }

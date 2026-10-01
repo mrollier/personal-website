@@ -2,12 +2,7 @@
 // A1: the title over the cover's landscape, static: the multi-level still-life mosaic of src/data/defence/mosaic.json,
 // whose coast keeps clear of the text and the logos (scripts/defence/export-mosaic.py reads their boxes).
 import Slide from './Slide.astro';
-const logos = [
-  { src: 'ugent', alt: 'Ghent University', h: 128 },
-  { src: 'fbe', alt: 'Faculty of Bioscience Engineering', h: 58 },
-  { src: 'usp', alt: 'University of São Paulo', h: 66 },
-  { src: 'bionamix', alt: 'BionamiX', h: 66 },
-];
+import Logos from './Logos.astro';
 ---
 <Slide label="Title" class="a1">
   <canvas class="art" data-title-art aria-hidden="true"></canvas>
@@ -19,9 +14,7 @@ const logos = [
     <p class="fine">Supervisors: Prof. Dr. Ir. Jan M. Baetens · Prof. Dr. Odemir M. Bruno · Dr. Aisling Daly</p>
     <p class="fine">Joint PhD · Ghent University · University of São Paulo</p>
   </div>
-  <div class="logos" data-keep-clear>
-    {logos.map((l) => <img src={`/demos/defence/logos/${l.src}.webp`} alt={l.alt} style={`height: calc(${l.h} * var(--u))`} />)}
-  </div>
+  <Logos />
   <p slot="say">The title of the thesis, over a landscape in the style of its cover. It is the result of a five-year joint PhD at <a href="https://www.bionamix.ugent.be/">BionamiX</a> (Faculty of Bioscience Engineering, Ghent University, under Jan M. Baetens) and the Scientific Computing Group (São Carlos Institute of Physics, University of São Paulo, under Odemir M. Bruno). More on the <a href="https://michielrollier.be/research/">research page</a> and on <a href="https://orcid.org/0000-0001-8467-734X">ORCID</a>.</p>
   <p slot="say">The picture is not explained yet: within ten minutes the room will know what it is, and it comes back on the last slide.</p>
 </Slide>
@@ -34,11 +27,6 @@ const logos = [
   .who { font-size: calc(52 * var(--u)); font-weight: 600; }
   .when { font-size: calc(38 * var(--u)); }
   .fine { font-size: calc(26 * var(--u)); color: var(--muted); white-space: nowrap; }
-  .logos {
-    position: absolute; left: calc(96 * var(--u)); bottom: calc(64 * var(--u));
-    display: flex; align-items: center; gap: calc(56 * var(--u));
-  }
-  .logos img { display: block; width: auto; }
 </style>
 
 <script>

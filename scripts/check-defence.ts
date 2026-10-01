@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { reedSolomon, formatBits, qr } from '../src/scripts/defence/qr.ts';
 import { pack, noise, bank, spark } from '../src/scripts/defence/cover.ts';
-import { decodeMosaic } from '../src/scripts/defence/mosaic.ts';
+import { decodeMosaic, BREAK } from '../src/scripts/defence/mosaic.ts';
 import { stepLife, putRle, GOSPER_GUN, EATER, EATER_AT, ActiveLife } from '../src/scripts/life.ts';
 import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS, COLS, ROWS } from '../src/scripts/defence/room.ts';
@@ -37,12 +37,18 @@ function spread(g: Uint8Array, W: number, H: number, i: number): number {
 }
 
 // The title and closing mosaic (packed with the cover's code) is a still life on its padded torus, every live cell of
-// the page sits on a tile's ground (the closing slide drains its colours and leaves it still).
+// the page sits on a tile's ground, and the cell the closing slide takes away (BREAK) is alive and breaks it down: after
+// a hundred generations thousands of cells have changed.
 {
   const m = decodeMosaic(JSON.parse(readFileSync(new URL('../src/data/defence/mosaic.json', import.meta.url), 'utf8')));
   assert.equal(m.W * 9, m.H * 16);
   assert.equal(stepLife(m.live, m.PW, m.PH, new Uint8Array(m.PW * m.PH)), 0, 'the title mosaic is not a still life');
   for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) if (m.live[(y + m.M) * m.PW + x + m.M]) assert.ok(m.ground[y * m.W + x] > 0, 'a live cell on the field');
+  const at = (BREAK.y + m.M) * m.PW + BREAK.x + m.M, g = m.live.slice(), life = new ActiveLife(m.PW, m.PH);
+  assert.equal(g[at], 1, 'the closing slide takes away a dead cell');
+  g[at] = 0; life.touch(BREAK.x + m.M, BREAK.y + m.M);
+  for (let t = 0; t < 100; t++) life.step(g);
+  assert.ok(g.reduce((d, v, j) => d + (v !== m.live[j] ? 1 : 0), 0) >= 5000, 'the closing slide does not break the still life down');
 }
 // The still-life art of slide C3: any packing of tiles of levels 5, 4 and 3 and ponds on the pond lattice is a still
 // life, whatever the heights and the seed, and no tile lands where it must keep clear (the note). Every tile of the bank,
@@ -170,15 +176,15 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
   }
 }
 // The talk's three networks (trio.ts), as the say texts of F3 and G2 describe them: all connected; the random one with
-// two to thirteen neighbours, the ring with nearly eight each, the scale-free one with four for two in five nodes and
-// hubs of fifty.
+// two to thirteen neighbours, the ring with nearly eight each, the scale-free one with four for more than half of its
+// nodes and one hub of 106.
 {
   const nets = [0, 1, 2].map((k) => trioNet(k, 'none'));
   for (const net of nets) { const seen = new Uint8Array(net.n), q = [0]; seen[0] = 1; while (q.length) { const v = q.pop()!; for (const w of net.adj[v]) if (!seen[w]) { seen[w] = 1; q.push(w); } } assert.ok(seen.every((x) => x), 'a trio network falls apart'); }
   const deg = nets.map((net) => Array.from(net.deg as ArrayLike<number>));
   assert.deepEqual([Math.min(...deg[0]), Math.max(...deg[0])], [2, 13]);
   assert.deepEqual([Math.min(...deg[1]), Math.max(...deg[1])], [5, 12]);
-  assert.equal(deg[2].filter((d) => d === 4).length, 60); assert.equal(Math.max(...deg[2]), 52);
+  assert.equal(deg[2].filter((d) => d === 4).length, 80); assert.equal(Math.max(...deg[2]), 106);
   // F3: from each network's start, φ⁹₁₆₈,₄₈₆ keeps going on the random network (still changing after a hundred
   // timesteps), fills up and freezes on the ring (nine in ten on, still within sixty) and all but dies out on the
   // scale-free one (at most a tenth on after sixty); a node with two or four links can never be born under it

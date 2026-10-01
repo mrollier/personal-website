@@ -7,6 +7,10 @@ export type Mosaic = { W: number; H: number; M: number; PW: number; PH: number; 
 
 const bytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
+/** The cell of the page (column, row) that the thank-you slide takes away: right of the middle of the big landscape,
+ * one of the cells whose loss spreads fastest (scripts/check-defence.ts). */
+export const BREAK = { x: 253, y: 86 };
+
 /** The page's ground levels (run-length pairs) and the padded torus's live cells (bit-packed, most significant first). */
 export function decodeMosaic(j: MosaicJson): Mosaic {
   const rle = bytes(j.ground), ground = new Uint8Array(j.W * j.H);

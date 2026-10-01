@@ -1,31 +1,36 @@
 ---
-// H1–H2: one stubborn person in a room that runs a consensus-seeking rule; the same on a toy network, where a quiet
-// node changes nothing and an important one flips everyone (each run waits for its own start); then clamp every node
-// in turn for its dynamical importance, our result. The limitations are for the questions, not the slides.
+// H1–H2: one stubborn person in a room that runs a consensus-seeking rule; the room becomes a toy network (the people
+// lose their bodies and their heads scatter into it), where a quiet node changes nothing and an important one flips
+// everyone (each run waits for its own start); then every node stubborn in turn, for its dynamical importance (the
+// thesis says clamped; the slides never do). The limitations are for the questions, not the slides.
 // Data: src/data/defence/clamp.json.
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
 import SimButton from './SimButton.astro';
 import clamp from '../../data/defence/clamp.json';
 ---
-<Slide id="ch-impact" label="The stubborn person" builds={6} class="h1" ch={10}>
+<Slide id="ch-impact" label="The stubborn node" builds={6} class="h1" ch={10}>
   <div class="row grow h1-row">
     <div class="stack h1-view">
       <div class="h1-seats" data-b-off="1"><Seats label="The room with every hand up except one" /></div>
       <div class="h1-box" data-b="1">
-        <canvas class="net" aria-label="A network of 100 people running a consensus-seeking rule, one of them clamped"></canvas>
+        <canvas class="net" aria-label="A network of 100 people running a consensus-seeking rule, one of them stubborn"></canvas>
         <SimButton class="h1-btn" />
       </div>
+      <canvas class="h1-morph" aria-hidden="true"></canvas>
     </div>
     <div class="col h1-side">
-      <h2>The stubborn person</h2>
+      <div class="h1-head">
+        <h2>The stubborn node</h2>
+        <p class="h1-sub">Which individuals steer the group?</p>
+      </div>
       <p class="lede">Everyone follows a consensus-seeking rule, and the room ends with every hand up.</p>
       <p class="lede">Now one person refuses: <span class="danger">hand down, no matter what</span>. Does the room follow?</p>
       <p class="h1-state" data-state></p>
     </div>
   </div>
-  <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Imagine everyone in the room follows one: after a few rounds every hand is up. Now one person refuses and keeps their hand down, whatever happens. Does the room follow them?</p>
-  <p slot="say">The same on a network of 100 people. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration: a consensus-seeking rule on a scale-free network of 100 people, about eight contacts each, from the same start every time.)</p>
+  <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Imagine everyone in the room follows one: after a few timesteps every hand is up. Now one person refuses and keeps their hand down, whatever happens. Does the room follow them?</p>
+  <p slot="say">Now the room becomes a network: the people lose their bodies, and their heads scatter into a network of 100 people, half of them with a hand up. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration: a consensus-seeking rule on a scale-free network of 100 people, about eight contacts each, from the same start every time.)</p>
 </Slide>
 
 <Slide label="Clamp everyone, one at a time" builds={2} class="h2" ch={10}>
@@ -50,7 +55,13 @@ import clamp from '../../data/defence/clamp.json';
   .h1-box { position: relative; }
   .h1-box canvas { display: block; width: calc(840 * var(--u)); height: calc(840 * var(--u)); }
   .h1-box :global(.h1-btn) { right: calc(10 * var(--u)); bottom: calc(10 * var(--u)); }
+  .h1-morph { width: calc(900 * var(--u)); height: calc(900 * var(--u)); pointer-events: none; visibility: hidden; }
+  /* while the people turn into the network, the network itself waits under the picture that moves */
+  :global(.h1.morphing) .h1-morph { visibility: visible; }
+  :global(.h1.morphing) .h1-box canvas { visibility: hidden; }
   .h1-side { gap: calc(34 * var(--u)); }
+  .h1-head { display: flex; flex-direction: column; gap: calc(14 * var(--u)); margin-bottom: calc(16 * var(--u)); }
+  .h1-sub { font-size: calc(40 * var(--u)); }
   .h1-state { font-size: calc(34 * var(--u)); min-height: 3em; }
 
   .h2-row { gap: calc(50 * var(--u)); align-items: flex-start; }
@@ -68,7 +79,7 @@ import clamp from '../../data/defence/clamp.json';
   import { type Rule, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
   import { build } from '../../scripts/net';
-  import { parse, mix, css } from '../../scripts/palette';
+  import { parse, mix, css, type RGB } from '../../scripts/palette';
   import clamp from '../../data/defence/clamp.json';
 
   const RULE: Rule = { r: 9, B: 464, S: 488 };
@@ -107,7 +118,7 @@ import clamp from '../../data/defence/clamp.json';
       drawNet(st, (i) => (a[i] ? t.ink : t.panel), (i) => (i === who ? t.danger : null));
       const up = Math.round(density(a) * n);
       if (at === 0) { out.textContent = ''; return; }
-      out.innerHTML = `round ${tick} · ${up} of ${n} hands up` + (done ? (up <= 0 ? '<br><b class="danger">the whole room followed</b>' : who >= 0 ? '<br>nobody else followed' : '<br>consensus: every hand up') : '');
+      out.innerHTML = `timestep ${tick} · ${up} of ${n} hands up` + (done ? (up <= 0 ? '<br><b class="danger">the whole room followed</b>' : who >= 0 ? '<br>nobody else followed' : '<br>consensus: every hand up') : '');
     }
     const advance = () => {
       stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; tick++;
@@ -116,17 +127,98 @@ import clamp from '../../data/defence/clamp.json';
       return false;
     };
     const run = ticker(s, 3, advance, paint);
+    // ── the room becomes the network (build 0 → 1): the bodies fade while the heads stay, then each head flies to a node
+    // of its own, nearest first, as the links come in; the network's other twenty nodes grow where they are. On a
+    // canvas over both pictures, from where the seats and the network are laid out on screen. ──
+    const mc = s.querySelector<HTMLCanvasElement>('canvas.h1-morph')!, MORPH_MS = 1900;
+    const BODY = new Path2D('M8 128 C8 96 20 74 42 74 C64 74 76 96 76 128 Z'), ARM = new Path2D('M65 93 C80 85 84.5 70 84.5 46');
+    let morph = 1, morphRaf = 0;
+    type Head = { x: number; y: number; w: number; up: boolean; fill: RGB; stroke: RGB; to: number };
+    function morphPaint() {
+      const st = stage(mc); if (!st) return;
+      const { ctx, t } = st, m = mc.getBoundingClientRect(), sv = svg.getBoundingClientRect(), nb = c.getBoundingClientRect(), k = st.s;
+      // the seats (viewBox 880 wide; a seat's pictogram is 84 × 109 at column × 110 + 13, 96 + row × 128 + 8) and the
+      // network's nodes (Stubborn's drawNet: 30 in from its canvas's edges), in the morph canvas's design pixels
+      const q = sv.width / 880 / k, sx = (sv.left - m.left) / k, sy = (sv.top - m.top) / k, nx = (nb.left - m.left) / k, ny = (nb.top - m.top) / k;
+      const box = { x: 30, y: 30, w: nb.width / k - 60, h: nb.height / k - 60 };
+      const heads: Head[] = seats.map((u, i) => {
+        const cs = getComputedStyle(u), col = i % 8, row = Math.floor(i / 8);
+        return { x: sx + (col * 110 + 13) * q, y: sy + (96 + row * 128 + 8) * q, w: 84 * q, up: u.getAttribute('href') === '#hand-up', fill: parse(cs.fill), stroke: parse(cs.stroke), to: -1 };
+      });
+      const node = (j: number) => ({ x: nx + X(j, box), y: ny + Y(j, box) });
+      // nearest first: every head its own node
+      const pairs: [number, number, number][] = [], taken = new Uint8Array(n);
+      heads.forEach((h, i) => { const hx = h.x + 0.42 * h.w, hy = h.y + 0.4 * h.w; for (let j = 0; j < n; j++) { const p = node(j); pairs.push([(p.x - hx) ** 2 + (p.y - hy) ** 2, i, j]); } });
+      pairs.sort((a, b) => a[0] - b[0]);
+      for (const [, i, j] of pairs) if (heads[i].to < 0 && !taken[j]) { heads[i].to = j; taken[j] = 1; }
+      const ink = parse(t.ink), panel = parse(t.panel), muted = parse(t.muted);
+      const frame = () => {
+        const fade = Math.min(1, morph / 0.22), g = Math.max(0, Math.min(1, (morph - 0.22) / 0.78)), e = g < 0.5 ? 2 * g * g : 1 - (-2 * g + 2) ** 2 / 2;
+        // the heads keep their colours in flight and take the start's as they land
+        const land = Math.max(0, Math.min(1, (g - 0.6) / 0.4)), hue = land * land * (3 - 2 * land);
+        ctx.clearRect(0, 0, st.w, st.h);
+        // where every node is now: a head on its way, or one of the twenty that grow in place
+        const px = new Float32Array(n), py = new Float32Array(n);
+        for (let j = 0; j < n; j++) { const p = node(j); px[j] = p.x; py[j] = p.y; }
+        for (const h of heads) { const p = node(h.to), hx = h.x + 0.42 * h.w, hy = h.y + 0.4 * h.w; px[h.to] = hx + (p.x - hx) * e; py[h.to] = hy + (p.y - hy) * e; }
+        if (e > 0) {
+          ctx.globalAlpha = e; ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
+          for (const [i, j] of clamp.edges) { ctx.moveTo(px[i], py[i]); ctx.lineTo(px[j], py[j]); }
+          ctx.stroke(); ctx.globalAlpha = 1;
+        }
+        // the screen and the bodies, fading (a person is 100 × 130 in its pictogram's units)
+        if (fade < 1) {
+          ctx.globalAlpha = 1 - fade; ctx.fillStyle = t.line; ctx.beginPath(); ctx.roundRect(sx + 60 * q, sy + 12 * q, 760 * q, 24 * q, 4 * q); ctx.fill();
+          ctx.fillStyle = t.muted; ctx.font = `${34 * q}px ${t.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('screen', sx + 440 * q, sy + 78 * q); ctx.globalAlpha = 1;
+        }
+        if (fade < 1) for (const h of heads) {
+          ctx.save(); ctx.translate(h.x, h.y); ctx.scale(h.w / 100, h.w / 100); ctx.globalAlpha = 1 - fade;
+          ctx.fillStyle = css(h.fill); ctx.strokeStyle = css(h.stroke);
+          ctx.fill(BODY);
+          if (h.up) { ctx.lineWidth = 12.5; ctx.lineCap = 'round'; ctx.stroke(ARM); ctx.beginPath(); ctx.ellipse(84.5, 31, 10, 14, 0, 0, 2 * Math.PI); ctx.fill(); }
+          else { ctx.lineWidth = 3; ctx.stroke(BODY); }
+          ctx.restore();
+        }
+        // the twenty nodes nobody sat on, growing
+        for (let j = 0; j < n; j++) if (!taken[j] && e > 0) {
+          ctx.beginPath(); ctx.arc(px[j], py[j], radius(j) * e, 0, 2 * Math.PI); ctx.fillStyle = start[j] ? t.ink : t.panel; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = t.muted; ctx.stroke();
+        }
+        // the heads, turning into nodes of the start: half of them on
+        for (const h of heads) {
+          const j = h.to, r0 = 0.17 * h.w;
+          ctx.beginPath(); ctx.arc(px[j], py[j], r0 + (radius(j) - r0) * e, 0, 2 * Math.PI);
+          ctx.fillStyle = css(mix(h.fill, start[j] ? ink : panel, hue)); ctx.fill();
+          ctx.lineWidth = (h.up ? 0 : 3 * h.w / 100) * (1 - hue) + 2 * hue; if (ctx.lineWidth > 0.05) { ctx.strokeStyle = css(mix(h.stroke, muted, hue)); ctx.stroke(); }
+        }
+      };
+      return frame;
+    }
+    function becomeNetwork() {
+      const t0 = performance.now();
+      s.classList.add('morphing'); morph = 0;
+      const frame = morphPaint();
+      if (!frame) { stopMorph(); return; }
+      const tick = (now: number) => {
+        morph = Math.min(1, (now - t0) / MORPH_MS); frame();
+        if (morph < 1) morphRaf = requestAnimationFrame(tick); else stopMorph();
+      };
+      frame(); morphRaf = requestAnimationFrame(tick);
+    }
+    function stopMorph() { cancelAnimationFrame(morphRaf); morphRaf = 0; morph = 1; s.classList.remove('morphing'); }
     const nodeAt = (k: number) => (k >= 5 ? hi : k >= 3 ? lo : -1);
     sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, [2, 4, 6], { reset() { run.play(false); reset(nodeAt(at)); paint(); }, play() { run.play(true); } });
     slide(s, {
       // going back to a run shows how it ended; the button's waiting builds reset it
       set(k: number, how: How) {
-        at = k;
+        const was = at; at = k;
+        stopMorph();
+        if (k === 1 && was === 0 && how === 'next') becomeNetwork();
         if (nodeAt(k) !== who || how !== 'next') { run.play(false); reset(nodeAt(k)); if (how === 'prev' && k % 2 === 0 && k > 0) while (!advance()); }
         paint();
       },
       enter() { reset(-1); },
-      leave() { run.play(false); },
+      leave() { run.play(false); stopMorph(); },
     });
     onSize(c, paint);
   }

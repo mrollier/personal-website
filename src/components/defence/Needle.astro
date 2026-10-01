@@ -87,7 +87,8 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   .f5-rings { display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
   .rings { width: calc(1010 * var(--u)); height: calc(470 * var(--u)); }
   .sym { display: flex; align-items: center; gap: calc(36 * var(--u)); }
-  .sym b { font-size: calc(56 * var(--u)); color: var(--accent); }
+  /* the word's middle (its x-height, not its line box) on the middle of the button beside it */
+  .sym b { font-size: calc(56 * var(--u)); color: var(--accent); transform: translateY(-0.15em); }
   .f5-cousin { font-size: calc(34 * var(--u)); min-width: calc(330 * var(--u)); }
   .race { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
   .race-box { position: relative; }
@@ -201,7 +202,7 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
 
     // each rule's two curves in its tile (eight neighbours each), as on the metrics slides but without words: the average
     // next density in blue, with its tangent at ½ (how unstable), and the average next defect in red, with its tangent at
-    // the origin (how sensitive); a frame, no diagonal
+    // the origin (how sensitive); a frame, no diagonal; the simple threshold rule ringed, as in the race
     const mf = s.querySelector<HTMLCanvasElement>('canvas.mf')!;
     const pairs = cands.map((r) => ({ d: curveOf({ r: 9, B: r.B, S: r.S }, 'density'), e: curveOf({ r: 9, B: r.B, S: r.S }, 'defect'), r }));
     const paintCurves = () => {
@@ -216,6 +217,7 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
         tangent(st, q, { x: 0, y: 0, slope: r.bs8 }, hue(t, 'defect'), 2.5, DASH);
         curve(st, q, d, hue(t, 'density'), 4);
         curve(st, q, e, hue(t, 'defect'), 4);
+        if (is(r, THRESHOLD)) { ctx.strokeStyle = t.ink; ctx.lineWidth = 4; ctx.strokeRect(x - 8, y - 8, T + 16, T + 16); }
       });
     };
 

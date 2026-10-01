@@ -2,7 +2,9 @@
 // H1–H2: one stubborn person in a room that runs a consensus-seeking rule; the room becomes a toy network (the people
 // lose their bodies and their heads scatter into it), where a quiet node changes nothing and an important one flips
 // everyone (each run waits for its own start); then every node stubborn in turn, for its dynamical importance (the
-// thesis says clamped; the slides never do). The limitations are for the questions, not the slides.
+// thesis says clamped; the slides never do). H3: what it could be for: a health campaign with three ambassadors and an
+// unknown rule of persuasion, the consensus-seeking rule as a stand-in, and our result. The limitations are for the
+// questions, not the slides.
 // Data: src/data/defence/clamp.json.
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
@@ -55,6 +57,24 @@ const knnRho = knnSpearman(clamp);
   <p slot="say">Against the degree, the number of links, importance clearly goes up, but not one-to-one (a rank correlation of {clamp.summary.spearmanEtaDegree.toFixed(2)} on this network). Against the average degree of a node’s neighbours there is no relation at all ({knnRho.toFixed(2)}). In the thesis that measure is consistently the weakest, and on some scale-free networks even negative: a node whose neighbours are hubs matters less, because each hub hears from many others. Across families of networks the score goes with the usual measures of centrality but reduces to none of them.</p>
 </Slide>
 
+<Slide label="Who should we convince first?" builds={3} class="h3" ch={10}>
+  <h2>Who should we convince first?</h2>
+  <p class="h3-sub">A health campaign with a small budget</p>
+  <div class="row grow h3-row">
+    <canvas class="net" aria-label="A village as a network; then every villager coloured by their importance under a stand-in rule; then the three most important ringed"></canvas>
+    <div class="col h3-side">
+      <p class="h3-line">Budget: <b>three ambassadors</b></p>
+      <p class="h3-line">How villagers persuade each other: <b>unknown</b></p>
+      <p class="h3-line" data-b="1">Stand-in: a <b>consensus-seeking rule</b></p>
+      <p class="result" data-b="3"><b>Our result</b> Rank who steers the group without knowing the real rule, using a stand-in rule.</p>
+    </div>
+  </div>
+  <p slot="say">Why would we want to know who matters? Think of a health campaign with a small budget. In 32 villages in Honduras, researchers started a water-purification and a vitamin programme with a few villagers each, to see how far it would spread, and compared ways of picking those few (Kim and colleagues, The Lancet, 2015). So which three villagers should be our ambassadors? We do not know how villagers really persuade each other: the real rule is unknown.</p>
+  <p slot="say">So we use a stand-in: the consensus-seeking rule, not to model the villagers, but to measure them. Make each villager stubborn in turn and see how far the village follows: the darker, the further. (An illustration: the network of the previous slides, standing in for a village.)</p>
+  <p slot="say">The three darkest become our ambassadors: an ambassador is a stubborn node, who keeps promoting the programme, no matter what. On this small network they are also its three biggest hubs, and neighbours of each other: taking the top three one by one ignores that they may reach the same people, and choosing them together is a next step.</p>
+  <p slot="say">Our result: a ranking of who steers the group that needs no knowledge of the real rule and no measure of centrality, only a stand-in rule and a simulator. Whether the stand-in picks the same people as the real rule would is the most important next step of Chapter 10: comparing it with, say, an epidemic model on the same networks. This part of the thesis is unpublished and still in progress.</p>
+</Slide>
+
 <style>
   .h1-row { gap: calc(60 * var(--u)); align-items: center; }
   .h1-view { width: calc(900 * var(--u)); height: calc(900 * var(--u)); flex: none; place-items: center; }
@@ -80,6 +100,13 @@ const knnRho = knnSpearman(clamp);
   .hist { width: 100%; height: calc(470 * var(--u)); }
   .h2-pair { display: grid; grid-template-columns: 1fr 1fr; gap: calc(16 * var(--u)); }
   .scatter { width: 100%; height: calc(470 * var(--u)); }
+
+  .h3-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
+  .h3-row { gap: calc(60 * var(--u)); align-items: center; }
+  .h3-row > canvas.net { width: calc(660 * var(--u)); height: calc(660 * var(--u)); flex: none; }
+  .h3-side { gap: calc(36 * var(--u)); flex: 1; }
+  .h3-line { font-size: calc(46 * var(--u)); line-height: 1.25; }
+  :global(.h3) .result { margin-top: calc(20 * var(--u)); }
 </style>
 
 <script>
@@ -264,5 +291,20 @@ const knnRho = knnSpearman(clamp);
     });
     scatter(dc, clamp.deg, 0, Math.max(...clamp.deg) + 2, [[4, '4'], [10, '10'], [20, '20'], [30, '30']], 'degree', true);
     scatter(kc, knn, 6, 22, [[8, '8'], [12, '12'], [16, '16'], [20, '20']], 'average neighbour degree', false);
+  }
+
+  // ── H3: the village, plain (build 0); every villager in the colour of their importance under the stand-in rule, the
+  // scores of H2 (build 1); the three most important ringed in red, as stubborn nodes are (build 2); our result (3) ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.h3')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, eta = clamp.eta, top = Math.max(...eta);
+    const three = new Set(eta.map((_, i) => i).sort((a, b) => eta[b] - eta[a]).slice(0, 3));
+    let at = 0;
+    const paint = () => {
+      const st = stage(c); if (!st) return;
+      const lo = parse(st.t.panel), hiC = parse(st.t.accent);
+      drawNet(st, (i) => (at >= 1 ? css(mix(lo, hiC, eta[i] / top)) : st.t.panel), (i) => (at >= 2 && three.has(i) ? st.t.danger : null));
+    };
+    slide(s, { set(b: number) { at = b; paint(); } });
+    onSize(c, paint);
   }
 </script>

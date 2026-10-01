@@ -12,6 +12,9 @@ export const TRIO: { id: string; name: string; spec: NetSpec; seed: number; star
   { id: 'ring', name: 'small-world ring', spec: { kind: 'ws', n: 150, k: 8, p: 0.1 }, seed: 47, start: 9030, layout: 'ring' },
   { id: 'star', name: 'scale-free', spec: { kind: 'npa', n: 150, m: 4, alpha: 1.5 }, seed: 350, start: 9033, layout: 'force' },
 ];
+/** Slide G5's phones: a small scale-free contact network nobody holds (one hub of 34 links), on which Miranda et al.'s
+ * rule keeps nearly half of the phones switching every timestep (scripts/check-defence.ts); half of them on at the start. */
+export const PHONES: { spec: NetSpec; seed: number; start: number } = { spec: { kind: 'npa', n: 48, m: 3, alpha: 1.5 }, seed: 2, start: 48 };
 /** The share of nodes on in a start. */
 export const RHO0 = 0.3;
 

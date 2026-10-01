@@ -11,7 +11,7 @@ import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
 import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
 import { remap, ends, intervalOf, cousin } from '../src/scripts/defence/rings.ts';
 import { step, randomState, phi, type Rule as LlnaRule } from '../src/scripts/llna.ts';
-import { trioNet, trioStart } from '../src/scripts/defence/trio.ts';
+import { trioNet, trioStart, PHONES } from '../src/scripts/defence/trio.ts';
 import { wildfire, FIRE, BARE, BURNING, BURNT } from '../src/scripts/defence/wildfire.ts';
 import { fingerprinter, PRINT } from '../src/scripts/defence/print.ts';
 import { neighbourDegree, knnSpearman } from '../src/scripts/defence/importance.ts';
@@ -211,6 +211,17 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     for (const [x, y] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(mir[x], mir[y]) >= 0.5, `G2: fingerprints ${x} and ${y} look alike under Miranda's rule (start ${seed})`);
   }
   assert.equal(stepOne(MIR, 4), 0, 'G2: a node with four neighbours can be born under Miranda\'s rule');
+  // G5: the phones' hidden network has one hub of 34 links, and Miranda's rule keeps a third of the phones or more
+  // switching every timestep, from the slide's start and from twenty others
+  {
+    const net = buildNet(PHONES.spec, PHONES.seed, 'none');
+    assert.equal(Math.max(...Array.from(net.deg as ArrayLike<number>)), 34, 'G5: the hub');
+    for (const rnd of [makeRng(PHONES.start), ...Array.from({ length: 20 }, (_, i) => makeRng(700 + i))]) {
+      let a = randomState(net.n, 0.5, rnd), b = new Uint8Array(net.n), f = 0;
+      for (let t = 1; t <= 80; t++) { step(a, net, MIR, b); if (t > 20) for (let x = 0; x < net.n; x++) f += a[x] ^ b[x]; [a, b] = [b, a]; }
+      assert.ok(f / 60 / net.n >= 0.3, 'G5: the phones go quiet');
+    }
+  }
   const win = prints({ r: 9, B: 488, S: 464 });
   const low = (h: number[]) => h.slice(0, 4).reduce((m, v) => m + v, 0);
   for (const w of win) {

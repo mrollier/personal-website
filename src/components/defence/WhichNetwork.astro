@@ -7,8 +7,9 @@
 // behaviour predicts topology, and under it the hunt: rules whose fingerprints are distinct. First the consensus-seeking rule: every network agrees, and the three fingerprints
 // are one (a plain arch); then Miranda et al.'s rule from the same start, and three different prints. G4: what makes a
 // good detective: the same two rules on their rings, a red arrow (the flipped neighbour of the sensitivity slide) at
-// every change of answer between neighbouring slices, counted (the thesis's jaggedness, never named on the slide); our
-// result, and the bridge to what consensus-seeking rules are good for instead.
+// every change of answer between neighbouring slices, counted (the thesis's jaggedness, never named on the slide), and
+// our result. G5: what it could be for: phones that only sense who is near, on a contact network nobody holds, each
+// running a good detective; their fingerprint gives the network away, and the rule is chosen in advance.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { phi } from './tex';
@@ -63,7 +64,7 @@ const kinds = ['whorl', 'loop', 'tented'];
   <p slot="say">Together, the three histograms are the network’s fingerprint (drawn here as a real one), and a simple classifier can learn to tell the fingerprints apart. Under the consensus-seeking rule the three fingerprints are one and the same: a bad detective. The next click puts in the rule G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way, <Fragment set:html={phi(9, 170, 340)} /> on their own intervals (closed on the left, so not quite our symmetric ones), and runs it. It runs from a new random start, as every switch of rule does. Now the histograms differ: on the scale-free network its many nodes with only four links soon stay off for good, so its entropy has a second peak at 0, and on the ring nearly every node is on half of the time. And so do the fingerprints: a whorl, a loop and a tented arch, the textbook kinds. So we look for rules whose fingerprints are clearly different; the switch at the top does the same by hand. The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine; this slide keeps the idea and shrinks the rest.</p>
 </Slide>
 
-<Slide label="What makes a good detective?" builds={3} class="g4" ch={9}>
+<Slide label="What makes a good detective?" builds={2} class="g4" ch={9}>
   <h2>What makes a good detective?</h2>
   <div class="g4-two">
     {sides.map((sd, i) => (
@@ -75,10 +76,27 @@ const kinds = ['whorl', 'loop', 'tented'];
     ))}
   </div>
   <p class="result" data-b="2"><b>Our result</b> On 13 of 23 datasets, the best detectives change their mind often, but not always. Searching there finds a rule within 5% of the best while trying only 10–20% of the rules.</p>
-  <p class="bridge" data-b="3">Consensus-seeking rules make bad detectives. But they are good at something else: <b>finding who matters</b>.</p>
   <p slot="say">What makes the difference can be read off the rule itself. Back to the rings, and to the red arrow of the sensitivity slide: one neighbour more or fewer moves a node one slice along its ring. The next click draws that arrow wherever it changes the answer, between every two neighbouring slices where the rule says something else. The consensus-seeking rule changes its mind at 6 of the 16 steps, Miranda’s rule at 15: a rule that changes its mind often is a sensitive rule, since a small change in the neighbourhood often changes what a node does.</p>
   <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). Over thousands of rules and 23 datasets, the best detectives change their mind often, but not always: at between half and nine in ten of the steps. That makes sense: such rules are sensitive enough to pick up how networks differ, but not so sensitive that it drowns in chaos; they behave in a complex way (a reading the thesis proposes but does not test). Miranda’s rule, at 15 of 16, sits just above that band: on these three networks it does well, but over all the datasets the best rules change their mind a little less often. On 13 of the 23 datasets, more often tends to classify better (correlations between about 0.2 and 0.46), and searching among the rules that change their mind often, but not always, finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well. (The count is what the thesis calls the jaggedness: the neighbour part of the Boolean sensitivity with every slice weighed the same, whatever the network. The Boolean sensitivity itself shows the same pattern, slightly weaker.)</p>
-  <p slot="say">So consensus-seeking rules make bad detectives. But they turn out to be good at something else: finding which nodes matter.</p>
+</Slide>
+
+<Slide label="Who meets whom?" builds={3} class="g5" ch={9}>
+  <h2>Who meets whom?</h2>
+  <p class="g5-sub">Identifying a network nobody can see</p>
+  <div class="g5-row">
+    <div class="g5-crowd">
+      <canvas class="phones" aria-label="Forty-eight phones, each switching its screen on and off by one rule, on a network of contacts nobody can see"></canvas>
+      <SimButton class="g5-btn" />
+    </div>
+    <p class="g5-arrow" data-b="2" aria-hidden="true">→</p>
+    <canvas class="g5-print" data-b="2" data-kind="tented" data-seed="13" aria-label="the phones' fingerprint"></canvas>
+    <p class="g5-arrow" data-b="2" aria-hidden="true">→</p>
+    <p class="g5-answer" data-b="2">a few hubs:<br /><b>superspreaders</b></p>
+  </div>
+  <p class="g5-rule" data-b="3">The rule to load: one that changes its mind <b>often, but not always</b>.</p>
+  <p slot="say">What could this be good for, when nobody has the network? Six years ago this week, on 30 September 2020, Belgium launched its contact-tracing app, Coronalert: every phone sensed over Bluetooth which phones came near it, and to protect our privacy nobody ever held the network of who met whom. Now imagine every phone running one simple rule with the phones around it, and reporting only its own ons and offs, never whom it met. The next click starts them: a small network of 48 phones, hidden.</p>
+  <p slot="say">From those rows of ons and offs alone, the fingerprint says what kind of network we live in: whether our contacts run through a few hubs, superspreaders, or are well mixed. Here the hidden network is scale-free, with one phone linked to 34 others (its links appear on this click), and the phones run Miranda et al.’s rule, so the fingerprint is the scale-free one of before. A thought experiment, of course: real contacts change from hour to hour.</p>
+  <p slot="say">But which rule do we load into millions of phones? We cannot try thousands of rules on real people. This is where knowing what makes a good detective pays off: a rule that changes its mind often, but not always, chosen in advance from simulations alone. And the consensus-seeking rules, such bad detectives, turn out to be good at something else: finding who matters.</p>
 </Slide>
 
 <style>
@@ -113,14 +131,24 @@ const kinds = ['whorl', 'loop', 'tented'];
   .g4-count { font-size: calc(44 * var(--u)); color: var(--danger); }
   .g4-count b { font-size: 1.3em; }
   :global(.g4) .result { margin-top: auto; }
-  .bridge { font-size: calc(44 * var(--u)); font-weight: 400; line-height: 1.25; }
+
+  .g5-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
+  .g5-row { flex: 1; display: flex; align-items: center; gap: calc(36 * var(--u)); }
+  .g5-crowd { position: relative; flex: none; }
+  .phones { display: block; width: calc(820 * var(--u)); height: calc(640 * var(--u)); }
+  .g5-crowd :global(.g5-btn) { right: calc(-84 * var(--u)); bottom: 0; }
+  .g5-arrow { font-size: calc(90 * var(--u)); color: var(--muted); }
+  .g5-print { width: calc(240 * var(--u)); height: calc(300 * var(--u)); flex: none; }
+  .g5-answer { font-size: calc(48 * var(--u)); line-height: 1.25; }
+  .g5-rule { font-size: calc(44 * var(--u)); line-height: 1.25; }
 </style>
 
 <script>
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
-  import { TRIO, trioNet, trioStart, RHO0 } from '../../scripts/defence/trio';
+  import { TRIO, trioNet, trioStart, RHO0, PHONES } from '../../scripts/defence/trio';
+  import { buildNet, makeRng } from '../../scripts/net';
   import { fingerprinter, PRINT, type Feature, type Print } from '../../scripts/defence/print';
   import { type Rule, step, randomState } from '../../scripts/llna';
   import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
@@ -234,5 +262,52 @@ const kinds = ['whorl', 'loop', 'tented'];
     };
     slide(s, { set(b: number) { marked = b >= 1; cs.forEach(paint); } });
     cs.forEach((c) => onSize(c, () => paint(c)));
+  }
+
+  // ── G5: 48 phones in a loose crowd, eight by six, each in a random place (the network is hidden, so where a phone
+  // stands says nothing about it; trio.ts PHONES), a screen filled when on; Miranda et al.'s rule switches them, two timesteps a second, from ▶ (build 1); build 2 shows the hidden links
+  // faintly, with the fingerprint (the scale-free print of G2) and what it says; build 3 the rule to load. A reset by hand
+  // draws a new start. ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.g5')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.phones')!, pc = s.querySelector<HTMLCanvasElement>('canvas.g5-print')!;
+    let net: ReturnType<typeof buildNet> | null = null, first: Uint8Array | null = null, a = new Uint8Array(0), b = new Uint8Array(0), seen = false;
+    const phones = () => (net ??= buildNet(PHONES.spec, PHONES.seed, 'none'));
+    const COLS = 8, ROWS = 6, spot: [number, number][] = (() => {
+      const rnd = makeRng(PHONES.seed + 100), at = Array.from({ length: COLS * ROWS }, (_, k) => k);
+      for (let k = at.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [at[k], at[j]] = [at[j], at[k]]; }
+      return at.map((k) => [(k % COLS + 0.5 + (rnd() - 0.5) * 0.4) / COLS, (Math.floor(k / COLS) + 0.5 + (rnd() - 0.5) * 0.4) / ROWS]);
+    })();
+    const restart = () => { const g = phones(); first ??= randomState(g.n, 0.5, makeRng(PHONES.start)); a = first.slice(); b = new Uint8Array(g.n); };
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { ctx, t } = st, g = phones(), W = 40, H = 68;
+      const X = (i: number) => spot[i][0] * st.w, Y = (i: number) => spot[i][1] * st.h;
+      if (seen) {
+        ctx.strokeStyle = t.muted; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.beginPath();
+        for (const [i, j] of g.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      for (let i = 0; i < g.n; i++) {
+        const x = X(i) - W / 2, y = Y(i) - H / 2;
+        ctx.beginPath(); ctx.roundRect(x, y, W, H, 8); ctx.fillStyle = t.panel; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(x + 6, y + 9, W - 12, H - 20, 2); ctx.fillStyle = a[i] ? t.ink : t.panel; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
+      }
+    }
+    const run = ticker(s, 2, () => { step(a, phones(), RULES.miranda, b); [a, b] = [b, a]; }, paint);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { run.play(false); restart(); paint(); },
+      play() { run.play(true); },
+      reroll() { first = randomState(phones().n, 0.5, fresh()); },
+    });
+    slide(s, {
+      set(k: number) { seen = k >= 2; paint(); },
+      enter() { first = null; restart(); },
+      leave() { run.play(false); },
+    });
+    restart();
+    onSize(c, paint);
+    const lines = ridges(pc.dataset.kind as PrintKind, +pc.dataset.seed!);
+    onSize(pc, () => { const st = stage(pc); if (!st) return; const h = st.h - 4; drawPrint(st.ctx, lines, (st.w - h / 1.25) / 2, 2, h, st.t.ink); });
   }
 </script>

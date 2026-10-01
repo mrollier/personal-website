@@ -9,8 +9,8 @@ import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS, COLS, ROWS } from '../src/scripts/defence/room.ts';
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
 import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
-import { remap } from '../src/scripts/defence/rings.ts';
-import { step, randomState } from '../src/scripts/llna.ts';
+import { remap, ends, intervalOf, cousin } from '../src/scripts/defence/rings.ts';
+import { step, randomState, type Rule as LlnaRule } from '../src/scripts/llna.ts';
 import type { NetSpec } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
@@ -120,6 +120,27 @@ for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
 // resolution 5 comes back as it was; φ⁵₆,₁₁ at resolution 7 is φ⁷₁₄,₅₅ (worked out by hand).
 for (let x = 0; x < 32; x++) for (const r of [7, 9, 11, 13]) assert.equal(remap(remap(x, 5, r), r, 5), x, `rule ${x} through resolution ${r}`);
 assert.equal(remap(6, 5, 7), 14); assert.equal(remap(11, 5, 7), 55);
+// F2: the ends each interval includes (solid on the rings) follow the thesis: at r = 5 [0, 1/5[, [1/5, 2/5[, [2/5, 3/5], ]3/5, 4/5],
+// ]4/5, 1]; at even r the born ring gives ½ to the interval left of it (R⁺), the survive ring to the one right of it (R⁻).
+assert.deepEqual([0, 1, 2, 3, 4].map((k) => ends(k, 5, false)), [[true, false], [true, false], [true, true], [false, true], [false, true]]);
+assert.equal(intervalOf(0.4, 5, false), 2); assert.equal(intervalOf(0.6, 5, true), 2); assert.equal(intervalOf(0.2, 5, true), 1);
+assert.equal(intervalOf(0.5, 4, false), 1); assert.equal(intervalOf(0.5, 4, true), 2);
+// Swapping on and off (ρ → 1 − ρ) carries every interval of one ring to its mirror image on the other, at every r.
+for (let r = 2; r <= 13; r++) for (let k = 1; k <= 16; k++) for (let q = 0; q <= k; q++) for (const on of [false, true])
+  assert.equal(intervalOf(1 - q / k, r, !on), r - 1 - intervalOf(q / k, r, on), `r ${r}, ${q}/${k}`);
+// The cousin (App. C): φ⁵₆,₂₈ and φ⁵₂₄,₁₉ are each other's; a cousin's cousin is the rule itself; φ⁹₄₈₈,₄₆₄ is its own.
+assert.deepEqual(cousin({ r: 5, B: 6, S: 28 }), { r: 5, B: 24, S: 19 });
+for (const r of [4, 5]) for (let B = 0; B < 1 << r; B++) for (let S = 0; S < 1 << r; S++) assert.deepEqual(cousin(cousin({ r, B, S })), { r, B, S });
+assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
+// …and it behaves exactly the same with the colours swapped, as the simulator (llna.ts) runs it, at odd r.
+{
+  const net = buildNet({ kind: 'npa', n: 120, m: 4, alpha: 1 }, 5, 'none'), rnd = makeRng(77);
+  for (let k = 0; k < 60; k++) {
+    const r = [3, 5, 7, 9][k % 4], rule: LlnaRule = { r, B: Math.floor(rnd() * (1 << r)), S: Math.floor(rnd() * (1 << r)) }, twin = cousin(rule);
+    const a = randomState(net.n, 0.5, rnd), na = a.map((v) => 1 - v), out = step(a, net, rule), nout = step(na, net, twin);
+    assert.ok(out.every((v, i) => v === 1 - nout[i]), `the cousin of φ${r} ${rule.B},${rule.S} does not mirror it`);
+  }
+}
 // F3, as its say text tells: on the slide's small-world ring (network 31, start 1984) Maze freezes and the Game of Life
 // dies out within a few dozen rounds, while Replicator is still changing after a hundred. D3: on the 16 × 16 small-world
 // grid (network 31, start 70) the Game of Life is still busy after 300 rounds.

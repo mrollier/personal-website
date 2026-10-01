@@ -8,24 +8,24 @@ const B = 8, S = 12, r = 9;
 const cells = Array.from({ length: r }, (_, i) => ({ b: (B >> i) & 1, s: (S >> i) & 1 }));
 const cw = 1160 / r;
 ---
-<Slide label="Now imagine" builds={5} class="f1">
+<Slide label="Generalising even further" builds={5} class="f1">
   <div class="row grow f1-row">
     <div class="f1-room">
       <canvas class="f1-links" aria-hidden="true"></canvas>
       <Seats you={[3, 4]} label="The room: everyone in one long row, then everyone linked to the eight people around them, then links rewired across the room" />
     </div>
     <div class="col f1-side">
-      <h2>Now imagine…</h2>
+      <h2>Generalising even further</h2>
       <ol class="f1-stages">
-        <li data-b="1">One long row</li>
-        <li data-b="2">A grid</li>
-        <li data-b="3">A network<label class="f1-p">rewired<input type="range" class="ctl" min="0" max="1" step="0.01" value="0.2" data-p aria-label="share of links rewired" /><output data-pv>20%</output></label></li>
+        <li data-b="1">Elementary cellular automata</li>
+        <li data-b="2">Life-like cellular automata</li>
+        <li data-b="3">Life-like <b>network</b> automata<label class="f1-p">rewired<input type="range" class="ctl" min="0" max="1" step="0.01" value="0.2" data-p aria-label="share of links rewired" /><output data-pv>20%</output></label></li>
       </ol>
     </div>
   </div>
-  <p slot="say">What if the room played the game differently? In the game you looked at your two neighbours, so the room was really one long row: link everybody to the person before and after them, snaking up from the back of the room to the front and round again, and everyone has two neighbours. That is a one-dimensional cellular automaton, like the rows of cells we just saw.</p>
-  <p slot="say">Now link everyone to the eight people around them: a grid, like the one the Game of Life lives on. The room wraps round at its edges, so the people at a wall have eight too; the stubs at the edges are links to the far side.</p>
-  <p slot="say">Then take some of those links and swing them across the room to anyone at all. A few long links like these make a small-world network: everyone is suddenly only a few steps from everyone else, and running the same rule for everyone on it gives a network automaton. On this page, drag the slider: at 0 the grid comes back, at 100% the links are completely random.</p>
+  <p slot="say">What if the room played the game differently? In the game you looked at your two neighbours, so the room was really one long row: link everybody to the person before and after them, snaking up from the back of the room to the front and round again, and everyone has two neighbours. That is a one-dimensional cellular automaton, an elementary one, like the rows of cells we just saw.</p>
+  <p slot="say">Now link everyone to the eight people around them: a grid, like the one the Game of Life and the other Life-like cellular automata live on. The room wraps round at its edges, so the people at a wall have eight too; the stubs at the edges are links to the far side.</p>
+  <p slot="say">Then take some of those links and swing them across the room to anyone at all. A few long links like these make a small-world network: everyone is suddenly only a few steps from everyone else, and running the same Life-like rule for everyone on it gives a Life-like network automaton. On this page, drag the slider: at 0 the grid comes back, at 100% the links are completely random.</p>
   <p slot="say">But now some have four contacts and some thirteen, so a rule like “exactly three neighbours” no longer makes sense for everybody. From here on the people become nodes, and a hand up becomes a node that is on.</p>
 </Slide>
 

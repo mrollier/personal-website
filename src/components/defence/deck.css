@@ -28,6 +28,8 @@
   font-family: var(--sans); font-weight: 700; letter-spacing: -0.01em; line-height: 1.1;
   font-size: calc(66 * var(--u)); margin: 0; color: var(--ink);
 }
+/* how many rules a family has, after its name */
+.slide h2 .count { font-weight: 400; color: var(--muted); }
 .slide h3 { font-family: var(--sans); font-weight: 700; font-size: calc(42 * var(--u)); margin: 0; line-height: 1.15; }
 .slide p, .slide ul, .slide ol { margin: 0; }
 .slide ul, .slide ol { padding-left: 1.1em; display: flex; flex-direction: column; gap: 0.35em; }

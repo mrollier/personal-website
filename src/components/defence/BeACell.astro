@@ -130,9 +130,12 @@ import SimButton from './SimButton.astro';
       ctx.strokeStyle = t.muted; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       arrow(ctx, LEFT, TOP - 34, LEFT + 250, TOP - 34);
       arrow(ctx, LEFT - 40, TOP, LEFT - 40, TOP + 250);
-      const f = { color: t.muted, font: t.sans, size: 34 };
+      // each word carries on from its arrow's head; "time" turned a quarter, to read downwards like its arrow
+      const f = { color: t.muted, font: t.sans, size: 52 };
       text(ctx, 'space', LEFT + 268, TOP - 34, { ...f, base: 'middle' });
-      text(ctx, 'time', LEFT - 40, TOP + 290, { ...f, align: 'center', base: 'middle' });
+      ctx.save(); ctx.translate(LEFT - 40, TOP + 268); ctx.rotate(Math.PI / 2);
+      text(ctx, 'time', 0, 0, { ...f, base: 'middle' });
+      ctx.restore();
     }
     const run = ticker(c, 12, () => { if (shown >= rows.length) return true; shown++; }, paint);
     slide(s, {

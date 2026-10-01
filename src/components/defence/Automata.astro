@@ -4,6 +4,7 @@
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import tiles from '../../data/tiles.json';
+import extra from '../../data/defence/still.json';
 
 const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ n, bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
 // rule 168 dies out after about ten rows (rule 8 after two, too fast to see). Rule 1's background blinks, on and off
@@ -23,14 +24,17 @@ const life = [
   { name: 'Dying of loneliness', rule: '0 or 1 live neighbour', live: [2], was: 1, now: 0 },
   { name: 'Dying of overpopulation', rule: '4 or more live neighbours', live: [0, 1, 5, 6], was: 1, now: 0 },
 ];
-// C3's three tiles: the median-population tile of levels 3, 4 and 5, each a still life on its own
+// C3's five tiles, levels 2 to 6, each a still life on its own: the median-population tile of levels 3, 4 and 5 from
+// the cover's tile bank, and of levels 2 and 6 from src/data/defence/still.json (for level 6, a symmetric one at the
+// median population: scripts/defence/export-still.py)
 const tilePath = (level: number) => {
-  const all = (tiles as Record<string, string[]>)[level], size = 6 * level, bytes = atob(all[Math.floor(all.length / 2)]);
+  const all = (tiles as Record<string, string[]>)[level], size = 6 * level;
+  const bytes = atob(all ? all[Math.floor(all.length / 2)] : (extra as Record<string, string>)[level]);
   let d = '';
   for (let k = 0; k < size * size; k++) if ((bytes.charCodeAt(k >> 3) >> (7 - (k & 7))) & 1) d += `M${k % size + 0.06} ${Math.floor(k / size) + 0.06}h0.88v0.88h-0.88z`;
   return { size, d };
 };
-const still = [3, 4, 5].map(tilePath);
+const still = [2, 3, 4, 5, 6].map(tilePath);
 const likes = [
   { id: 'maze', name: 'Maze', bs: 'B3/S12345' },
   { id: 'life', name: 'Game of Life', bs: 'B3/S23' },
@@ -38,7 +42,7 @@ const likes = [
 ];
 ---
 <Slide label="Elementary cellular automata" builds={5} class="c1">
-  <h2>Elementary cellular automata</h2>
+  <h2>Elementary cellular automata <span class="count">(256)</span></h2>
   <div class="table">
     {cases.map((c) => (
       <div class="case">
@@ -92,11 +96,10 @@ const likes = [
 
 <Slide label="Still lifes" builds={3} class="c3">
   <h2>Still lifes</h2>
-  <p class="lede">Patterns that the rule leaves exactly as they are.</p>
+  <p class="lede c3-lede">Patterns that the rule leaves exactly as they are.</p>
   <div class="still" data-b-off="1">
     {still.map((t) => (
-      <svg viewBox={`-1 -1 ${t.size + 2} ${t.size + 2}`} style={`width: calc(${(t.size + 2) * 13} * var(--u))`} aria-hidden="true">
-        <rect x="-1" y="-1" width={t.size + 2} height={t.size + 2} class="bgr" />
+      <svg viewBox={`0 0 ${t.size} ${t.size}`} style={`width: calc(${t.size * 12} * var(--u))`} aria-hidden="true">
         <path d={t.d} class="on" />
       </svg>
     ))}
@@ -106,12 +109,12 @@ const likes = [
     <p class="art-note">Every cell here obeys the Game of Life. Nothing changes, until you disturb it.</p>
     <SimButton class="c3-btn" />
   </div>
-  <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes. The three here are tiles of the mosaics of the cover, of three sizes.</p>
+  <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes. The five here are tiles of the mosaics of the cover, of five sizes (levels 2 to 6).</p>
   <p slot="say">Fit many of them together and you can make a picture in which every cell obeys the Game of Life and nothing ever changes. The cover of the thesis is made this way. The colours are only decoration: drain them away and every cell is simply alive or dead, and still nothing changes. Take away one cell and the picture starts to unravel. A reset packs a new landscape of tiles; on this page you can also click or drag on the picture to disturb it yourself.</p>
 </Slide>
 
 <Slide label="Life-like cellular automata" builds={3} class="c4">
-  <h2>Life-like cellular automata</h2>
+  <h2>Life-like cellular automata <span class="count">(262,144)</span></h2>
   <div class="likes">
     {likes.map((g) => (
       <figure>
@@ -160,17 +163,17 @@ const likes = [
   .life { width: calc(1430 * var(--u)); height: calc(726 * var(--u)); } /* 130 × 66 cells of 11 */
   .life-box :global(.c2-btn) { right: calc(-24 * var(--u)); bottom: calc(-20 * var(--u)); }
 
-  .still { display: flex; justify-content: center; align-items: center; gap: calc(110 * var(--u)); flex: 1; padding-bottom: calc(40 * var(--u)); }
+  .c3-lede { font-size: calc(56 * var(--u)); }
+  .still { display: flex; justify-content: center; align-items: center; gap: calc(72 * var(--u)); flex: 1; padding-bottom: calc(40 * var(--u)); }
   .still svg { display: block; }
   .still .on { fill: var(--ink); }
-  .still .bgr { fill: var(--panel); }
   .art { position: absolute; inset: 0; background: var(--bg); }
   .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
   .art :global(.c3-btn) { right: calc(96 * var(--u)); bottom: calc(80 * var(--u)); }
   /* the note's box, in design pixels, is also where the initial mosaic keeps clear (NOTE in the script) */
   .art-note {
-    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); width: calc(1000 * var(--u));
-    font-size: calc(52 * var(--u)); line-height: 1.2; pointer-events: none;
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); width: calc(1080 * var(--u));
+    font-size: calc(60 * var(--u)); line-height: 1.2; pointer-events: none;
   }
 
   .likes { display: flex; justify-content: space-between; flex: 1; align-items: center; }
@@ -288,7 +291,7 @@ const likes = [
   const pal = decodeMosaic(mosaicData as MosaicJson);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c3')) {
     const c = s.querySelector<HTMLCanvasElement>('[data-cover-art]')!, W = 216, H = 126, cell = DESIGN / W, SEED = 20261002;
-    const NOTE = { x: 96, y: 1080 - 80 - 130, w: 1000, h: 130 }; // the note's box in design pixels (see the style)
+    const NOTE = { x: 96, y: 1080 - 80 - 150, w: 1080, h: 150 }; // the note's box in design pixels (see the style)
     const nx0 = NOTE.x / cell - 2, ny0 = NOTE.y / cell - 2, nx1 = (NOTE.x + NOTE.w) / cell + 2, ny1 = (NOTE.y + NOTE.h) / cell + 2;
     const gap = (x: number, y: number) => Math.hypot(Math.max(nx0 - x, 0, x - nx1), Math.max(ny0 - y, 0, y - ny1));
     let base: Packed, live: Uint8Array, life: ActiveLife, down = false, spot = -1, stop = () => {};

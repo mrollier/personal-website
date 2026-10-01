@@ -26,16 +26,19 @@ import clamp from '../../data/defence/clamp.json';
       </div>
       <ol class="h1-steps">
         <li data-b="1">Find a converging system</li>
-        <li data-b="3">Force a node to be stubborn</li>
+        <li data-b="3">Force a node to be stubborn
+          <p class="h1-note" data-b="3">Some are not strong enough</p>
+          <p class="h1-note" data-b="5">Others convince the entire group</p>
+        </li>
       </ol>
     </div>
   </div>
   <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Here a toy village of 100 people, about eight contacts each: which individuals steer the group?</p>
   <p slot="say">First, find a converging system: everyone follows a consensus-seeking rule, from a start with half of them on. The click runs it: with nobody stubborn, the village ends with every node on.</p>
-  <p slot="say">Then force a node to be stubborn: it stays off, no matter what. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole village flips to all off. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration, from the same start every time.)</p>
+  <p slot="say">Then force a node to be stubborn: it stays off, no matter what. Some are not strong enough: when a quiet person at the edge is stubborn (ringed), nobody else follows. Others convince the entire group: when an important person is stubborn, the whole village flips to all off. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration, from the same start every time.)</p>
 </Slide>
 
-<Slide label="Dynamical importance score" builds={2} class="h2" ch={10}>
+<Slide label="Importance score" builds={2} class="h2" ch={10}>
   <div class="row grow imp-row">
     <div class="imp-view">
       <canvas class="net" aria-label="The village with every node coloured by how much of the village follows it when it is stubborn; then three ambassadors ringed, and the three with the most contacts in dashed rings"></canvas>
@@ -43,7 +46,7 @@ import clamp from '../../data/defence/clamp.json';
     </div>
     <div class="col imp-side">
       <div class="imp-head">
-        <h2>Dynamical importance score</h2>
+        <h2>Importance score</h2>
         <p class="imp-sub">Analysing the impact of individuals</p>
       </div>
       <div class="col h2-camp" data-b="1">
@@ -72,8 +75,7 @@ import clamp from '../../data/defence/clamp.json';
   .imp-sub { font-size: calc(40 * var(--u)); }
 
   .h1-steps { font-size: calc(50 * var(--u)); gap: calc(30 * var(--u)); padding-left: 1.2em; margin-top: calc(30 * var(--u)); }
-  .h1-steps li { transition: color 0.35s ease, opacity 0.35s ease; }
-  .h1-steps li.past { color: var(--muted); }
+  .h1-note { font-size: calc(42 * var(--u)); margin-top: calc(16 * var(--u)); }
 
   /* the colour of importance, under the network */
   .h2-ramp { position: absolute; left: 0; right: 0; top: calc(830 * var(--u)); display: flex; justify-content: center; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); color: var(--muted); }
@@ -122,7 +124,7 @@ import clamp from '../../data/defence/clamp.json';
   // ── H1: the village from the start: a system that converges, nobody stubborn (shown at build 1, run at 2); then a
   // node forced to be stubborn: a quiet one (3, 4), an important one (5, 6) ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.h1')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.net')!, steps = Array.from(s.querySelectorAll<HTMLElement>('.h1-steps li'));
+    const c = s.querySelector<HTMLCanvasElement>('canvas.net')!;
     const start = Uint8Array.from(clamp.demo.bits, (ch) => +ch), { hi, lo } = clamp.demo;
     let who = -1, a = start.slice(), b = new Uint8Array(n), tick = 0, cl = new Int8Array(n).fill(-1), at = 0;
     function reset(k: number) {
@@ -145,7 +147,6 @@ import clamp from '../../data/defence/clamp.json';
       // going back to a run shows how it ended; the button's waiting builds reset it
       set(k: number, how: How) {
         at = k;
-        steps[0].classList.toggle('past', k >= 3);
         if (nodeAt(k) !== who || how !== 'next') { run.play(false); reset(nodeAt(k)); if (how === 'prev' && k % 2 === 0 && k > 0) while (!advance()); }
         paint();
       },

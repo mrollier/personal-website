@@ -1,5 +1,6 @@
 ---
-// D2–D3: nature uses the same recipe as the Life-like network automata just before (a flock, a brain); the rule is the
+// D2–D3: nature uses the same recipe as the Life-like network automata just before (a flock, a brain; on each slide one
+// click starts the simulation and the film beside it together); the rule is the
 // genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
@@ -7,9 +8,8 @@ import { phi } from './tex';
 // D3: the genotype's two rings, in design pixels of their canvas (src/scripts/defence/donut.ts draws them)
 const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R: 135, w: 56, on: true }];
 ---
-<Slide label="So what? Emergence in nature: a flock" builds={2} class="d2 d2-flock">
-  <h2>So what?</h2>
-  <p class="d2-sub">Emergence in nature</p>
+<Slide label="So what? Emergence in nature: a flock" builds={1} class="d2 d2-flock">
+  <h2>So what? Emergence in nature</h2>
   <div class="d2-row">
     <figure>
       <p class="lede">Boids and your mouse</p>
@@ -26,13 +26,11 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
       </div>
     </figure>
   </div>
-  <p slot="say">Nature is full of the same recipe: simple local rules, on a network of who reacts to whom. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. The flock on the left is made of boids, the simulated birds of Craig Reynolds (1987), each following just those rules. Move the mouse over them: they scatter from it and close up behind it.</p>
-  <p slot="say">The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Then, in one long shot, the falcon chases the flock, and dark waves run through it as the birds swerve away, one after the other. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it. (Video: C. Hemelrijk et al. 2019, from the videos to “Damping of waves of agitation in starling flocks”, CC BY 4.0; two clips joined and cropped.)</p>
+  <p slot="say">Nature is full of the same recipe: simple local rules, on a network of who reacts to whom. Every bird in a flock follows a few local rules: align with your neighbours, stay close, don’t collide. Two birds are easy to understand; the flock as a whole, turning and splitting and closing up again around a threat, is not. The flock on the left is made of boids, the simulated birds of Craig Reynolds (1987), each following just those rules; the click starts it together with the film beside it. Move the mouse over them: they scatter from it and close up behind it. The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Then, in one long shot, the falcon chases the flock, and dark waves run through it as the birds swerve away, one after the other. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it. (Video: C. Hemelrijk et al. 2019, from the videos to “Damping of waves of agitation in starling flocks”, CC BY 4.0; two clips joined and cropped.)</p>
 </Slide>
 
-<Slide label="So what? Emergence in nature: a brain" builds={2} class="d2 d2-brain">
-  <h2>So what?</h2>
-  <p class="d2-sub">Emergence in nature</p>
+<Slide label="So what? Emergence in nature: a brain" builds={1} class="d2 d2-brain">
+  <h2>So what? Emergence in nature</h2>
   <div class="d2-row">
     <figure>
       <p class="lede">Neurons firing</p>
@@ -49,8 +47,7 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
       </div>
     </figure>
   </div>
-  <p slot="say">A single neuron is well understood: it fires, or not, depending on its inputs. How billions of them together experience reality and steer through it, and even dream, is one of the hardest questions there is. The brain on the left is only an illustration: a neuron fires when enough of its inputs fired, then rests for a moment.</p>
-  <p slot="say">On the right, an octopus fast asleep. Every so often a sleeping octopus slips into a short phase of active sleep, and its skin comes alive: it darkens, breaks into blotches and pales again, running through the same patterns it uses when it is awake, to hide or to signal. That skin is a screen of tiny colour cells, each opened and closed by nerves from the brain, so what we are watching is the brain at work, with nothing outside to react to. The researchers found that its brain activity in these moments looks like waking activity, and compare it to our own REM sleep, the sleep in which we dream. Nobody knows what an octopus experiences; but simple cells, wired together, produce something that looks remarkably like a dream. (Video: an octopus in active sleep, A. Pophale et al., Nature 2023, CC BY 4.0; cropped and trimmed.)</p>
+  <p slot="say">A single neuron is well understood: it fires, or not, depending on its inputs. How billions of them together experience reality and steer through it, and even dream, is one of the hardest questions there is. The brain on the left is only an illustration: a neuron fires when enough of its inputs fired, then rests for a moment; the click starts it together with the film beside it. On the right, an octopus fast asleep. Every so often a sleeping octopus slips into a short phase of active sleep, and its skin comes alive: it darkens, breaks into blotches and pales again, running through the same patterns it uses when it is awake, to hide or to signal. That skin is a screen of tiny colour cells, each opened and closed by nerves from the brain, so what we are watching is the brain at work, with nothing outside to react to. The researchers found that its brain activity in these moments looks like waking activity, and compare it to our own REM sleep, the sleep in which we dream. Nobody knows what an octopus experiences; but simple cells, wired together, produce something that looks remarkably like a dream. (Video: an octopus in active sleep, A. Pophale et al., Nature 2023, CC BY 4.0; cropped and trimmed.)</p>
 </Slide>
 
 <Slide label="Genotype and phenotype" builds={3} class="d3">
@@ -85,7 +82,6 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
 
   .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
   .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
-  .d2-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
   .d2-row .lede { padding-top: calc(24 * var(--u)); font-size: calc(42 * var(--u)); } /* one line, just above its picture */
   .d2-box { position: relative; }
   .d2-row canvas, .d2-row video { display: block; width: calc(832 * var(--u)); height: calc(586 * var(--u)); background: var(--panel); }
@@ -120,14 +116,14 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
   import { flock, stepFlock } from '../../scripts/defence/boids';
   import { brain, fire, outline, FOLDS, BOX } from '../../scripts/defence/brain';
 
-  /** A clip beside a simulation: the same ▶/↺ button, started by its own build. */
+  /** A clip beside a simulation: the same ▶/↺ button, started by the same build as the simulation. */
   function clip(s: HTMLElement, k: number) {
     const v = s.querySelector<HTMLVideoElement>('video')!, btn = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]')[1];
     // a seek decodes a frame, which can stall a slow machine, so rewind only when the clip has moved
     sim(btn, k, { reset() { if (!v.paused) v.pause(); if (v.currentTime > 0) v.currentTime = 0; }, play() { v.play().catch(() => {}); } });
   }
 
-  // ── D2: a flock that scatters from the pointer (build 1) beside starlings around a falcon (build 2) ──
+  // ── D2: a flock that scatters from the pointer beside starlings around a falcon, both from build 1 ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d2-flock')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.boids')!;
     const W = 832, H = 586, BIRDS = 100;
@@ -155,12 +151,12 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
       play() { birds.play(true); },
       reroll() { seed = (Math.random() * 4294967296) >>> 0; },
     });
-    clip(s, 2);
+    clip(s, 1);
     slide(s, { leave() { birds.play(false); } });
     onSize(c, paintFlock);
   }
 
-  // ── D2b: a brain whose neurons fire (build 1) beside an octopus in active sleep (build 2) ──
+  // ── D2b: a brain whose neurons fire beside an octopus in active sleep, both from build 1 ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.d2-brain')) {
     const b = s.querySelector<HTMLCanvasElement>('canvas.brain')!;
     // the brain: 0 resting, 1 firing, 2–3 recovering; `glow` fades each neuron after it fired
@@ -204,7 +200,7 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
       play() { neurons.play(true); },
       reroll() { seed = (Math.random() * 4294967296) >>> 0; },
     });
-    clip(s, 2);
+    clip(s, 1);
     slide(s, { leave() { neurons.play(false); } });
     warm();
     onSize(b, paintBrain);

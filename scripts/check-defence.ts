@@ -37,13 +37,12 @@ function spread(g: Uint8Array, W: number, H: number, i: number): number {
 }
 
 // The title and closing mosaic (packed with the cover's code) is a still life on its padded torus, every live cell of
-// the page sits on a tile's ground, and the closing slide's flipped cell sets it moving for good.
+// the page sits on a tile's ground (the closing slide drains its colours and leaves it still).
 {
   const m = decodeMosaic(JSON.parse(readFileSync(new URL('../src/data/defence/mosaic.json', import.meta.url), 'utf8')));
   assert.equal(m.W * 9, m.H * 16);
   assert.equal(stepLife(m.live, m.PW, m.PH, new Uint8Array(m.PW * m.PH)), 0, 'the title mosaic is not a still life');
   for (let y = 0; y < m.H; y++) for (let x = 0; x < m.W; x++) if (m.live[(y + m.M) * m.PW + x + m.M]) assert.ok(m.ground[y * m.W + x] > 0, 'a live cell on the field');
-  assert.ok(spread(m.live, m.PW, m.PH, spark(m.live, m.PW, m.PH, 0.8 * m.W + m.M, 0.5 * m.H + m.M)) >= 1000, 'the closing flip heals');
 }
 // The still-life art of slide C3: any packing of tiles of levels 5, 4 and 3 and ponds on the pond lattice is a still
 // life, whatever the heights and the seed, and no tile lands where it must keep clear (the note). Every tile of the bank,
@@ -199,9 +198,8 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
   // timesteps differ clearly, from the networks' own starts and from any of 40 others; nodes with two or four neighbours
   // can never be born under it. Under the consensus-seeking winner all three are all off within twenty timesteps, the
   // slide's run stops a second (twelve timesteps) after all three stand still, and their fingerprints are alike: each
-  // pair closer than the same pair under the detective from the same starts, the density piled up at 0 on all three. (MIR, Miranda et al.'s rule on their uniform cut, still runs
-  // the phones of the backup slide.)
-  const DET: Rule = { r: 9, B: 170, S: 48 }, MIR: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, prints = (rule: Rule, seed = -1) => nets.map((net, k) => {
+  // pair closer than the same pair under the detective from the same starts, the density piled up at 0 on all three.
+  const DET: Rule = { r: 9, B: 170, S: 48 }, prints = (rule: Rule, seed = -1) => nets.map((net, k) => {
     const fp = fingerprinter(net), rnd = makeRng(seed);
     let a = seed < 0 ? trioStart(k, net.n) : randomState(net.n, 0.3, rnd), b = new Uint8Array(net.n), flips = 0, off = -1;
     fp.push(a);
@@ -217,15 +215,15 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
     for (const [x, y] of pairs) { const d = dist(det[x], det[y]); assert.ok(d >= 1, `G2: fingerprints ${x} and ${y} look alike under the detective (start ${seed})`); }
   }
   assert.deepEqual([stepOne(DET, 2), stepOne(DET, 4)], [0, 0], 'G2: a node with two or four neighbours can be born under the detective');
-  // G5: the phones' hidden network has one hub of 34 links, and Miranda's rule keeps a third of the phones or more
+  // G5: the phones' hidden network has one hub of 34 links, and the good detective keeps half of the phones or more
   // switching every timestep, from the slide's start and from twenty others
   {
     const net = buildNet(PHONES.spec, PHONES.seed, 'none');
     assert.equal(Math.max(...Array.from(net.deg as ArrayLike<number>)), 34, 'G5: the hub');
     for (const rnd of [makeRng(PHONES.start), ...Array.from({ length: 20 }, (_, i) => makeRng(700 + i))]) {
       let a = randomState(net.n, 0.5, rnd), b = new Uint8Array(net.n), f = 0;
-      for (let t = 1; t <= 80; t++) { step(a, net, MIR, b); if (t > 20) for (let x = 0; x < net.n; x++) f += a[x] ^ b[x]; [a, b] = [b, a]; }
-      assert.ok(f / 60 / net.n >= 0.3, 'G5: the phones go quiet');
+      for (let t = 1; t <= 80; t++) { step(a, net, DET, b); if (t > 20) for (let x = 0; x < net.n; x++) f += a[x] ^ b[x]; [a, b] = [b, a]; }
+      assert.ok(f / 60 / net.n >= 0.5, 'G5: the phones go quiet');
     }
   }
   const win = prints({ r: 9, B: 488, S: 464 });

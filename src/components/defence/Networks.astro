@@ -1,7 +1,7 @@
 ---
 // Life on networks: the room becomes a network of nodes, then from one long row to a grid to contacts anywhere in the
-// room (F1); the Life-like network automata as two rings round a node, at ever finer resolution, the first contribution
-// of the thesis (F2); and one rule on the three networks of the rest of the talk, where the network decides what it does (F3). All come
+// room (F1); the Life-like network automata as two rings round a node, at ever finer resolution, our result, the first
+// contribution of the thesis (F2); and one rule on the three networks of the rest of the talk, where the network decides what it does (F3). All come
 // before the thesis map, so none has the ribbon. Formulas are LaTeX (./tex).
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
@@ -45,7 +45,7 @@ const nets = TRIO.map((t) => t.name);
     <label class="f2-res"><span set:html={tex('r')} /><input type="range" class="ctl" min="2" max="13" step="1" value="5" data-r aria-label="resolution" /></label>
     <button type="button" class="ctl f2-cousin" data-cousin>⇄ its cousin</button>
   </div>
-  <p class="result f2-result" data-b="4"><b>Our first contribution</b> Defining LLNAs to allow symmetry</p>
+  <p class="result f2-result" data-b="4"><b>Our result</b> Defining LLNAs to allow symmetry</p>
   <p slot="say" set:html={texify('A node with ten neighbours and a node with three cannot follow a rule that counts neighbours. So count the share instead: the fraction of a node’s neighbours that are on, which runs round each ring from 0 at the top, clockwise, to 1, from light to dark. Cut it into intervals, five here. A node that is off (left) is born when the share falls in one of its chosen intervals; a node that is on (right) survives when the share falls in one of its chosen intervals. The chosen intervals are the outlined ones. An end drawn solid belongs to the interval, a dotted one does not: in $\\phi^5_{6,11}$ a node that is off is born from $\\tfrac15$ up to and including $\\tfrac35$. On this page, click an interval to choose it or not. The rule’s name reads the chosen intervals as two binary numbers, as rule 90 did on the elementary table: born is 6, the second and third intervals, and survive is 11, the first, second and fourth.')} />
   <p slot="say" set:html={texify('Each click cuts the share more finely, into 7, 9 and then 11 intervals: the resolution $r$. The rule keeps the regions it had, but its name changes, and every finer resolution can write rules that a coarser one cannot: there is no end to them. At $r = 9$, on a grid where everyone has eight neighbours, each interval holds exactly one number of live neighbours, and the Game of Life is $\\phi^9_{8,12}$. The slider on this page sets any resolution from 2 to 13.')} />
   <p slot="say" set:html={texify('Defining these rules properly, for any network and at any resolution, is the first contribution of the thesis (Chapter 5, Physica D 2025), and the point of the definition is symmetry. Which ends each interval includes is chosen so that every rule has a cousin that behaves exactly the same with on and off swapped: the same patterns, in the other colours. The button on this page swaps a rule for its cousin: born becomes the complement of survive read backwards, and survive the complement of born read backwards; some rules are their own cousin. At an odd resolution the intervals below $\\tfrac12$ include their left end, those above it their right end, and the middle one both. An even resolution has no middle interval, so there the two rings give $\\tfrac12$ to different sides: the born ring to the interval just left of it, the survive ring to the one just right of it (Appendix C of the thesis).')} />

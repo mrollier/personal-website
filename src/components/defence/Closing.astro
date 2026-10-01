@@ -4,8 +4,8 @@
 // thesis, one at a time in the middle of the slide: spatiotemporal modelling at BionamiX (a groundwater model, then a
 // wildfire, each started by the click that shows it),
 // influence maximisation, and inside artificial minds (a small neural network at work); and the close: the title's
-// slogan over the cover's landscape, brought together, then its colours drained away and one flipped cell that sets the
-// still life moving, and a QR code to the site (drawn at build time, no library at run time).
+// slogan over the cover's landscape, brought together, then its colours drained away (the still life stays still), and
+// a QR code to the site (drawn at build time, no library at run time).
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
@@ -54,7 +54,7 @@ const halves = [
       <div class="i2-head"><img src="/demos/defence/logos/bionamix.webp" alt="BionamiX" /><b>Spatiotemporal modelling</b></div>
       <div class="i2-row">
         <div class="i2-gw" data-b="1">
-          <p class="i2-sub">Groundwater flow <span class="i2-month" data-month>Jan</span></p>
+          <p class="i2-sub">Groundwater level <span class="i2-month" data-month>Jan</span></p>
           <div class="i2-box">
             <canvas class="i2-gwpic" aria-label="The water table under a nature reserve through the seasons: high in spring, low in late summer, lowest along a line of wells"></canvas>
             <SimButton class="i2-btn" />
@@ -94,7 +94,7 @@ const halves = [
     </figure>
   </div>
   <p slot="say">Where does this go next? First, at BionamiX: spatiotemporal modelling, where cellular automata model processes in space and time. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods.</p>
-  <p slot="say">Groundwater flow: the MACCA-GW model, a cellular automaton for groundwater flow, applied to De Wilde Landen in the Netherlands, is accepted for the ACRI 2026 proceedings (with L. Landuyt and J. M. Baetens). It is not part of the thesis: a model in space, not a network automaton. Every cell holds the height of the water table; water flows to it from its four neighbours, rain falls, the land cover draws some back, and a line of wells pumps, more in summer. The map is a simplified version on a made-up reserve, not the calibrated model, started with this click: a year in ten seconds, the water table highest in spring and lowest in late summer, deepest along the wells. Next to established models such as MODFLOW it offers simplicity, and many runs at once for ensembles; in the paper, pumping more in winter and less in summer raises the spring water table by about a third of a metre, at no cost.</p>
+  <p slot="say">Groundwater level: the MACCA-GW model, a cellular automaton for groundwater flow, applied to De Wilde Landen in the Netherlands, is accepted for the ACRI 2026 proceedings (with L. Landuyt and J. M. Baetens). It is not part of the thesis: a model in space, not a network automaton. Every cell holds the height of the water table; water flows to it from its four neighbours, rain falls, the land cover draws some back, and a line of wells pumps, more in summer. The map is a simplified version on a made-up reserve, not the calibrated model, started with this click: a year in ten seconds, the water table highest in spring and lowest in late summer, deepest along the wells. Next to established models such as MODFLOW it offers simplicity, and many runs at once for ensembles; in the paper, pumping more in winter and less in summer raises the spring water table by about a third of a metre, at no cost.</p>
   <p slot="say">And wildfires, close to home: in August a fire in the Hautes Fagnes burnt some 3,000 hectares, one of the largest in Belgian history, and villages had to be evacuated. The picture is a wildfire as a simple cellular automaton, an illustration and not the BionamiX model, started with this click: green trees, red fire, charcoal where it has passed, a wind from the left; a burning tree burns for several timesteps and can set each of its eight neighbours alight, most easily downwind. Models like this ask where a fire goes next, and where a firebreak would help most.</p>
   <p slot="say">Second: influence maximisation. I wish I had started on node importance earlier: it holds many open questions and many relevant applications. Which few people, chosen together, reach the most? Does a stand-in rule pick the same people as the real processes on a network, an epidemic, an opinion, a product spreading? The claims of the impact chapter still have to be checked against such processes, and on real networks. The picture, started with this click, is the village of before with our three ambassadors (ringed) holding on to the programme: from one start after another, the village follows them, nearly always.</p>
   <p slot="say">And next for me: what goes on inside artificial minds. A neural network is also simple operations, iterated: every node adds up what comes in, each input with its weight, adds a bias, and passes the sum on only if it is positive (a ReLU). Here a small one with random weights and biases, started with this click, processes one input after another: each link lights up with what it passes on, a node fills as it fires, and the largest output is ringed. Nobody writes down what a trained network does: the same gap between rule and behaviour, with very high stakes. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
@@ -117,7 +117,7 @@ const halves = [
     </div>
   </div>
   <p slot="say">The title once more, in two halves: the rich landscape is what we see, the behaviour; iterated simplicity is what we write down, the rule. This thesis brought those two worlds a little closer together.</p>
-  <p slot="say">Thank you. The colours drain out of the landscape, as on the still-life slide; then one cell changes, and the still life starts to unravel. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
+  <p slot="say">Thank you. The colours drain out of the landscape, as on the still-life slide: every cell simply alive or dead, and nothing changes. The QR code leads to this site, with every demo of tonight and the thesis chapter by chapter.</p>
 </Slide>
 
 <style>
@@ -191,8 +191,6 @@ const halves = [
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
   import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
-  import { spark } from '../../scripts/defence/cover';
-  import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, hammingWeight, density } from '../../scripts/llna';
   import { sensitivity } from '../../scripts/genotype';
@@ -542,28 +540,23 @@ const halves = [
     });
   }
 
-  // ── I3: the slogan's two halves come together over the landscape; then thanks, the colours drain away as on slide
-  // C3, and once they are gone one flipped cell sets the still life moving ──
+  // ── I3: the slogan's two halves come together over the landscape; then thanks, and the colours drain away as on
+  // slide C3. Nothing runs: the still life stays still behind the questions ──
   const m = decodeMosaic(mosaicData as MosaicJson);
-  // the flipped cell: a live cell near a point in the big tiles on the right of the page, one whose loss spreads
-  const flip = spark(m.live, m.PW, m.PH, 0.8 * m.W + m.M, 0.5 * m.H + m.M);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i3')) {
     const c = s.querySelector<HTMLCanvasElement>('canvas.art')!, draw = mosaicPainter(m, '#0c2448', getComputedStyle(c).getPropertyValue('--bg').trim());
-    let live = m.live.slice(), life = new ActiveLife(m.PW, m.PH), gens = 0, stop = () => {};
-    const reset = () => { live = m.live.slice(); life = new ActiveLife(m.PW, m.PH); gens = 0; };
-    const paint = () => { const st = stage(c); if (st) draw(st.ctx, live, 0, 0, st.w, st.h); };
-    const run = ticker(s, 10, () => { gens++; return life.step(live) === 0; }, paint);
-    const go = () => { live[flip] ^= 1; life.touch(flip % m.PW, Math.floor(flip / m.PW)); run.play(true); };
+    let stop = () => {};
+    const paint = () => { const st = stage(c); if (st) draw(st.ctx, m.live, 0, 0, st.w, st.h); };
     slide(s, {
       set(b: number, how: How) {
         s.classList.toggle('together', b >= 1); s.classList.toggle('thanked', b >= 2);
-        if (b < 2) { stop(); run.play(false); reset(); draw.plain.fill(0); }
-        else if (how === 'next') { stop(); reset(); draw.plain.fill(0); stop = drain(draw, [1, 2, 3, 4, 5, 6, 7], paint, go); }
-        else if (gens === 0) { stop(); reset(); draw.plain.fill(1); go(); }
+        stop();
+        if (b >= 2 && how === 'next') { draw.plain.fill(0); stop = drain(draw, [1, 2, 3, 4, 5, 6, 7], paint); }
+        else draw.plain.fill(b >= 2 ? 1 : 0);
         paint();
       },
-      enter() { stop(); reset(); draw.plain.fill(0); },
-      leave() { stop(); run.play(false); },
+      enter() { stop(); draw.plain.fill(0); },
+      leave() { stop(); },
     });
     onSize(c, paint);
   }

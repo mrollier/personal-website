@@ -108,6 +108,7 @@ const likes = [
   <div class="art" data-b="1">
     <canvas data-cover-art aria-hidden="true"></canvas>
     <p class="art-note">Every cell here obeys the Game of Life. Nothing changes, until you disturb it.</p>
+    <p class="result c3-result"><b>Our result</b> Create artwork for an international conference</p>
     <SimButton class="c3-btn" />
   </div>
   <p slot="say">Some patterns are left exactly as they are by the rule: every live cell has two or three live neighbours, and no dead cell has exactly three. These are still lifes. The five here are tiles of the mosaics of the cover, of five sizes (levels 2 to 6).</p>
@@ -171,11 +172,14 @@ const likes = [
   .art { position: absolute; inset: 0; background: var(--bg); }
   .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
   .art :global(.c3-btn) { right: calc(96 * var(--u)); bottom: calc(80 * var(--u)); }
-  /* the note's box, in design pixels, is also where the initial mosaic keeps clear (NOTE in the script) */
+  /* the note's box and the result box under it, in design pixels, are where the initial mosaic keeps clear (NOTE and
+     CLEAR in the script) */
   .art-note {
-    position: absolute; left: calc(96 * var(--u)); bottom: calc(80 * var(--u)); width: calc(1080 * var(--u));
+    position: absolute; left: calc(96 * var(--u)); bottom: calc(180 * var(--u)); width: calc(1080 * var(--u));
     font-size: calc(60 * var(--u)); line-height: 1.2; pointer-events: none;
   }
+
+  .c3-result { position: absolute; left: calc(96 * var(--u)); bottom: calc(56 * var(--u)); pointer-events: none; }
 
   .likes { display: flex; justify-content: space-between; flex: 1; align-items: center; }
   .likes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
@@ -285,15 +289,17 @@ const likes = [
     onSize(c, paint);
   }
 
-  // ── C3: three tiles, then a landscape of them packed as the cover is, clear of the note, in the cover's colours
-  // (build 1). Build 2 drains the colours, level by level: only alive and dead are left. The button (build 3) takes away
+  // ── C3: three tiles, then a landscape of them packed as the cover is, clear of the note and the result box (the
+  // deck's first: the cover's art made the artwork of an international conference), in the cover's colours (build 1). Build 2 drains the colours, level by level: only alive and dead are left. The button (build 3) takes away
   // one cell, a click or a drag drops a few, and the Game of Life takes over until the grid is still again. A reset
   // packs a new landscape, with another mix of levels. ──
   const pal = decodeMosaic(mosaicData as MosaicJson);
   for (const s of document.querySelectorAll<HTMLElement>('.slide.c3')) {
     const c = s.querySelector<HTMLCanvasElement>('[data-cover-art]')!, W = 216, H = 126, cell = DESIGN / W, SEED = 20261002;
-    const NOTE = { x: 96, y: 1080 - 80 - 150, w: 1080, h: 150 }; // the note's box in design pixels (see the style)
-    const nx0 = NOTE.x / cell - 2, ny0 = NOTE.y / cell - 2, nx1 = (NOTE.x + NOTE.w) / cell + 2, ny1 = (NOTE.y + NOTE.h) / cell + 2;
+    const NOTE = { x: 96, y: 1080 - 180 - 150, w: 1080, h: 150 }; // the note's box in design pixels (see the style)
+    // the room the landscape leaves: the note and the result box under it
+    const CLEAR = { x: NOTE.x, y: NOTE.y, w: 1140, h: 1080 - 56 - NOTE.y };
+    const nx0 = CLEAR.x / cell - 2, ny0 = CLEAR.y / cell - 2, nx1 = (CLEAR.x + CLEAR.w) / cell + 2, ny1 = (CLEAR.y + CLEAR.h) / cell + 2;
     const gap = (x: number, y: number) => Math.hypot(Math.max(nx0 - x, 0, x - nx1), Math.max(ny0 - y, 0, y - ny1));
     let base: Packed, live: Uint8Array, life: ActiveLife, down = false, spot = -1, stop = () => {};
     const bg = getComputedStyle(c).getPropertyValue('--bg').trim();

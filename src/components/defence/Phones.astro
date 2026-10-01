@@ -21,7 +21,7 @@ import SimButton from './SimButton.astro';
   <p class="g5-rule" data-b="3">The rule to load: one that changes its mind <b>often, but not always</b>.</p>
   <p class="cite">Ch. 9 · <a href="#backup" data-go="backup">back to the questions</a></p>
   <p slot="say">What could this be good for, when nobody has the network? Six years ago this week, on 30 September 2020, Belgium launched its contact-tracing app, Coronalert: every phone sensed over Bluetooth which phones came near it, and to protect our privacy nobody ever held the network of who met whom. Now imagine every phone running one simple rule with the phones around it, and reporting only its own ons and offs, never whom it met. The next click starts them: a small network of 48 phones, hidden.</p>
-  <p slot="say">From those rows of ons and offs alone, the fingerprint says what kind of network we live in: whether our contacts run through a few hubs, superspreaders, or are well mixed. Here the hidden network is scale-free, with one phone linked to 34 others (its links appear on this click), and the phones run Miranda et al.’s rule, so the fingerprint is the scale-free one of before. A thought experiment, of course: real contacts change from hour to hour.</p>
+  <p slot="say">From those rows of ons and offs alone, the fingerprint says what kind of network we live in: whether our contacts run through a few hubs, superspreaders, or are well mixed. Here the hidden network is scale-free, with one phone linked to 34 others (its links appear on this click), and the phones run the good detective, so the fingerprint is the scale-free one of before. A thought experiment, of course: real contacts change from hour to hour.</p>
   <p slot="say">But which rule do we load into millions of phones? We cannot try thousands of rules on real people. This is where knowing what makes a good detective pays off: a rule that changes its mind often, but not always, chosen in advance from simulations alone. And the consensus-seeking rules, such bad detectives, turn out to be good at something else: finding who matters.</p>
 </Slide>
 
@@ -47,9 +47,9 @@ import SimButton from './SimButton.astro';
   import { type Rule, step, randomState } from '../../scripts/llna';
   import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
 
-  const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' } };
+  const DETECTIVE: Rule = { r: 9, B: 170, S: 48 }; // the good detective of G2
   // ── G5: 48 phones in a loose crowd, eight by six, each in a random place (the network is hidden, so where a phone
-  // stands says nothing about it; trio.ts PHONES), a screen filled when on; Miranda et al.'s rule switches them, two timesteps a second, from ▶ (build 1); build 2 shows the hidden links
+  // stands says nothing about it; trio.ts PHONES), a screen filled when on; the good detective switches them, two timesteps a second, from ▶ (build 1); build 2 shows the hidden links
   // faintly, with the fingerprint (the scale-free print of G2) and what it says; build 3 the rule to load. A reset by hand
   // draws a new start. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.g5')) {
@@ -78,7 +78,7 @@ import SimButton from './SimButton.astro';
         ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
       }
     }
-    const run = ticker(s, 2, () => { step(a, phones(), RULES.miranda, b); [a, b] = [b, a]; }, paint);
+    const run = ticker(s, 2, () => { step(a, phones(), DETECTIVE, b); [a, b] = [b, a]; }, paint);
     sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
       reset() { run.play(false); restart(); paint(); },
       play() { run.play(true); },

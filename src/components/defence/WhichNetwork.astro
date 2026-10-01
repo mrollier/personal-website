@@ -1,12 +1,15 @@
 ---
 // G2 and G4, network classification (Ch. 9). G2: one rule on the talk's three networks (src/scripts/defence/trio.ts);
 // under each network three histograms, computed live from ▶ over the whole run so far, for the thesis's 100 timesteps
+// or until a second after all three networks stand still
 // (./print: the Shannon entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them,
 // and the neighbourhood density that Ch. 9 used; the slide never names them), with a fingerprint drawn over them from
 // the start of the run (a whorl, a loop, a tented arch, or a plain arch for all three). Every new run (a reset by hand,
 // a step back over ▶, a switch of rule) draws a new random start. The title asks whether behaviour predicts topology,
 // and under it the hunt: rules whose fingerprints are distinct. First the consensus-seeking rule: every network agrees,
-// and the three prints are alike; then Miranda et al.'s rule from a new start, and three different prints. G4: what makes a
+// and the three prints are alike; then a good detective, φ⁹₁₇₀,₄₈, from a new start, and three different prints (it
+// changes its mind at 10 of 16 steps, inside the band of the best detectives of Ch. 9; Miranda et al.'s rule, at 15,
+// sits just above it). G4: what makes a
 // good detective: the same two rules on their rings, a red arrow (the flipped neighbour of the sensitivity slide) at
 // every change of answer between neighbouring slices, counted (the thesis's jaggedness, never named on the slide), and
 // our result. What it could be for (phones that sense who is near) is now a backup slide, Phones.astro.
@@ -21,13 +24,13 @@ const rows = [
 ];
 const rules = [
   { id: 'consensus', name: 'Consensus-seeking', r: 9, B: 488, S: 464 },
-  { id: 'miranda', name: 'Miranda et al.', r: 9, B: 170, S: 340 },
+  { id: 'detective', name: 'Good detective', r: 9, B: 170, S: 48 },
 ];
 /** How often a rule changes its answer between neighbouring slices, born and survive together (the thesis's J). */
 const changes = ({ r, B, S }: { r: number; B: number; S: number }) => [B, S].reduce((n, m) => { for (let i = 1; i < r; i++) n += ((m >> i) ^ (m >> (i - 1))) & 1; return n; }, 0);
 const sides = [
   { x: { r: 9, B: 488, S: 464 }, name: 'A consensus-seeking rule' },
-  { x: { r: 9, B: 170, S: 340 }, name: 'Miranda et al.’s rule' },
+  { x: { r: 9, B: 170, S: 48 }, name: 'A good detective' },
 ];
 
 // G2's fingerprints, one textbook pattern per network (src/scripts/defence/fingerprint.ts); all three become a plain
@@ -58,9 +61,9 @@ const kinds = ['whorl', 'loop', 'tented'];
       </figure>
     ))}
   </div>
-  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what it tells us about the network. Here one rule runs on the three networks of before, 150 nodes each, from a random start with three nodes in ten on: first the consensus-seeking rule of the mission. The click starts it, for 100 timesteps, as in the thesis.</p>
-  <p slot="say">Under each network, three histograms sum up what its nodes did over the run: how evenly each node split its time between on and off, how irregular its row of ons and offs was, and how many of its neighbours were on (the Shannon entropy and the Lempel–Ziv complexity of Miranda et al., and the neighbourhood density of Chapter 9). Together they are the network’s fingerprint, drawn over them as a real one, and a simple classifier can learn to tell such fingerprints apart. Under the consensus-seeking rule every network agrees on all off within about ten timesteps, and from then on every node does the same: three fingerprints alike. A bad detective.</p>
-  <p slot="say">The next click runs the rule G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way, <Fragment set:html={phi(9, 170, 340)} /> (on their own intervals, closed on the left), from a new start. Now the histograms differ, and so do the fingerprints: a whorl, a loop and a tented arch. On the scale-free network many nodes with only four links soon stay off for good; on the ring nearly every node is on half of the time. So we look for rules whose fingerprints are clearly different. (The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine. On the page the buttons switch the rule and ↺ draws a new start; about one start in fifteen leaves the ring stuck under the consensus-seeking rule.)</p>
+  <p slot="say">The first application turns the question around: instead of asking what a rule does on a network, ask what it tells us about the network. Here one rule runs on the three networks of before, 150 nodes each, from a random start with three nodes in ten on: first the consensus-seeking rule of the mission. The click starts it, for at most 100 timesteps, as in the thesis.</p>
+  <p slot="say">Under each network, three histograms sum up what its nodes did over the run: how evenly each node split its time between on and off, how irregular its row of ons and offs was, and how many of its neighbours were on (the Shannon entropy and the Lempel–Ziv complexity of Miranda et al., and the neighbourhood density of Chapter 9). Together they are the network’s fingerprint, drawn over them as a real one, and a simple classifier can learn to tell such fingerprints apart. Under the consensus-seeking rule every network agrees on all off within about ten timesteps, and from then on every node does the same: three fingerprints alike, and the run stops a second later. A bad detective.</p>
+  <p slot="say">The next click runs a good detective, <Fragment set:html={phi(9, 170, 48)} />, from a new start. Now the histograms differ, and so do the fingerprints: a whorl, a loop and a tented arch. On the ring every node keeps switching, irregularly, on about half of the time; on the random network about one node in five goes off for good (a node with two or four links can never be born under this rule); on the scale-free network four nodes in ten never switch on again, and the rest switch in a more regular rhythm. So we look for rules whose fingerprints are clearly different. (G. H. B. Miranda and colleagues started classifying networks this way in 2016; the thesis did it on 23 datasets, with histograms split by degree and a support-vector machine. On the page the buttons switch the rule and ↺ draws a new start; about one start in fifteen leaves the ring stuck under the consensus-seeking rule.)</p>
 </Slide>
 
 <Slide label="What makes a good detective?" builds={2} class="g4" ch={9}>
@@ -75,8 +78,8 @@ const kinds = ['whorl', 'loop', 'tented'];
     ))}
   </div>
   <p class="result" data-b="2"><b>Our result</b> Good detectives change their mind often, but not always</p>
-  <p slot="say">What makes the difference can be read off the rule itself. Back to the rings, and to the red arrow of the sensitivity slide: one neighbour more or fewer moves a node one slice along its ring. The next click draws that arrow wherever it changes the answer, between every two neighbouring slices where the rule says something else. The consensus-seeking rule changes its mind at 6 of the 16 steps, Miranda’s rule at 15: a rule that changes its mind often is a sensitive rule, since a small change in the neighbourhood often changes what a node does.</p>
-  <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). Over thousands of rules and 23 datasets, the best detectives change their mind often, but not always: at between half and nine in ten of the steps. That makes sense: such rules are sensitive enough to pick up how networks differ, but not so sensitive that it drowns in chaos; they behave in a complex way (a reading the thesis proposes but does not test). Miranda’s rule, at 15 of 16, sits just above that band: on these three networks it does well, but over all the datasets the best rules change their mind a little less often. On 13 of the 23 datasets, more often tends to classify better (correlations between about 0.2 and 0.46), and searching among the rules that change their mind often, but not always, finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well. (The count is what the thesis calls the jaggedness: the neighbour part of the Boolean sensitivity with every slice weighed the same, whatever the network. The Boolean sensitivity itself shows the same pattern, slightly weaker.)</p>
+  <p slot="say">What makes the difference can be read off the rule itself. Back to the rings, and to the red arrow of the sensitivity slide: one neighbour more or fewer moves a node one slice along its ring. The next click draws that arrow wherever it changes the answer, between every two neighbouring slices where the rule says something else. The consensus-seeking rule changes its mind at 6 of the 16 steps, the good detective at 10: a rule that changes its mind often is a sensitive rule, since a small change in the neighbourhood often changes what a node does.</p>
+  <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). Over thousands of rules and 23 datasets, the best detectives change their mind often, but not always: at between half and nine in ten of the steps. That makes sense: such rules are sensitive enough to pick up how networks differ, but not so sensitive that it drowns in chaos; they behave in a complex way (a reading the thesis proposes but does not test). Our detective, at 10 of 16, sits inside that band. On 13 of the 23 datasets, more often tends to classify better (correlations between about 0.2 and 0.46), and searching among the rules that change their mind often, but not always, finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well. (The count is what the thesis calls the jaggedness: the neighbour part of the Boolean sensitivity with every slice weighed the same, whatever the network. The Boolean sensitivity itself shows the same pattern, slightly weaker.)</p>
   <p slot="say">What could this be good for, when nobody has the network? Think of a contact-tracing app such as Coronalert, launched in Belgium six years ago this week: phones sense which phones come near and, for privacy, nobody ever holds the network of who met whom. If every phone ran one simple rule with the phones around it and reported only its own ons and offs, their fingerprint could still say what kind of network we live in, for instance whether our contacts run through a few superspreaders. We cannot try thousands of rules on real people, so the rule would be chosen in advance, from simulations alone: one that changes its mind often, but not always. (A thought experiment; a backup slide shows it.) And the consensus-seeking rules, such bad detectives, turn out to be good at something else: finding who matters.</p>
 </Slide>
 
@@ -89,20 +92,20 @@ const kinds = ['whorl', 'loop', 'tented'];
   /* no names for the rows: the networks take the room, and the prints say what the histograms add up to */
   .g2-grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: calc(44 * var(--u)) calc(400 * var(--u)) repeat(3, calc(84 * var(--u))); gap: calc(10 * var(--u)) calc(60 * var(--u));
+    grid-template-rows: calc(44 * var(--u)) calc(370 * var(--u)) repeat(3, calc(94 * var(--u))); gap: calc(10 * var(--u)) calc(60 * var(--u));
   }
   .g2-grid figure { margin: 0; grid-row: 1 / span 5; display: grid; grid-template-rows: subgrid; justify-items: center; position: relative; }
   .g2-grid figure > * { grid-column: 1; }
   .g2-grid figcaption { font-size: calc(34 * var(--u)); font-weight: 700; grid-row: 1; }
   .g2-net { position: relative; grid-row: 2; }
-  .net { width: calc(400 * var(--u)); height: calc(400 * var(--u)); }
+  .net { width: calc(370 * var(--u)); height: calc(370 * var(--u)); }
   .g2-net :global(.g2-btn) { right: calc(-70 * var(--u)); bottom: 0; }
   .hist { width: 100%; height: 100%; }
-  /* the fingerprint over the histograms, which stay in sight behind it */
+  /* the fingerprint over the histograms, a little taller than the three together; they stay faintly in sight behind it */
   .fp { grid-row: 3 / span 3; width: 100%; height: 100%; position: relative; pointer-events: none; }
-  .fp canvas { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 0.6s ease; }
+  .fp canvas { position: absolute; inset: -6% 0; width: 100%; height: 112%; transition: opacity 0.6s ease; }
   :global(.g2.alike) .fp-own, :global(.g2:not(.alike)) .fp-same { opacity: 0; }
-  .hist { opacity: 0.3; }
+  .hist { opacity: 0.16; }
 
   /* the rings in the room between the title and the result box */
   .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); flex: 1; align-content: center; }
@@ -124,7 +127,7 @@ const kinds = ['whorl', 'loop', 'tented'];
   import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
   import { drawRing, hop, type Ring } from '../../scripts/defence/donut';
 
-  const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' }, consensus: { r: 9, B: 488, S: 464 } };
+  const RULES: Record<string, Rule> = { detective: { r: 9, B: 170, S: 48 }, consensus: { r: 9, B: 488, S: 464 } };
   const FEATS: Feature[] = ['entropy', 'lz', 'density'];
 
   /** One histogram as bars on a common height `top`; nothing yet while its window is empty. */
@@ -139,21 +142,21 @@ const kinds = ['whorl', 'loop', 'tented'];
   // ── G2: the three networks, run by one rule; their fingerprints, live ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.g2')) {
     const figs = Array.from(s.querySelectorAll<HTMLElement>('figure[data-type]')), buttons = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-rule]'));
-    let pick = 'consensus', pics: Picture[] | null = null, starts: Uint8Array[] | null = null, at = 0;
+    let pick = 'consensus', pics: Picture[] | null = null, starts: Uint8Array[] | null = null, at = 0, still = 0;
     // the networks are built when the slide is first drawn, not at page load
-    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), 400, 10, k === 1 ? 3.6 : 4.4, k === 2 ? 0.6 : false)));
+    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), 370, 10, k === 1 ? 3.4 : 4.2, k === 2 ? 0.6 : false)));
     type Col = { net: HTMLCanvasElement; hists: HTMLCanvasElement[]; a: Uint8Array; b: Uint8Array; fp: ReturnType<typeof fingerprinter> | null; print: Print };
     const cols: Col[] = figs.map((f) => ({ net: f.querySelector<HTMLCanvasElement>('canvas.net')!, hists: FEATS.map((x) => f.querySelector<HTMLCanvasElement>(`canvas.hist[data-f="${x}"]`)!), a: new Uint8Array(0), b: new Uint8Array(0), fp: null, print: { entropy: null, lz: null, density: null } }));
     // the starts: the networks' own when the slide is entered (the talk's run, checked by npm test), a new random one
     // for every run after that
     const fixed = () => { starts = pic().map((p, k) => trioStart(k, p.net.n)); };
     const another = () => { const rnd = fresh(); starts = pic().map((p) => randomState(p.net.n, RHO0, rnd)); };
-    const reset = () => cols.forEach((c, k) => {
+    const reset = () => { still = 0; cols.forEach((c, k) => {
       const p = pic()[k];
       if (!starts) fixed();
       c.a = starts![k].slice(); c.b = new Uint8Array(p.net.n);
       c.fp ??= fingerprinter(p.net); c.fp.reset(); c.fp.push(c.a); c.print = c.fp.print();
-    });
+    }); };
     function paint() {
       const ps = pic();
       cols.forEach((c, k) => { const st = stage(c.net); if (st) drawNet(st, ps[k], c.a); });
@@ -164,14 +167,19 @@ const kinds = ['whorl', 'loop', 'tented'];
       });
     }
     const rule = () => RULES[pick];
-    // twelve timesteps a second, for the thesis's 100: about eight seconds
-    const round = () => cols.forEach((c, k) => { step(c.a, pic()[k].net, rule(), c.b); [c.a, c.b] = [c.b, c.a]; c.fp!.push(c.a); });
-    const over = () => cols[0].fp!.t >= PRINT.T;
+    // twelve timesteps a second, for the thesis's 100 (about eight seconds), or until a second after all three networks
+    // stand still: from then on their rows only grow by the same value, and the histograms would keep drifting
+    const round = () => {
+      let moved = false;
+      cols.forEach((c, k) => { step(c.a, pic()[k].net, rule(), c.b); [c.a, c.b] = [c.b, c.a]; c.fp!.push(c.a); if (!moved) for (let i = 0; i < c.a.length; i++) if (c.a[i] !== c.b[i]) { moved = true; break; } });
+      still = moved ? 0 : still + 1;
+    };
+    const over = () => cols[0].fp!.t >= PRINT.T || still >= 12;
     const run = ticker(s, 12, () => { if (over()) return true; round(); cols.forEach((c) => (c.print = c.fp!.print())); return over(); }, paint);
     // the whole run at once, so a step back or a jump lands on the histograms the run ends with
     const settle = () => { while (!over()) round(); cols.forEach((c) => (c.print = c.fp!.print())); };
     const btn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;
-    // the prints follow the rule: one and the same under the consensus-seeking rule, one of each kind under Miranda's;
+    // the prints follow the rule: one and the same under the consensus-seeking rule, one of each kind under the detective;
     // a switch runs the new rule from the beginning if the run had started
     const choose = (id: string) => {
       buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === id)));
@@ -190,11 +198,11 @@ const kinds = ['whorl', 'loop', 'tented'];
       reroll() { another(); rerolled = true; },
     });
     slide(s, {
-      // the consensus-seeking rule from ▶ (build 1), its prints over the histograms; build 2 runs Miranda et al.'s rule
+      // the consensus-seeking rule from ▶ (build 1), its prints over the histograms; build 2 runs the good detective
       // from a new start. A step back over build 2, or a jump, lands on the other rule with its histograms formed.
       set(b: number, how: How) {
         at = b;
-        const want = b >= 2 ? 'miranda' : 'consensus';
+        const want = b >= 2 ? 'detective' : 'consensus';
         if (want === pick) return;
         // forward, the switch runs from a new start; a step back or a jump lands on the end of the networks' own run
         if (how === 'next') another(); else fixed();

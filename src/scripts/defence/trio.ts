@@ -2,8 +2,8 @@
 // Ch. 9): a random network, a small-world network grown from a ring, and a scale-free network dominated by a few big
 // hubs, 150 nodes each. They differ in how their degrees spread, which is what a Life-like rule reads: the random one
 // has nodes with two to thirteen neighbours, the ring nearly eight each, the scale-free one four for two nodes in five
-// and a few hubs with fifty. Seeds chosen so that every network is connected, Miranda et al.'s rule stays lively on all three and the
-// consensus-seeking winner of Ch. 6 brings all three to all-off from the same starts (scripts/check-defence.ts).
+// and a few hubs with fifty. Seeds chosen so that every network is connected, the good detective of G2 (φ⁹₁₇₀,₄₈) stays lively on all
+// three and the consensus-seeking winner of Ch. 6 brings all three to all-off from the same starts (scripts/check-defence.ts).
 import { buildNet, makeRng, type Layout, type Net, type NetSpec } from '../net.ts';
 import { randomState } from '../llna.ts';
 

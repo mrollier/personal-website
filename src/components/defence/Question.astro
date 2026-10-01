@@ -7,8 +7,9 @@ import { phi } from './tex';
 // D3: the genotype's two rings, in design pixels of their canvas (src/scripts/defence/donut.ts draws them)
 const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R: 135, w: 56, on: true }];
 ---
-<Slide label="Nature does this too: a flock" builds={2} class="d2 d2-flock">
-  <h2>Nature does this too</h2>
+<Slide label="So what? Emergence in nature: a flock" builds={2} class="d2 d2-flock">
+  <h2>So what?</h2>
+  <p class="d2-sub">Emergence in nature</p>
   <div class="d2-row">
     <figure>
       <p class="lede">Boids and your mouse</p>
@@ -29,8 +30,9 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
   <p slot="say">The same happens in the sky over Rome: a starling flock splits around a peregrine falcon (the small dark bird near the gap) and closes up again behind it. Then, in one long shot, the falcon chases the flock, and dark waves run through it as the birds swerve away, one after the other. Nobody in the flock sees the whole; each bird reacts only to the birds nearest to it. (Video: C. Hemelrijk et al. 2019, from the videos to “Damping of waves of agitation in starling flocks”, CC BY 4.0; two clips joined and cropped.)</p>
 </Slide>
 
-<Slide label="Nature does this too: a brain" builds={2} class="d2 d2-brain">
-  <h2>Nature does this too</h2>
+<Slide label="So what? Emergence in nature: a brain" builds={2} class="d2 d2-brain">
+  <h2>So what?</h2>
+  <p class="d2-sub">Emergence in nature</p>
   <div class="d2-row">
     <figure>
       <p class="lede">Neurons firing</p>
@@ -83,7 +85,8 @@ const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R
 
   .d2-row { display: flex; gap: calc(64 * var(--u)); flex: 1; min-height: 0; }
   .d2-row figure { margin: 0; flex: 1; display: flex; flex-direction: column; gap: calc(24 * var(--u)); }
-  .d2-row .lede { padding-top: calc(52 * var(--u)); font-size: calc(42 * var(--u)); } /* one line, just above its picture */
+  .d2-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
+  .d2-row .lede { padding-top: calc(24 * var(--u)); font-size: calc(42 * var(--u)); } /* one line, just above its picture */
   .d2-box { position: relative; }
   .d2-row canvas, .d2-row video { display: block; width: calc(832 * var(--u)); height: calc(586 * var(--u)); background: var(--panel); }
   .d2-row video { object-fit: contain; }

@@ -1,6 +1,6 @@
 ---
-// Life on networks: from one long row to a grid to contacts anywhere in the room, and the room becomes a network of
-// nodes (F1); the Life-like network automata as two rings round a node, at ever finer resolution, the first contribution
+// Life on networks: the room becomes a network of nodes, then from one long row to a grid to contacts anywhere in the
+// room (F1); the Life-like network automata as two rings round a node, at ever finer resolution, the first contribution
 // of the thesis (F2); and one rule on the three networks of the rest of the talk, where the network decides what it does (F3). All come
 // before the thesis map, so none has the ribbon. Formulas are LaTeX (./tex).
 import Slide from './Slide.astro';
@@ -18,21 +18,22 @@ const nets = TRIO.map((t) => t.name);
   <div class="row grow f1-row">
     <div class="f1-room">
       <canvas class="f1-links" aria-hidden="true"></canvas>
-      <Seats you={[3, 4]} label="The room: everyone in one long row, then everyone linked to the eight people around them, then links rewired across the room" />
+      <Seats label="The room: everyone in one long row, then everyone linked to the eight people around them, then links rewired across the room" />
     </div>
     <div class="col f1-side">
       <h2>Generalising even further</h2>
       <ol class="f1-stages">
-        <li data-b="1">Elementary cellular automata</li>
-        <li data-b="2">Life-like cellular automata</li>
-        <li data-b="3">Life-like <b>network</b> automata<label class="f1-p">rewired<input type="range" class="ctl" min="0" max="1" step="0.01" value="0.2" data-p aria-label="share of links rewired" /><output data-pv>20%</output></label></li>
+        <li data-b="2">Elementary cellular automata</li>
+        <li data-b="3">Life-like cellular automata</li>
+        <li data-b="4">Life-like <b>network</b> automata<label class="f1-p">rewired<input type="range" class="ctl" min="0" max="1" step="0.01" value="0.2" data-p aria-label="share of links rewired" /><output data-pv>20%</output></label></li>
       </ol>
     </div>
   </div>
-  <p slot="say">What if the room played the game differently? In the game you looked at your two neighbours, so the room was really one long row: link everybody to the person before and after them, snaking up from the back of the room to the front and round again, and everyone has two neighbours. That is a one-dimensional cellular automaton, an elementary one, like the rows of cells we just saw.</p>
+  <p slot="say">What if the room played the game differently? First, from here on the people become nodes, and a hand up becomes a node that is on.</p>
+  <p slot="say">In the game you looked at your two neighbours, so the room was really one long row: link everybody to the person before and after them, snaking up from the back of the room to the front and round again, and everyone has two neighbours. That is a one-dimensional cellular automaton, an elementary one, like the rows of cells we just saw.</p>
   <p slot="say">Now link everyone to the eight people around them: a grid, like the one the Game of Life and the other Life-like cellular automata live on. The room wraps round at its edges, so the people at a wall have eight too; the stubs at the edges are links to the far side.</p>
   <p slot="say">Then take some of those links and swing them across the room to anyone at all. A few long links like these make a small-world network: everyone is suddenly only a few steps from everyone else, and running the same Life-like rule for everyone on it gives a Life-like network automaton. On this page, drag the slider: at 0 the grid comes back, at 100% the links are completely random.</p>
-  <p slot="say">But now some have four contacts and some thirteen, so a rule like “exactly three neighbours” no longer makes sense for everybody. From here on the people become nodes, and a hand up becomes a node that is on.</p>
+  <p slot="say">But now some have four contacts and some thirteen, so a rule like “exactly three neighbours” no longer makes sense for everybody.</p>
 </Slide>
 
 <Slide label="Life-like network automata" builds={4} class="f2">
@@ -122,12 +123,12 @@ const nets = TRIO.map((t) => t.name);
   import { room, wire, degrees, COLS, ROWS, SEATS } from '../../scripts/defence/room';
   import { parse, mix, css, type RGB } from '../../scripts/palette';
 
-  // ── F1: the room, in three stages. Everyone in one long row, as in the experiment: a ring that snakes up from the back
-  // of the room to the front and closes over the back edge (build 1); everyone linked to the eight people around them,
-  // the links growing out of each person around the row (build 2); a share p of the links rewired across the room, live
-  // on a slider, the moving ends swinging over (build 3). Then the fewest and the most contacts circled (build 4), and
-  // the people become nodes (build 5): their bodies fade, and their heads glide down to where the links meet. The room wraps round at its edges, so a link over an edge is drawn as a stub on
-  // either side. The links (and the nodes) are drawn on a canvas behind the seats, so a tween repaints the canvas and
+  // ── F1: the room, and at once the people become nodes (build 1): their bodies fade, and their heads glide down to
+  // where the links will meet. Then three stages. Everyone in one long row, as in the experiment: a ring that snakes up
+  // from the back of the room to the front and closes over the back edge (build 2); everyone linked to the eight people
+  // around them, the links growing out of each node around the row (build 3); a share p of the links rewired across the
+  // room, live on a slider, the moving ends swinging over (build 4). Then the fewest and the most contacts circled
+  // (build 5). The room wraps round at its edges, so a link over an edge is drawn as a stub on either side. The links (and the nodes) are drawn on a canvas behind the seats, so a tween repaints the canvas and
   // never the eighty people. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f1')) {
     const svg = s.querySelector<SVGSVGElement>('svg.seats')!, over = svg.querySelector('[data-over]')!, canvas = s.querySelector<HTMLCanvasElement>('canvas.f1-links')!;
@@ -151,7 +152,7 @@ const nets = TRIO.map((t) => t.name);
     // (42, 40) of 100 × 130), and how far into becoming a node they are (0: a head, 1: a node), in the colours each seat
     // had when it started
     const HEAD_Y = (i: number) => 96 + Math.floor(i / COLS) * GY + 8 + 40 * 0.84, HEAD_R = 17 * 0.84, HEAD_W = 3 * 0.84, MORPH_MS = 1300;
-    let morph = 1, morphRaf = 0, looks: { fill: RGB; stroke: RGB }[] = [];
+    let morph = 1, morphRaf = 0, looks: { fill: RGB; stroke: RGB }[] = [], near = new Set<number>();
     const tx = (k: number) => (to[k] === R.links[k].home ? hx(k) : cx(to[k])), ty = (k: number) => (to[k] === R.links[k].home ? hy(k) : cy(to[k]));
     R.links.forEach((_, k) => { x[k] = hx(k); y[k] = hy(k); });
     const mine = (k: number) => R.links[k].stay === you || to[k] === you;
@@ -159,13 +160,13 @@ const nets = TRIO.map((t) => t.name);
       const st = stage(canvas); if (!st || at < 1) return;
       const { ctx, t } = st, k = st.w / VIEW, paths = [new Path2D(), new Path2D()];
       const seg = (own: boolean, ax: number, ay: number, bx: number, by: number) => { paths[+own].moveTo(ax * k, ay * k); paths[+own].lineTo(bx * k, by * k); };
-      if (at === 1) for (let i = 0; i < Math.ceil(grown); i++) {
+      if (at === 2) for (let i = 0; i < Math.ceil(grown); i++) {
         // the row so far, the last link partly; the closing link goes over the back edge: a stub at the front and the back
         const a = ROW[i], b = ROW[(i + 1) % SEATS], u = Math.min(1, grown - i), own = a === you || b === you;
         if (i < SEATS - 1) seg(own, cx(a), cy(a), cx(a) + (cx(b) - cx(a)) * u, cy(a) + (cy(b) - cy(a)) * u);
         else { seg(own, cx(a), cy(a), cx(a), cy(a) - (GY / 2) * u); seg(own, cx(b), cy(b), cx(b), cy(b) + (GY / 2) * u); }
       }
-      else R.links.forEach((l, j) => {
+      else if (at >= 3) R.links.forEach((l, j) => {
         const sx = cx(l.stay), sy = cy(l.stay), own = mine(j);
         if (edge[j]) {
           // a link over an edge, while its end is on the way out over it: out at one side, back in at the other
@@ -179,20 +180,19 @@ const nets = TRIO.map((t) => t.name);
         seg(own, sx, sy, x[j], y[j]);
       });
       // the row on its own is drawn boldly, since it mostly runs behind the people; in the grid it is one link among many
-      const bold = at === 1;
+      const bold = at === 2;
       ctx.lineCap = 'round';
       ctx.strokeStyle = t.muted; ctx.globalAlpha = bold ? 0.9 : 0.45; ctx.lineWidth = (bold ? 4 : 2) * k; ctx.stroke(paths[0]);
       ctx.strokeStyle = t.accent; ctx.globalAlpha = 1; ctx.lineWidth = (bold ? 4 : 2.5) * k; ctx.stroke(paths[1]);
-      if (at >= 5) {
-        // the heads stay while the bodies fade (the first 30%), then glide down into the network and take its colours
-        const g = Math.max(0, Math.min(1, (morph - 0.3) / 0.7)), e = g < 0.5 ? 2 * g * g : 1 - (-2 * g + 2) ** 2 / 2;
-        const ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent);
-        for (let i = 0; i < SEATS; i++) {
-          const own = i === you, look = e < 1 ? looks[i] : undefined;
-          ctx.beginPath(); ctx.arc(cx(i) * k, (HEAD_Y(i) + (cy(i) - HEAD_Y(i)) * e) * k, (HEAD_R + (15 - HEAD_R) * e) * k, 0, 2 * Math.PI);
-          ctx.fillStyle = look ? css(mix(look.fill, own ? acc : panel, e)) : own ? t.accent : t.panel; ctx.fill();
-          ctx.lineWidth = (HEAD_W + (3 - HEAD_W) * e) * k; ctx.strokeStyle = look ? css(mix(look.stroke, own ? acc : ink, e)) : own ? t.accent : t.ink; ctx.stroke();
-        }
+      // the heads stay while the bodies fade (the first 30%), then glide down into the network and take its colours: you
+      // in blue, your contacts outlined in blue
+      const g = Math.max(0, Math.min(1, (morph - 0.3) / 0.7)), e = g < 0.5 ? 2 * g * g : 1 - (-2 * g + 2) ** 2 / 2;
+      const ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent), pale = css(mix(panel, acc, 0.25));
+      for (let i = 0; i < SEATS; i++) {
+        const own = i === you, look = e < 1 ? looks[i] : undefined, nb = near.has(i);
+        ctx.beginPath(); ctx.arc(cx(i) * k, (HEAD_Y(i) + (cy(i) - HEAD_Y(i)) * e) * k, (HEAD_R + (15 - HEAD_R) * e) * k, 0, 2 * Math.PI);
+        ctx.fillStyle = look ? css(mix(look.fill, own ? acc : panel, e)) : own ? t.accent : nb ? pale : t.panel; ctx.fill();
+        ctx.lineWidth = (HEAD_W + (3 - HEAD_W) * e) * k; ctx.strokeStyle = look ? css(mix(look.stroke, own ? acc : ink, e)) : own || nb ? t.accent : t.ink; ctx.stroke();
       }
     }
     const frame = (now: number) => {
@@ -229,15 +229,14 @@ const nets = TRIO.map((t) => t.name);
       morph = 0; morphRaf = requestAnimationFrame(tick);
     }
     const stopMorph = () => { cancelAnimationFrame(morphRaf); morphRaf = 0; morph = 1; };
-    // who is highlighted: you, your contacts; from build 4 the fewest and the most contacts, circled, the number up and
-    // out of the circle, in the gap between the seats
+    // who is highlighted: you, your contacts (from the long row on); from build 5 the fewest and the most contacts,
+    // circled, the number up and out of the circle, in the gap between the seats
     function mark() {
-      const near = new Set<number>();
-      if (at === 1) { near.add(you - 1); near.add(you + 1); }
-      if (at >= 2) R.links.forEach((l, j) => { if (l.stay === you) near.add(to[j]); else if (to[j] === you) near.add(l.stay); });
-      seats.forEach((u, i) => { u.classList.toggle('you', at >= 1 && i === you); u.classList.toggle('near', near.has(i)); });
+      near = new Set<number>();
+      if (at === 2) { near.add(you - 1); near.add(you + 1); }
+      if (at >= 3) R.links.forEach((l, j) => { if (l.stay === you) near.add(to[j]); else if (to[j] === you) near.add(l.stay); });
       const deg = degrees(R, to), lo = deg.indexOf(Math.min(...deg)), hi = deg.indexOf(Math.max(...deg));
-      const want = at >= 4 ? `${lo}:${deg[lo]} ${hi}:${deg[hi]}` : '';
+      const want = at >= 5 ? `${lo}:${deg[lo]} ${hi}:${deg[hi]}` : '';
       if (want === shown) return;
       shown = want; over.replaceChildren();
       if (want) for (const i of [lo, hi]) {
@@ -256,14 +255,14 @@ const nets = TRIO.map((t) => t.name);
       set(b: number, how: How) {
         const was = at; at = b;
         stopMorph();
-        if (b === 5 && was === 4 && how === 'next') becomeNodes();
-        s.classList.toggle('as-nodes', b >= 5);
-        stages.forEach((li, i) => li.classList.toggle('past', i + 1 < Math.min(b, 3)));
+        if (b === 1 && was === 0 && how === 'next') becomeNodes();
+        s.classList.toggle('as-nodes', b >= 1);
+        stages.forEach((li, i) => li.classList.toggle('past', i + 2 < Math.min(b, 4)));
         stopRow();
-        if (b <= 1) { go(0, 0); if (b === 1 && how === 'next') growRow(); return; }
-        if (b === 2) { go(0, how === 'next' ? 1100 : was > 2 ? 450 : 0, how === 'next'); return; }
-        if (b === 3 && how === 'next' && was === 2) { setP(P0); go(P0, 1400); return; }
-        if (was < 2 || how === 'jump') go(+slider.value, 0); else { mark(); draw(); }
+        if (b <= 2) { go(0, 0); if (b === 2 && how === 'next') growRow(); return; }
+        if (b === 3) { go(0, how === 'next' ? 1100 : was > 3 ? 450 : 0, how === 'next'); return; }
+        if (b === 4 && how === 'next' && was === 3) { setP(P0); go(P0, 1400); return; }
+        if (was < 3 || how === 'jump') go(+slider.value, 0); else { mark(); draw(); }
       },
       enter() { setP(P0); },
       leave() { stopRow(); stopMorph(); },

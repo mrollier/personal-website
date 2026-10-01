@@ -104,7 +104,8 @@ const kinds = ['whorl', 'loop', 'tented'];
   :global(.g2.alike) .fp-own, :global(.g2:not(.alike)) .fp-same { opacity: 0; }
   .hist { opacity: 0.3; }
 
-  .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); }
+  /* the rings in the room between the title and the result box */
+  .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); flex: 1; align-content: center; }
   .jag { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(8 * var(--u)); }
   .g4-name { font-size: calc(38 * var(--u)); font-weight: 700; }
   .jrings { width: calc(820 * var(--u)); height: calc(330 * var(--u)); }

@@ -12,6 +12,7 @@ import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
 import { remap, ends, intervalOf, cousin } from '../src/scripts/defence/rings.ts';
 import { step, randomState, phi, type Rule as LlnaRule } from '../src/scripts/llna.ts';
 import { trioNet, trioStart } from '../src/scripts/defence/trio.ts';
+import { wildfire, FIRE, BARE, BURNING, BURNT } from '../src/scripts/defence/wildfire.ts';
 import { fingerprinter } from '../src/scripts/defence/print.ts';
 import type { NetSpec } from '../src/scripts/net.ts';
 
@@ -100,6 +101,31 @@ for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
   for (let t = 0; t < 1000; t++) { const f = fire(net, s, o, 0.25, 3, 0.003, rnd) / net.n; [s, o] = [o, s]; if (t >= 40) { zeros += f === 0 ? 1 : 0; most = Math.max(most, f); } }
   assert.ok(zeros < 10 && most < 0.3, `brain: ${zeros} silent rounds, at most ${most} firing`);
   assert.ok(poly.length === 160);
+}
+// I2: the wildfire, from any forest, crosses to the east edge and goes out; it burns part of the forest, hardly any of
+// it upwind of where it started, and its scar fans out downwind: a column in the east third has more burnt trees than
+// one in the west third. Every tree burns for 8 to 14 rounds.
+{
+  const f = wildfire(), [x0] = FIRE.at, col = (k: number) => { let c = 0; for (let y = 0; y < f.H; y++) c += f.kind[y * f.W + k] === BURNT ? 1 : 0; return c; };
+  for (let seed = 1; seed <= 12; seed++) {
+    f.plant(seed);
+    const lit = new Int32Array(f.W * f.H).fill(-1);
+    let t = 0, edge = false, trees = 0;
+    for (let i = 0; i < f.W * f.H; i++) trees += f.kind[i] !== BARE ? 1 : 0;
+    while (t < 600) {
+      for (let i = 0; i < f.W * f.H; i++) if (f.kind[i] === BURNING && lit[i] < 0) lit[i] = t; else if (f.kind[i] === BURNT && lit[i] >= 0) { assert.ok(t - lit[i] >= FIRE.burn[0] && t - lit[i] <= FIRE.burn[1], `wildfire ${seed}: a tree burnt for ${t - lit[i]} rounds`); lit[i] = -2; }
+      if (f.step()) break;
+      t++;
+      for (let y = 0; y < f.H; y++) edge ||= f.kind[y * f.W + f.W - 1] === BURNING;
+    }
+    let burnt = 0, west = 0, upwind = 0;
+    for (let i = 0; i < f.W * f.H; i++) if (f.kind[i] === BURNT) { burnt++; if (i % f.W < x0 - 3) upwind++; }
+    for (let k = x0 + 2; k < x0 + 2 + (f.W - x0) / 3; k++) west += col(k);
+    let east = 0; for (let k = f.W - Math.floor((f.W - x0) / 3); k < f.W; k++) east += col(k);
+    assert.ok(edge && t < 600, `wildfire ${seed}: reaches the east edge and goes out (${t} rounds)`);
+    assert.ok(burnt > trees / 3 && burnt < (4 * trees) / 5 && upwind < burnt / 50, `wildfire ${seed}: ${burnt} of ${trees} trees burnt, ${upwind} upwind`);
+    assert.ok(east > 1.3 * west, `wildfire ${seed}: east ${east} against west ${west}`);
+  }
 }
 // D2: a bird near the pointer flies away from it.
 {

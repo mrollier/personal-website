@@ -18,11 +18,6 @@ const answers = [
     { ch: 10, say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
   ] },
 ];
-const beyond = [
-  { b: 0, title: 'Water and fire, cell by cell', say: 'at BionamiX: groundwater and wildfire spread' },
-  { b: 2, title: 'Which nodes to watch?', say: 'the stubborn person on real networks' },
-  { b: 3, title: 'Inside artificial intelligence', say: 'simple operations, iterated: the same gap' },
-];
 ---
 <Slide label="Our answers" builds={4} class="i1" ch={0}>
   <h2 class="i1-q">What links a simple local rule to the rich behaviour it produces, and can we put that link to use?</h2>
@@ -49,20 +44,37 @@ const beyond = [
 
 <Slide label="Beyond this thesis" builds={3} class="i2">
   <h2>Beyond this thesis</h2>
-  <div class="i2-three">
-    {beyond.map((x, k) => (
-      <figure data-b={x.b || undefined}>
-        <div class="i2-box">
-          <canvas class="i2-pic" data-pic={k} aria-hidden="true"></canvas>
-          {k === 0 && <SimButton class="i2-btn" />}
-        </div>
-        <figcaption><b>{x.title}</b><span>{x.say}</span></figcaption>
-        {k === 0 && <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026 proceedings, accepted</span></p>}
-      </figure>
-    ))}
+  <div class="i2-stack grow">
+    <figure class="i2-item" data-b-only="0 1">
+      <div class="i2-box">
+        <canvas class="i2-pic" data-pic="fire" aria-label="A wildfire spreading through a forest, cell by cell"></canvas>
+        <SimButton class="i2-btn" />
+      </div>
+      <figcaption>
+        <b>A wildfire, cell by cell</b>
+        <span>at BionamiX: wildfires and groundwater flow</span>
+        <ul class="key"><li><i class="tree"></i>tree</li><li><i class="fire"></i>on fire</li><li><i class="ash"></i>burnt</li></ul>
+        <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026 proceedings, accepted</span></p>
+      </figcaption>
+    </figure>
+    <figure class="i2-item" data-b-only="2">
+      <div class="i2-box"><canvas class="i2-pic" data-pic="net" aria-label="The stubborn person's network, every node coloured by how much it matters"></canvas></div>
+      <figcaption>
+        <b>Which nodes to watch?</b>
+        <span>the stubborn person on real networks</span>
+        <p class="ramp">matters little <i></i> matters most</p>
+      </figcaption>
+    </figure>
+    <figure class="i2-item" data-b-only="3">
+      <div class="i2-box"><canvas class="i2-pic" data-pic="ai" aria-label="A small neural network"></canvas></div>
+      <figcaption>
+        <b>Inside artificial intelligence</b>
+        <span>simple operations, iterated: the same gap</span>
+      </figcaption>
+    </figure>
   </div>
-  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as groundwater flow and the spread of wildfires. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. A first result, the MACCA-GW groundwater flow model, is accepted for publication in the ACRI 2026 proceedings; it is not part of the thesis. (The three pictures on this slide are illustrations.)</p>
-  <p slot="say">The stubborn-person probe could be tried on real networks, to ask which nodes to watch or where an intervention would matter most. That is a possibility, not yet a result.</p>
+  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as the spread of wildfires and groundwater flow. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. The picture is a wildfire as a simple cellular automaton, an illustration and not the BionamiX model: green trees, red fire, a wind from the left; a burning tree burns for several rounds and can set each of its eight neighbours alight, most easily downwind. A first result of that work, the MACCA-GW groundwater flow model, is accepted for publication in the ACRI 2026 proceedings; it is not part of the thesis.</p>
+  <p slot="say">The stubborn-person probe could be tried on real networks, to ask which nodes to watch or where an intervention would matter most. That is a possibility, not yet a result. The picture is the network of the stubborn person, every node coloured by how much it matters, the one that matters most ringed.</p>
   <p slot="say">And next for me: what goes on inside artificial intelligence. A trained neural network is also simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
 
@@ -100,16 +112,25 @@ const beyond = [
   .i1-anim { display: block; width: calc(860 * var(--u)); height: calc(640 * var(--u)); }
   .i1-box :global(.i1-btn) { right: calc(-24 * var(--u)); bottom: calc(-16 * var(--u)); }
 
-  .i2-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(60 * var(--u)); margin-top: calc(30 * var(--u)); }
-  .i2-three figure { margin: 0; display: flex; flex-direction: column; gap: calc(20 * var(--u)); }
-  .i2-box { position: relative; }
-  .i2-pic { display: block; width: calc(520 * var(--u)); height: calc(520 * var(--u)); }
-  .i2-box :global(.i2-btn) { right: calc(10 * var(--u)); bottom: calc(10 * var(--u)); }
-  .i2-three figcaption { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
-  .i2-three figcaption b { font-size: calc(40 * var(--u)); }
-  .i2-three figcaption span { font-size: calc(32 * var(--u)); }
-  .pub { font-size: calc(28 * var(--u)); background: var(--panel); padding: calc(10 * var(--u)) calc(16 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); width: fit-content; white-space: nowrap; }
-  .pub span { color: var(--muted); margin-left: calc(10 * var(--u)); }
+  /* one direction at a time, each in the same place: the picture on the left, its words on the right */
+  .i2-stack { display: grid; align-items: center; --tree: #4a7c32; --fire: #d8311c; --ash: #3d3833; }
+  .i2-item { grid-area: 1 / 1; margin: 0; display: flex; align-items: center; gap: calc(80 * var(--u)); }
+  .i2-box { position: relative; flex: none; }
+  .i2-pic { display: block; width: calc(672 * var(--u)); height: calc(672 * var(--u)); }
+  .i2-box :global(.i2-btn) { right: calc(-24 * var(--u)); bottom: calc(-16 * var(--u)); }
+  .i2-item figcaption { display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .i2-item figcaption b { font-size: calc(60 * var(--u)); line-height: 1.1; }
+  .i2-item figcaption > span { font-size: calc(40 * var(--u)); color: var(--muted); }
+  .key { list-style: none; padding: 0; flex-direction: row; gap: calc(36 * var(--u)); font-size: calc(36 * var(--u)); margin-top: calc(20 * var(--u)); }
+  .key li { display: flex; align-items: center; gap: calc(12 * var(--u)); }
+  .key i, .ramp i { display: inline-block; width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+  .key .tree { background: var(--tree); }
+  .key .fire { background: var(--fire); }
+  .key .ash { background: var(--ash); }
+  .ramp { display: flex; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); margin-top: calc(20 * var(--u)); }
+  .ramp i { width: calc(220 * var(--u)); background: linear-gradient(to right, var(--panel), var(--accent)); border: calc(2 * var(--u)) solid var(--line); }
+  .pub { font-size: calc(32 * var(--u)); background: var(--panel); padding: calc(12 * var(--u)) calc(18 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); width: fit-content; margin-top: calc(28 * var(--u)); }
+  .pub span { display: block; color: var(--muted); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* three states: the halves far apart; brought together (.together); moved up to make room for the thanks (.thanked) */
@@ -127,6 +148,9 @@ const beyond = [
   :global(.i3.thanked) .half.bottom { transform: translateY(calc(-240 * var(--u))); }
   :global(.i3.thanked) .worlds { transform: translateY(calc(-130 * var(--u))); }
   .thanks { position: absolute; left: 0; top: calc(420 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  /* a line that comes with a build waits until the halves have moved out of its way */
+  :global(.i3) .worlds, :global(.i3) .thanks { transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1), opacity 0.3s ease; }
+  :global(.i3) .worlds.on, :global(.i3) .thanks.on { transition: transform 1.2s cubic-bezier(0.6, 0, 0.3, 1), opacity 0.6s ease 0.9s; }
   .ty { font-weight: 700; font-size: calc(72 * var(--u)); letter-spacing: -0.01em; }
   .qrrow { display: flex; gap: calc(30 * var(--u)); align-items: center; }
   .qr { width: calc(270 * var(--u)); height: calc(270 * var(--u)); flex: none; }
@@ -144,6 +168,7 @@ const beyond = [
   import { lattice, makeRng, build } from '../../scripts/net';
   import { type Rule, step, randomState, density } from '../../scripts/llna';
   import { stepClamped } from '../../scripts/consensus';
+  import { wildfire, TREE, BURNING, BURNT } from '../../scripts/defence/wildfire';
   import { TRIO, trioNet, RHO0 } from '../../scripts/defence/trio';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
   import { parse, mix, css } from '../../scripts/palette';
@@ -213,18 +238,19 @@ const beyond = [
     } satisfies Act;
   })();
 
-  /** The toy network of slide H1, nodes coloured by `fill`, one of them ringed. */
+  /** The toy network of slide H1, nodes coloured by `fill`, one of them ringed: drawn last, over its neighbours. */
   function drawClampNet(st: Stage, fill: (i: number) => string, ring = -1) {
     const { ctx, t } = st, s = Math.min(st.w, st.h), bx = { x: (st.w - s) / 2 + 20, y: (st.h - s) / 2 + 20, w: s - 40, h: s - 40 };
-    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h;
+    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = (i: number) => 7 + 1.6 * Math.sqrt(clamp.deg[i]);
+    const ringed = (r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(ring), Y(ring), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
+    const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R(i), 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke(); };
     ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
     ctx.stroke();
-    for (let i = 0; i < clamp.deg.length; i++) {
-      const r = 7 + 1.6 * Math.sqrt(clamp.deg[i]);
-      ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
-      if (i === ring) { ctx.beginPath(); ctx.arc(X(i), Y(i), r + 9, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = t.danger; ctx.stroke(); }
-    }
+    for (let i = 0; i < clamp.deg.length; i++) if (i !== ring) node(i);
+    if (ring < 0) return;
+    node(ring); ringed(R(ring) + 9, 13, t.panel); ringed(R(ring) + 9, 6, t.danger); // on a cream halo, over whatever is behind
+
   }
 
   // 10. the stubborn person of slide H1 on the toy network: the important one, and the whole room follows
@@ -267,42 +293,31 @@ const beyond = [
     onSize(c, paint);
   }
 
-  // ── I2: three pictures: a fire spreading from cell to cell (started with its button), the toy network coloured by
-  // importance, and a small neural network ──
+  // ── I2: one direction at a time: a wildfire spreading from cell to cell (./wildfire, started with its button), the
+  // toy network coloured by importance, and a small neural network ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i2')) {
     const [fireC, netC, aiC] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i2-pic'));
-    // the forest-fire automaton: 0 bare, 1 tree, 2 burning, 3 burnt; a burning cell sets each neighbouring tree alight
-    // with probability 0.7, and burns out in one round. A wind from the left makes it spread faster that way.
-    const W = 52, H = 52, trees = new Uint8Array(W * H);
+    const fire = wildfire();
     let seed = 2026;
-    const plant = () => { const r = makeRng(seed); for (let i = 0; i < W * H; i++) trees[i] = r() < 0.72 ? 1 : 0; };
-    plant();
-    let g = trees.slice(), rnd = makeRng(7), rounds = 0;
-    const light = () => { g = trees.slice(); rnd = makeRng(seed + 7); rounds = 0; for (let y = 22; y < 30; y++) g[y * W + 1] = 2; };
-    const advance = () => {
-      const out = g.slice(); let burning = 0;
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const i = y * W + x;
-        if (g[i] === 2) out[i] = 3;
-        else if (g[i] === 1) {
-          const lit = (xx: number, yy: number, p: number) => xx >= 0 && yy >= 0 && xx < W && yy < H && g[yy * W + xx] === 2 && rnd() < p;
-          if (lit(x - 1, y, 0.85) || lit(x + 1, y, 0.45) || lit(x, y - 1, 0.6) || lit(x, y + 1, 0.6)) { out[i] = 2; burning++; }
-        }
-      }
-      g = out; rounds++;
-      return burning === 0;
-    };
+    fire.plant(seed);
+    // green trees in three shades, red fire that darkens as it burns out, charcoal where it has passed, sand where
+    // nothing grows; the greens, the red and the charcoal are the key's, from the CSS
     const paintFire = () => {
       const st = stage(fireC); if (!st) return;
-      const tree = st.t.accent, ash = css(mix(parse(st.t.panel), parse(st.t.line), 0.5));
-      cells(st, W, H, (x, y) => { const v = g[y * W + x]; return v === 1 ? tree : v === 2 ? st.t.danger : v === 3 ? ash : null; });
+      const cs = getComputedStyle(fireC), v = (k: string) => parse(cs.getPropertyValue(k).trim()), tree = v('--tree'), red = v('--fire');
+      const greens = [css(mix(tree, parse(st.t.panel), 0.16)), css(tree), css(mix(tree, parse(st.t.ink), 0.2))];
+      const flames = [css(mix(red, parse('#ff8a3d'), 0.3)), css(red), css(mix(red, parse('#4a0f08'), 0.5))];
+      const ash = cs.getPropertyValue('--ash').trim(), sand = css(mix(parse(st.t.panel), parse('#b8955c'), 0.3)), { kind, shade } = fire;
+      cells(st, fire.W, fire.H, (x, y) => {
+        const i = y * fire.W + x, k = kind[i];
+        return k === TREE ? greens[shade[i]] : k === BURNING ? flames[Math.min(2, Math.floor(fire.burnt(i) * 3))] : k === BURNT ? ash : sand;
+      });
     };
-    const run = ticker(s, 8, advance, paintFire);
-    light();
+    const run = ticker(s, 12, () => fire.step(), paintFire);
     sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
-      reset() { run.play(false); light(); paintFire(); },
+      reset() { run.play(false); fire.plant(seed); paintFire(); },
       play() { run.play(true); },
-      reroll() { seed = (Math.random() * 4294967296) >>> 0; plant(); },
+      reroll() { seed = (Math.random() * 4294967296) >>> 0; },
     });
     slide(s, { leave() { run.play(false); } });
     onSize(fireC, paintFire);
@@ -317,12 +332,12 @@ const beyond = [
     onSize(aiC, () => {
       const st = stage(aiC); if (!st) return;
       const { ctx, t } = st, layers = [5, 7, 7, 7, 3], rnd = makeRng(11);
-      const pos = layers.map((m, l) => Array.from({ length: m }, (_, k) => [60 + (l * (st.w - 120)) / (layers.length - 1), st.h / 2 + (k - (m - 1) / 2) * 62] as const));
+      const pos = layers.map((m, l) => Array.from({ length: m }, (_, k) => [70 + (l * (st.w - 140)) / (layers.length - 1), st.h / 2 + (k - (m - 1) / 2) * 86] as const));
       ctx.lineWidth = 1.5; ctx.strokeStyle = t.line; ctx.beginPath();
       for (let l = 0; l + 1 < layers.length; l++) for (const [x1, y1] of pos[l]) for (const [x2, y2] of pos[l + 1]) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
       ctx.stroke();
       for (const layer of pos) for (const [x, y] of layer) {
-        ctx.beginPath(); ctx.arc(x, y, 18, 0, 2 * Math.PI); ctx.fillStyle = rnd() < 0.45 ? t.ink : t.panel; ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 24, 0, 2 * Math.PI); ctx.fillStyle = rnd() < 0.45 ? t.ink : t.panel; ctx.fill();
         ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
       }
     });

@@ -76,18 +76,16 @@ import clamp from '../../data/defence/clamp.json';
   const X = (i: number, b: { x: number; w: number }) => b.x + clamp.xy[2 * i] * b.w, Y = (i: number, b: { y: number; h: number }) => b.y + clamp.xy[2 * i + 1] * b.h;
   const radius = (i: number) => 7 + 1.6 * Math.sqrt(clamp.deg[i]);
 
-  /** The network: faint links, then the people, filled when their hand is up. */
+  /** The network: faint links, then the people, filled when their hand is up; a ringed person last, over the rest. */
   function drawNet(st: NonNullable<ReturnType<typeof stage>>, state: (i: number) => string, ring: (i: number) => string | null) {
     const { ctx, t } = st, b = { x: 30, y: 30, w: st.w - 60, h: st.h - 60 };
     ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i, b), Y(i, b)); ctx.lineTo(X(j, b), Y(j, b)); }
     ctx.stroke();
-    for (let i = 0; i < n; i++) {
-      ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), radius(i), 0, 2 * Math.PI);
-      ctx.fillStyle = state(i); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = t.muted; ctx.stroke();
-      const r = ring(i);
-      if (r) { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), radius(i) + 10, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = r; ctx.stroke(); }
-    }
+    const circle = (i: number, r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
+    const person = (i: number) => { ctx.beginPath(); ctx.arc(X(i, b), Y(i, b), radius(i), 0, 2 * Math.PI); ctx.fillStyle = state(i); ctx.fill(); circle(i, radius(i), 2, t.muted); };
+    for (let i = 0; i < n; i++) if (!ring(i)) person(i);
+    for (let i = 0; i < n; i++) { const r = ring(i); if (r) { person(i); circle(i, radius(i) + 10, 13, t.panel); circle(i, radius(i) + 10, 6, r); } }
   }
 
   // ── H1: the room, then the network: nobody stubborn (shown at build 1, run at 2), a quiet one (3, 4), an important

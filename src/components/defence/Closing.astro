@@ -1,7 +1,8 @@
 ---
 // I1–I3: the summary, laid out as the ribbon is, in its two halves, one chapter per click, each with a small animation
-// that keeps going by itself (no buttons: they only remind the room what happened); three directions beyond the
-// thesis, one at a time in the middle of the slide: spatiotemporal modelling at BionamiX (groundwater, then a wildfire),
+// that runs by itself while it is the newest and then stands still (no buttons: they only remind the room what happened); three directions beyond the
+// thesis, one at a time in the middle of the slide: spatiotemporal modelling at BionamiX (a groundwater model, then a
+// wildfire, each started by the click that shows it),
 // influence maximisation, and inside artificial minds (a small neural network at work); and the close: the title's
 // slogan over the cover's landscape, brought together, then its colours drained away and one flipped cell that sets the
 // still life moving, and a QR code to the site (drawn at build time, no library at run time).
@@ -17,7 +18,7 @@ const halves = [
     { ch: 'synchronisation', say: 'filter for rules that do what we want', act: 'agree', aria: 'The consensus-seeking rule bringing a rewired grid to agreement, from one random start after another' },
   ] },
   { name: 'Applying them', items: [
-    { ch: 'network classification', say: 'understand rules that generate distinct fingerprints', act: 'prints', aria: 'Miranda et al.’s rule on the three networks, each with its fingerprint over it' },
+    { ch: 'network classification', say: 'understand rules that generate distinct fingerprints', act: 'prints', aria: 'A good detective on the three networks, each with its fingerprint over it' },
     { ch: 'impact analysis', say: 'assign a dynamical importance score', act: 'stubborn', aria: 'The village with one stubborn person after another, and whether the village follows' },
   ] },
 ];
@@ -42,7 +43,7 @@ const halves = [
   <p slot="say">To sum up, along the two halves of the research question, and the chapters along the bottom of the slides.</p>
   <p slot="say">Getting to know the rules. Metrics: we defined Life-like network automata so that every rule has its cousin, and worked out numbers and curves that quantify a rule before it runs, such as the Hamming weight and the Boolean sensitivity, here for one rule after another (Chapter 5).</p>
   <p slot="say">Synchronisation: with those metrics as a filter, we find rules that do what we want, here a consensus-seeking rule that brings a rewired grid to agreement, from one random start after another (Chapter 6).</p>
-  <p slot="say">Applying them. Network classification: we understand which rules give networks distinct fingerprints, those that change their mind often, but not always (Chapter 9).</p>
+  <p slot="say">Applying them. Network classification: we understand which rules give networks distinct fingerprints, good detectives that change their mind often, but not always, here on the three networks (Chapter 9).</p>
   <p slot="say">And impact analysis: making every node stubborn in turn gives each a dynamical importance score. Here the best-connected villager, the most important one, a quiet one and another important one, in turn: twice the village follows, twice it does not, each time what that person does in most starts (Chapter 10, work in progress).</p>
 </Slide>
 
@@ -53,8 +54,13 @@ const halves = [
       <div class="i2-head"><img src="/demos/defence/logos/bionamix.webp" alt="BionamiX" /><b>Spatiotemporal modelling</b></div>
       <div class="i2-row">
         <div class="i2-gw" data-b="1">
-          <p class="i2-sub">Groundwater flow</p>
-          <p class="pub"><b>The MACCA-GW groundwater flow model: application to De Wilde Landen, the Netherlands</b><span>M. Rollier, L. Landuyt, J. M. Baetens</span><span>ACRI 2026, accepted</span></p>
+          <p class="i2-sub">Groundwater flow <span class="i2-month" data-month>Jan</span></p>
+          <div class="i2-box">
+            <canvas class="i2-gwpic" aria-label="The water table under a nature reserve through the seasons: high in spring, low in late summer, lowest along a line of wells"></canvas>
+            <SimButton class="i2-btn" />
+          </div>
+          <ul class="key"><li>low<i class="wt"></i>high</li><li><i class="well"></i>well</li></ul>
+          <p class="i2-cite">The MACCA-GW model · ACRI 2026, accepted</p>
         </div>
         <div class="i2-fire" data-b="2">
           <p class="i2-sub">Wildfires</p>
@@ -67,11 +73,13 @@ const halves = [
       </div>
     </div>
     <figure class="i2-item" data-b-only="3">
-      <div class="i2-box"><canvas class="i2-pic" data-pic="net" aria-label="The village of the impact slides, every villager coloured by how much they matter"></canvas></div>
+      <div class="i2-box">
+        <canvas class="i2-pic" data-pic="net" aria-label="The village of the impact slides, three ambassadors ringed, holding on, and the village following them, from one start after another"></canvas>
+        <SimButton class="i2-btn" />
+      </div>
       <figcaption>
         <b>Influence maximisation</b>
         <span>Many open questions, many relevant applications</span>
-        <p class="ramp">matters little <i></i> matters most</p>
       </figcaption>
     </figure>
     <figure class="i2-item" data-b-only="4">
@@ -86,10 +94,10 @@ const halves = [
     </figure>
   </div>
   <p slot="say">Where does this go next? First, at BionamiX: spatiotemporal modelling, where cellular automata model processes in space and time. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods.</p>
-  <p slot="say">Groundwater flow: the MACCA-GW model, a cellular automaton for groundwater flow, applied to De Wilde Landen in the Netherlands, is accepted for the ACRI 2026 proceedings (with L. Landuyt and J. M. Baetens). It is not part of the thesis: a model in space, not a network automaton. Next to established models such as MODFLOW it offers simplicity, and many runs at once for ensembles.</p>
+  <p slot="say">Groundwater flow: the MACCA-GW model, a cellular automaton for groundwater flow, applied to De Wilde Landen in the Netherlands, is accepted for the ACRI 2026 proceedings (with L. Landuyt and J. M. Baetens). It is not part of the thesis: a model in space, not a network automaton. Every cell holds the height of the water table; water flows to it from its four neighbours, rain falls, the land cover draws some back, and a line of wells pumps, more in summer. The map is a simplified version on a made-up reserve, not the calibrated model, started with this click: a year in ten seconds, the water table highest in spring and lowest in late summer, deepest along the wells. Next to established models such as MODFLOW it offers simplicity, and many runs at once for ensembles; in the paper, pumping more in winter and less in summer raises the spring water table by about a third of a metre, at no cost.</p>
   <p slot="say">And wildfires, close to home: in August a fire in the Hautes Fagnes burnt some 3,000 hectares, one of the largest in Belgian history, and villages had to be evacuated. The picture is a wildfire as a simple cellular automaton, an illustration and not the BionamiX model, started with this click: green trees, red fire, charcoal where it has passed, a wind from the left; a burning tree burns for several timesteps and can set each of its eight neighbours alight, most easily downwind. Models like this ask where a fire goes next, and where a firebreak would help most.</p>
-  <p slot="say">Second: influence maximisation. I wish I had started on node importance earlier: it holds many open questions and many relevant applications. Which few people, chosen together, reach the most? Does a stand-in rule pick the same people as the real processes on a network, an epidemic, an opinion, a product spreading? The claims of the impact chapter still have to be checked against such processes, and on real networks. The picture is the village of before, every villager coloured by importance, the most important ringed.</p>
-  <p slot="say">And next for me: what goes on inside artificial minds. A neural network is also simple operations, iterated: every node adds up what comes in, each input with its weight, adds a bias, and passes the sum on only if it is positive (a ReLU). Here a small one with random weights and biases, started with this click, processes one input after another: dots carry what each link passes on, a node fills as it fires, and the largest output is ringed. Nobody writes down what a trained network does: the same gap between rule and behaviour, with very high stakes. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
+  <p slot="say">Second: influence maximisation. I wish I had started on node importance earlier: it holds many open questions and many relevant applications. Which few people, chosen together, reach the most? Does a stand-in rule pick the same people as the real processes on a network, an epidemic, an opinion, a product spreading? The claims of the impact chapter still have to be checked against such processes, and on real networks. The picture, started with this click, is the village of before with our three ambassadors (ringed) holding on to the programme: from one start after another, the village follows them, nearly always.</p>
+  <p slot="say">And next for me: what goes on inside artificial minds. A neural network is also simple operations, iterated: every node adds up what comes in, each input with its weight, adds a bias, and passes the sum on only if it is positive (a ReLU). Here a small one with random weights and biases, started with this click, processes one input after another: each link lights up with what it passes on, a node fills as it fires, and the largest output is ringed. Nobody writes down what a trained network does: the same gap between rule and behaviour, with very high stakes. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
 
 <Slide label="Thank you" builds={2} class="i3">
@@ -136,21 +144,22 @@ const halves = [
   .i2-head { display: flex; align-items: center; gap: calc(36 * var(--u)); }
   .i2-head img { height: calc(96 * var(--u)); width: auto; }
   .i2-head b { font-size: calc(60 * var(--u)); line-height: 1.1; }
-  .i2-row { display: flex; align-items: flex-start; gap: calc(90 * var(--u)); }
-  .i2-gw, .i2-fire { display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
-  .i2-gw { width: calc(640 * var(--u)); }
+  .i2-row { display: flex; align-items: flex-start; gap: calc(200 * var(--u)); }
+  .i2-gw, .i2-fire { display: flex; flex-direction: column; align-items: flex-start; gap: calc(16 * var(--u)); }
   .i2-sub { font-size: calc(44 * var(--u)); font-weight: 700; }
-  .i2-firepic { display: block; width: calc(500 * var(--u)); height: calc(500 * var(--u)); }
+  .i2-month { font-weight: 400; color: var(--muted); margin-left: calc(16 * var(--u)); }
+  /* the reserve is 38 × 45 cells, the forest 84 × 84: the same height */
+  .i2-gwpic { display: block; width: calc(406 * var(--u)); height: calc(480 * var(--u)); }
+  .i2-firepic { display: block; width: calc(480 * var(--u)); height: calc(480 * var(--u)); }
+  .i2-cite { font-size: calc(28 * var(--u)); color: var(--muted); }
   .key { list-style: none; padding: 0; flex-direction: row; gap: calc(36 * var(--u)); font-size: calc(36 * var(--u)); }
   .key li { display: flex; align-items: center; gap: calc(12 * var(--u)); }
-  .key i, .ramp i { display: inline-block; width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+  .key i { display: inline-block; width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+  .key .wt { width: calc(140 * var(--u)); background: linear-gradient(to right, var(--panel), var(--accent)); border: calc(2 * var(--u)) solid var(--line); }
+  .key .well { width: calc(16 * var(--u)); height: calc(16 * var(--u)); border-radius: 50%; background: var(--ink); }
   .key .tree { background: var(--tree); }
   .key .fire { background: var(--fire); }
   .key .ash { background: var(--ash); }
-  .ramp { display: flex; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); margin-top: calc(20 * var(--u)); }
-  .ramp i { width: calc(220 * var(--u)); background: linear-gradient(to right, var(--panel), var(--accent)); border: calc(2 * var(--u)) solid var(--line); }
-  .pub { font-size: calc(36 * var(--u)); line-height: 1.3; background: var(--panel); padding: calc(22 * var(--u)) calc(28 * var(--u)); border-left: calc(8 * var(--u)) solid var(--accent); display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
-  .pub span { color: var(--muted); font-size: calc(32 * var(--u)); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* three states: the halves far apart; brought together (.together); moved up to make room for the thanks (.thanked) */
@@ -185,10 +194,11 @@ const halves = [
   import { spark } from '../../scripts/defence/cover';
   import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
-  import { type Rule, step, randomState, hammingWeight } from '../../scripts/llna';
+  import { type Rule, step, randomState, hammingWeight, density } from '../../scripts/llna';
   import { sensitivity } from '../../scripts/genotype';
   import { stepClamped } from '../../scripts/consensus';
   import { wildfire, TREE, BURNING, BURNT } from '../../scripts/defence/wildfire';
+  import { aquifer, shareOf, monthOf, type Aquifer } from '../../scripts/defence/groundwater';
   import { TRIO, trioNet } from '../../scripts/defence/trio';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
   import { drawRing, type Ring } from '../../scripts/defence/donut';
@@ -199,8 +209,10 @@ const halves = [
   import consensus from '../../data/defence/consensus.json';
   import clamp from '../../data/defence/clamp.json';
 
-  // ── I1: the summary. Each chapter's animation starts with the click that shows it and keeps going, in a loop of its own ──
-  type Act = { rate: number; reset(): void; advance(): void; paint(st: Stage): void };
+  // ── I1: the summary. Each chapter's animation starts with the click that shows it and keeps going, in a loop of its
+  // own, until the next chapter comes: then it stands still where it was ──
+  /** A tile's animation; `settle`, if any, brings it to the frame it should stand still on. */
+  type Act = { rate: number; reset(): void; advance(): void; paint(st: Stage): void; settle?(): void };
   /** A grid of W × H square cells centred in the canvas; `fill(x, y)` gives the colour of a cell, or null. */
   function cells(st: Stage, W: number, H: number, fill: (x: number, y: number) => string | null) {
     const { ctx, t } = st, c = Math.floor(Math.min(st.w / W, st.h / H)), x0 = (st.w - W * c) / 2, y0 = (st.h - H * c) / 2;
@@ -233,7 +245,7 @@ const halves = [
 
   // synchronisation: the winner of the mission on the rewired grid of the race, from a new random start each time (one
   // that agrees within the thesis's 100 timesteps, as more than nine in ten do), five timesteps a second; it holds the
-  // agreement two seconds and starts again
+  // agreement two seconds and starts again. Standing still, it shows the agreement.
   const AGREE = (() => {
     const side = 30, N = side * side, net = lattice(side, 8, 0.2, makeRng(consensus.demo.netSeed));
     const start = () => { let s0 = randomState(N, 0.5, fresh()); for (let k = 0; k < 20 && !agree(net, WINNER, s0, 100).ok; k++) s0 = randomState(N, 0.5, fresh()); return s0; };
@@ -242,15 +254,16 @@ const halves = [
       rate: 5,
       reset() { run = agreement(net, WINNER, start(), 100); hold = -1; },
       advance() { if (hold >= 0) { if (++hold > 10) act.reset(); return; } if (run.next()) hold = 0; },
+      settle() { if (hold < 0) { for (let k = 0; k < 200 && !run.next(); k++); hold = 0; } },
       paint(st) { cells(st, side, side, (x, y) => (run.state[y * side + x] ? st.t.ink : null)); },
     };
     return act;
   })();
 
-  // network classification: Miranda et al.'s rule on the three networks (two above, one below), faint, each with its
+  // network classification: the good detective of G2 on the three networks (two above, one below), faint, each with its
   // fingerprint over it, five timesteps a second from a new start
   const PRINTS = (() => {
-    const rule: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, S = 186, kinds: PrintKind[] = ['whorl', 'loop', 'tented'];
+    const rule: Rule = { r: 9, B: 170, S: 48 }, S = 186, kinds: PrintKind[] = ['whorl', 'loop', 'tented'];
     let pics: Picture[] | null = null, a: Uint8Array[] = [], b: Uint8Array[] = [];
     const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), S, 6, k === 1 ? 2 : 2.4, k === 2 ? 0.6 : false)));
     const lines = kinds.map((kd, k) => ridges(kd, 11 + k)), H = 150;
@@ -291,19 +304,19 @@ const halves = [
     } satisfies Act;
   })();
 
-  /** The village (clamp.json) in a square canvas of any size, nodes coloured by `fill`, one of them ringed in red, drawn
-   * last on a cream halo, over its neighbours. */
-  function drawVillage(st: Stage, fill: (i: number) => string, ring = -1) {
+  /** The village (clamp.json) in a square canvas of any size, nodes coloured by `fill`, those in `ring` ringed in red,
+   * drawn last on a cream halo, over their neighbours. */
+  function drawVillage(st: Stage, fill: (i: number) => string, ring: number | number[] = []) {
     const { ctx, t } = st, s = Math.min(st.w, st.h), k = s / 700, pad = 20 * k, bx = { x: (st.w - s) / 2 + pad, y: (st.h - s) / 2 + pad, w: s - 2 * pad, h: s - 2 * pad };
     const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = (i: number) => k * (7 + 1.6 * Math.sqrt(clamp.deg[i]));
-    const ringed = (r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(ring), Y(ring), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
+    const rings = typeof ring === 'number' ? [ring] : ring;
+    const ringed = (i: number, r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(i), Y(i), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
     const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R(i), 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * k); ctx.strokeStyle = t.muted; ctx.stroke(); };
     ctx.strokeStyle = t.line; ctx.lineWidth = Math.max(1, 1.5 * k); ctx.beginPath();
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
     ctx.stroke();
-    for (let i = 0; i < clamp.deg.length; i++) if (i !== ring) node(i);
-    if (ring < 0) return;
-    node(ring); ringed(R(ring) + 9 * k + 2, 13 * k + 3, t.panel); ringed(R(ring) + 9 * k + 2, 6 * k + 2, t.danger);
+    for (let i = 0; i < clamp.deg.length; i++) if (!rings.includes(i)) node(i);
+    for (const i of rings) { node(i); ringed(i, R(i) + 9 * k + 2, 13 * k + 3, t.panel); ringed(i, R(i) + 9 * k + 2, 6 * k + 2, t.danger); }
   }
 
   // impact analysis: one stubborn person after another (clamp.json's cycle: the best-connected, the most important, a
@@ -340,9 +353,10 @@ const halves = [
     slide(s, {
       set(b: number) {
         tiles.forEach((t) => t.classList.toggle('cur', b > 0 && +t.dataset.ch! === CHS[b - 1]));
-        // the tiles shown keep going; the others wait on their first frame
+        // the newest tile shown keeps going, the ones before it stand still, the others wait on their first frame
         tiles4.forEach((x, k) => {
-          if (k < b) { if (!x.run.playing) x.run.play(true); }
+          if (k === b - 1) { if (!x.run.playing) x.run.play(true); }
+          else if (k < b) { x.run.play(false); x.act.settle?.(); x.paint(); }
           else { x.run.play(false); x.act.reset(); x.paint(); }
         });
       },
@@ -351,9 +365,11 @@ const halves = [
     });
   }
 
-  // ── I2: one direction at a time. Spatiotemporal modelling: groundwater (build 1), a wildfire spreading from cell to
-  // cell (./wildfire, started by the click that shows it, build 2); influence maximisation: the village coloured by
-  // importance (3); inside artificial minds: a small neural network at work (4, started by that click). ──
+  // ── I2: one direction at a time. Spatiotemporal modelling: the water table of a stylised reserve through the seasons
+  // (./groundwater, started by the click that shows it, build 1), a wildfire spreading from cell to cell (./wildfire,
+  // likewise, build 2; the groundwater then stands still); influence maximisation: the three ambassadors of the
+  // importance slide holding on while the village follows them (3, started by that click); inside artificial minds: a
+  // small neural network at work (4, started by that click). ──
   /** A small multilayer perceptron with random weights and biases (scaled by the number of inputs, a fixed seed): ReLU in
    * the hidden layers, the outputs as shares (softmax). */
   function perceptron(L: number[], seed: number) {
@@ -375,7 +391,28 @@ const halves = [
 
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i2')) {
     const fireC = s.querySelector<HTMLCanvasElement>('canvas.i2-firepic')!, [netC, aiC] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i2-pic'));
-    const [fireBtn, aiBtn] = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'));
+    const [gwBtn, fireBtn, ambBtn, aiBtn] = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'));
+    // the water table: a year in about ten seconds (1.2 days a frame), on a scale from the slide's cream to its blue, the
+    // filters as dots, the month beside the heading; the model is built when first drawn
+    const gwC = s.querySelector<HTMLCanvasElement>('canvas.i2-gwpic')!, month = s.querySelector<HTMLElement>('[data-month]')!;
+    let aq: Aquifer | null = null;
+    const A = () => (aq ??= aquifer());
+    const paintGW = () => {
+      const st = stage(gwC); if (!st) return;
+      const a = A(), lo = parse(st.t.panel), hi = parse(st.t.accent), wells = new Set(a.wells);
+      cells(st, a.W, a.H, (x, y) => css(mix(lo, hi, shareOf(a.head[y * a.W + x]))));
+      const c = Math.floor(Math.min(st.w / a.W, st.h / a.H)), x0 = (st.w - a.W * c) / 2, y0 = (st.h - a.H * c) / 2;
+      st.ctx.fillStyle = st.t.ink;
+      for (const i of wells) { st.ctx.beginPath(); st.ctx.arc(x0 + (i % a.W + 0.5) * c, y0 + (Math.floor(i / a.W) + 0.5) * c, c * 0.32, 0, 2 * Math.PI); st.ctx.fill(); }
+      month.textContent = monthOf(a.day);
+    };
+    const flow = ticker(s, 30, () => A().advance(1.2), paintGW);
+    sim(gwBtn, 1, {
+      reset() { flow.play(false); A().reset(); paintGW(); },
+      play() { flow.play(true); },
+    });
+    onSize(gwC, paintGW);
+
     const fire = wildfire();
     let seed = 2026;
     fire.plant(seed);
@@ -400,16 +437,55 @@ const halves = [
     });
     onSize(fireC, paintFire);
 
-    onSize(netC, () => {
-      const st = stage(netC); if (!st) return;
-      const eta = clamp.eta, top = Math.max(...eta), lo = parse(st.t.panel), hi = parse(st.t.accent);
-      let most = 0; eta.forEach((v, i) => { if (v > eta[most]) most = i; });
-      drawVillage(st, (i) => css(mix(lo, hi, eta[i] / top)), most);
+    // the three ambassadors (the three most important, as on the importance slide) hold on, the rest follow the
+    // consensus-seeking rule: from a new start each time, one the village would lose without them and wins with them (the
+    // rule is its own cousin, so holding on to on works as holding on to off does), four timesteps a second until
+    // nothing changes, held two seconds
+    const AMB = (() => {
+      const RULE: Rule = { r: 9, B: 464, S: 488 }, n = clamp.deg.length, net = build('ba', n, clamp.edges as [number, number][]);
+      const three = clamp.eta.map((_, i) => i).sort((a, b) => clamp.eta[b] - clamp.eta[a]).slice(0, 3), cl = new Int8Array(n).fill(-1), free = new Int8Array(n).fill(-1);
+      for (const i of three) cl[i] = 1;
+      let a = new Uint8Array(n), b = new Uint8Array(n), hold = -1, t = 0;
+      /** Where a start ends after at most 80 timesteps, with or without the ambassadors. */
+      const ends = (s0: Uint8Array, c: Int8Array) => {
+        let x = s0.slice(), y = new Uint8Array(n);
+        for (let k = 0; k < 80; k++) { stepClamped(x, net, RULE, c, y); [x, y] = [y, x]; }
+        return density(x);
+      };
+      const load = () => {
+        let s0 = randomState(n, 0.5, fresh());
+        for (let k = 0; k < 40; k++) {
+          for (const i of three) s0[i] = 1;
+          const won = ends(s0, cl) === 1;
+          if (won && (k >= 30 || ends(s0, free) < 1)) break;
+          s0 = randomState(n, 0.5, fresh());
+        }
+        a = s0; hold = -1; t = 0;
+      };
+      return {
+        three, load,
+        get state() { return a; },
+        advance() {
+          if (hold >= 0) { if (++hold > 8) load(); return; }
+          stepClamped(a, net, RULE, cl, b);
+          let same = true; for (let i = 0; i < n && same; i++) if (a[i] !== b[i]) same = false;
+          [a, b] = [b, a];
+          if (same || ++t >= 60) hold = 0;
+        },
+      };
+    })();
+    const paintNet = () => { const st = stage(netC); if (st) drawVillage(st, (i) => (AMB.state[i] ? st.t.ink : st.t.panel), AMB.three); };
+    const pull = ticker(s, 4, () => AMB.advance(), paintNet);
+    sim(ambBtn, 3, {
+      reset() { pull.play(false); AMB.load(); paintNet(); },
+      play() { pull.play(true); },
     });
+    AMB.load();
+    onSize(netC, paintNet);
 
-    // the neural network: a new input every cycle, passed on layer by layer; while a layer passes it on, a dot runs along
-    // every link, as large as what that link carries (ink when it adds, grey when it takes away); a node fills as far as
-    // it fires, one that a ReLU stops stays empty; the largest output is ringed
+    // the neural network: a new input every cycle, passed on layer by layer; while a layer passes it on, every link lights
+    // up, and fades again, as strongly as what it carries (ink when it adds, grey when it takes away); a node fills as far
+    // as it fires, one that a ReLU stops stays empty; the largest output is ringed
     const LAYERS = [5, 7, 7, 7, 3], net = perceptron(LAYERS, 11), IN = 0.5, HOP = 0.6, REST = 1, CYCLE = IN + HOP * (LAYERS.length - 1) + REST;
     let tau = 0, vals: number[][] = net.forward(LAYERS.map(() => 0)).map((l) => l.map(() => 0)), inputs = makeRng(5);
     const newInput = () => { vals = net.forward(Array.from({ length: LAYERS[0] }, () => inputs())); };
@@ -421,18 +497,19 @@ const halves = [
       ctx.lineWidth = 1.5; ctx.strokeStyle = t.line; ctx.beginPath();
       for (let l = 0; l + 1 < LAYERS.length; l++) for (const [x1, y1] of pos[l]) for (const [x2, y2] of pos[l + 1]) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
       ctx.stroke();
-      // the layer passing its values on: a dot on every link, sized by |w · x| against the largest of that layer
+      // the layer passing its values on: every link lit, as strongly as |w · x| against the largest of that layer, rising
+      // and fading again over the hop
       const l = Math.floor((tau - IN) / HOP);
       if (tau >= IN && l >= 0 && l < LAYERS.length - 1) {
-        const u = (tau - IN - l * HOP) / HOP, carry = net.W[l].map((row) => row.map((w, i) => w * vals[l][i]));
+        const u = (tau - IN - l * HOP) / HOP, glow = Math.sin(Math.PI * u), carry = net.W[l].map((row) => row.map((w, i) => w * vals[l][i]));
         const big = Math.max(1e-9, ...carry.flat().map(Math.abs));
+        ctx.lineCap = 'round';
         carry.forEach((row, j) => row.forEach((c, i) => {
           const m = Math.abs(c) / big; if (m < 0.04) return;
-          const [x1, y1] = pos[l][i], [x2, y2] = pos[l + 1][j], x = x1 + (x2 - x1) * u, y = y1 + (y2 - y1) * u, col = c > 0 ? t.ink : t.muted;
-          // the link lit behind its signal, then the signal itself
-          ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x, y); ctx.lineWidth = 1 + 4 * m; ctx.strokeStyle = col; ctx.stroke(); ctx.globalAlpha = 1;
-          ctx.beginPath(); ctx.arc(x, y, 3 + 9 * Math.sqrt(m), 0, 2 * Math.PI); ctx.fillStyle = col; ctx.fill();
+          const [x1, y1] = pos[l][i], [x2, y2] = pos[l + 1][j];
+          ctx.globalAlpha = glow * (0.3 + 0.7 * m); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineWidth = 1.5 + 6 * m; ctx.strokeStyle = c > 0 ? t.ink : t.muted; ctx.stroke();
         }));
+        ctx.globalAlpha = 1;
       }
       const last = LAYERS.length - 1, best = vals[last].indexOf(Math.max(...vals[last]));
       pos.forEach((layer, li) => {
@@ -456,10 +533,12 @@ const halves = [
     slide(s, {
       // a direction that leaves the slide stops; the fire picks up again when a step back returns to it
       set(b: number, how: How) {
+        if (b !== 1) flow.play(false); else if (how === 'prev' && gwBtn.dataset.run) flow.play(true);
         if (b !== 2) burn.play(false); else if (how === 'prev' && fireBtn.dataset.run) burn.play(true);
+        if (b !== 3) pull.play(false); else if (how === 'prev' && ambBtn.dataset.run) pull.play(true);
         if (b < 4) think.play(false);
       },
-      leave() { burn.play(false); think.play(false); },
+      leave() { flow.play(false); burn.play(false); pull.play(false); think.play(false); },
     });
   }
 

@@ -14,6 +14,7 @@ import { step, randomState, phi, type Rule as LlnaRule } from '../src/scripts/ll
 import { trioNet, trioStart } from '../src/scripts/defence/trio.ts';
 import { wildfire, FIRE, BARE, BURNING, BURNT } from '../src/scripts/defence/wildfire.ts';
 import { fingerprinter, PRINT } from '../src/scripts/defence/print.ts';
+import { neighbourDegree, knnSpearman } from '../src/scripts/defence/importance.ts';
 import type { NetSpec } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
@@ -352,5 +353,11 @@ import { buildNet } from '../src/scripts/net.ts';
     assert.ok(Math.abs(runFrom(net, rule, x, 100, cl).rho - want) < 1e-9, `H1 clamp ${k}`);
   }
   assert.ok(clamp.summary.spearmanEtaDegree > 0.5 && clamp.summary.spearmanEtaDegree < 0.9);
+  // H2 draws the very network the scores were computed on: its links are the network's, and its degrees count them;
+  // against the average degree of the neighbours the score goes nowhere
+  const key = ([i, j]: number[]) => (i < j ? `${i}-${j}` : `${j}-${i}`);
+  assert.deepEqual(clamp.edges.map(key).sort(), net.edges.map(key).sort(), 'H2 draws another network');
+  assert.deepEqual(clamp.deg, neighbourDegree(clamp).map((_, i) => clamp.edges.filter((e: number[]) => e.includes(i)).length));
+  assert.ok(Math.abs(knnSpearman(clamp)) < 0.1, 'H2: the score goes with the average neighbour degree');
   console.log('toy data for G and H replays');
 }

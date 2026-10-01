@@ -308,6 +308,8 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
   const all = Float64Array.from({ length: 512 * 512 }, (_, i) => sensitivity(R9(i >> 9, i & 511), 8).BS).sort();
   assert.deepEqual([all[all.length >> 2], all[(3 * all.length) >> 2]].map((x) => Math.round(x * 10) / 10), [3.6, 5.4], 'the middle half of all rules');
   assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
+  // the detective slide counts the changes of answer on the rings: 6 of 16 for the consensus-seeking rule, 15 of 16 for Miranda's
+  assert.deepEqual([jaggedness(metric).J, jaggedness(R9(170, 340)).J], [6, 15], 'changes of answer on the detective slide');
   console.log('genotype anchors of the brief hold');
 }
 

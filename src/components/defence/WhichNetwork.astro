@@ -4,8 +4,10 @@
 // entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them, and the neighbourhood
 // density that Ch. 9 used; then a fingerprint in their place (a whorl, a loop, a tented arch). The title asks whether
 // behaviour predicts topology, and under it the hunt: rules whose fingerprints are distinct. First the consensus-seeking rule: every network agrees, and the three fingerprints
-// are one (a plain arch); then Miranda et al.'s rule from the same start, and three different prints. G4: the same two rules, every
-// change of answer marked: jaggedness, our result, and the bridge to what consensus-seeking rules are good for instead.
+// are one (a plain arch); then Miranda et al.'s rule from the same start, and three different prints. G4: what makes a
+// good detective: the same two rules on their rings, a red arrow (the flipped neighbour of the sensitivity slide) at
+// every change of answer between neighbouring slices, counted (the thesis's jaggedness, never named on the slide); our
+// result, and the bridge to what consensus-seeking rules are good for instead.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { phi } from './tex';
@@ -19,6 +21,8 @@ const rules = [
   { id: 'consensus', name: 'Consensus-seeking', r: 9, B: 488, S: 464 },
   { id: 'miranda', name: 'Miranda et al.', r: 9, B: 170, S: 340 },
 ];
+/** How often a rule changes its answer between neighbouring slices, born and survive together (the thesis's J). */
+const changes = ({ r, B, S }: { r: number; B: number; S: number }) => [B, S].reduce((n, m) => { for (let i = 1; i < r; i++) n += ((m >> i) ^ (m >> (i - 1))) & 1; return n; }, 0);
 const sides = [
   { x: { r: 9, B: 488, S: 464 }, name: 'A consensus-seeking rule' },
   { x: { r: 9, B: 170, S: 340 }, name: 'Miranda et al.’s rule' },
@@ -58,20 +62,21 @@ const kinds = ['whorl', 'loop', 'tented'];
   <p slot="say">Together, the three histograms are the network’s fingerprint (drawn here as a real one), and a simple classifier can learn to tell the fingerprints apart. Under the consensus-seeking rule the three fingerprints are one and the same: a bad detective. The next click puts in the rule G. H. B. Miranda and colleagues used in 2016, when they started classifying networks this way, <Fragment set:html={phi(9, 170, 340)} /> on their own intervals (closed on the left, so not quite our symmetric ones), and runs it from the same start. Now the histograms differ: on the scale-free network its many nodes with only four links soon stay off for good, so its entropy has a second peak at 0. And so do the fingerprints: a whorl, a loop and a tented arch, the textbook kinds. So we look for rules whose fingerprints are clearly different; the switch at the top does the same by hand. The thesis did this on 23 datasets, with histograms split by degree and a support-vector machine; this slide keeps the idea and shrinks the rest.</p>
 </Slide>
 
-<Slide label="Jaggedness" builds={2} class="g4" ch={9}>
-  <h2>Jaggedness: how often a rule changes its mind</h2>
+<Slide label="What makes a good detective?" builds={3} class="g4" ch={9}>
+  <h2>What makes a good detective?</h2>
   <div class="g4-two">
     {sides.map((sd, i) => (
       <figure class="jag" data-rule={i}>
         <p class="g4-name">{sd.name} <span set:html={phi(sd.x.r, sd.x.B, sd.x.S)} /></p>
-        <canvas class="jdiag" data-rule={`${sd.x.r},${sd.x.B},${sd.x.S}`} aria-label="the rule with every change between neighbouring intervals marked"></canvas>
+        <canvas class="jrings" data-rule={`${sd.x.r},${sd.x.B},${sd.x.S}`} aria-label="the rule as two rings, with a red arrow at every change of answer between neighbouring slices"></canvas>
+        <p class="g4-count" data-b="1"><b>{changes(sd.x)}</b> of {2 * (sd.x.r - 1)}</p>
       </figure>
     ))}
   </div>
-  <p class="result" data-b="1"><b>Our result</b> On 13 of 23 datasets, more jagged rules tend to classify better. Searching by jaggedness finds a rule within 5% of the best while trying only 10–20% of the rules.</p>
-  <p class="bridge" data-b="2">Consensus-seeking rules make bad detectives. But they are good at something else: <b>finding who matters</b>.</p>
-  <p slot="say">What makes the difference can be read off the rule itself. Walk along the intervals, from few neighbours on to all of them, and count how often the rule changes its answer: that is its jaggedness. The consensus-seeking rule changes its mind at 38% of the boundaries, Miranda’s rule at 94%. A jagged rule is a sensitive rule: a small change in the neighbourhood often changes what a node does.</p>
-  <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). On 13 of the 23 datasets, more jagged rules tend to classify better (correlations between about 0.2 and 0.46), and the best rules sit in a middle-to-high band of jaggedness. That makes jaggedness a guide: searching by jaggedness finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well.</p>
+  <p class="result" data-b="2"><b>Our result</b> On 13 of 23 datasets, the best detectives change their mind often, but not always. Searching there finds a rule within 5% of the best while trying only 10–20% of the rules.</p>
+  <p class="bridge" data-b="3">Consensus-seeking rules make bad detectives. But they are good at something else: <b>finding who matters</b>.</p>
+  <p slot="say">What makes the difference can be read off the rule itself. Back to the rings, and to the red arrow of the sensitivity slide: one neighbour more or fewer moves a node one slice along its ring. The next click draws that arrow wherever it changes the answer, between every two neighbouring slices where the rule says something else. The consensus-seeking rule changes its mind at 6 of the 16 steps, Miranda’s rule at 15: a rule that changes its mind often is a sensitive rule, since a small change in the neighbourhood often changes what a node does.</p>
+  <p slot="say">This is our contribution to network classification, Chapter 9, work led by Lucas C. de Oliveira (with M. Rollier, J. M. Baetens and O. M. Bruno, under review). Over thousands of rules and 23 datasets, the best detectives change their mind often, but not always: at between half and nine in ten of the steps. That makes sense: such rules are sensitive enough to pick up how networks differ, but not so sensitive that it drowns in chaos; they behave in a complex way (a reading the thesis proposes but does not test). Miranda’s rule, at 15 of 16, sits just above that band: on these three networks it does well, but over all the datasets the best rules change their mind a little less often. On 13 of the 23 datasets, more often tends to classify better (correlations between about 0.2 and 0.46), and searching among the rules that change their mind often, but not always, finds a rule within 5% of the best while trying only 10 to 20% of the rules. On social and bioinformatics networks there is no such pattern, but the method itself is mediocre there as well. (The count is what the thesis calls the jaggedness: the neighbour part of the Boolean sensitivity with every slice weighed the same, whatever the network. The Boolean sensitivity itself shows the same pattern, slightly weaker.)</p>
   <p slot="say">So consensus-seeking rules make bad detectives. But they turn out to be good at something else: finding which nodes matter.</p>
 </Slide>
 
@@ -101,9 +106,11 @@ const kinds = ['whorl', 'loop', 'tented'];
   :global(.g2.printed) .g2-row { opacity: 0.35; }
 
   .g4-two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(80 * var(--u)); }
-  .jag { margin: 0; display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+  .jag { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(8 * var(--u)); }
   .g4-name { font-size: calc(38 * var(--u)); font-weight: 700; }
-  .jdiag { width: calc(820 * var(--u)); height: calc(250 * var(--u)); }
+  .jrings { width: calc(820 * var(--u)); height: calc(330 * var(--u)); }
+  .g4-count { font-size: calc(44 * var(--u)); color: var(--danger); }
+  .g4-count b { font-size: 1.3em; }
   :global(.g4) .result { margin-top: auto; }
   .bridge { font-size: calc(44 * var(--u)); font-weight: 400; line-height: 1.25; }
 </style>
@@ -111,12 +118,12 @@ const kinds = ['whorl', 'loop', 'tented'];
 <script>
   import { slide, sim, buildOf, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
-  import { label } from '../../scripts/defence/plot';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
   import { TRIO, trioNet, trioStart } from '../../scripts/defence/trio';
   import { fingerprinter, type Feature, type Print } from '../../scripts/defence/print';
   import { type Rule, step } from '../../scripts/llna';
   import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
+  import { drawRing, hop, type Ring } from '../../scripts/defence/donut';
 
   const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' }, consensus: { r: 9, B: 488, S: 464 } };
   const FEATS: Feature[] = ['entropy', 'lz', 'density'];
@@ -194,33 +201,21 @@ const kinds = ['whorl', 'loop', 'tented'];
     }
   }
 
-  /** The rule as two rows of intervals, born (top) and survive (bottom), with a red tick at every change of answer. */
-  function diagram(st: Stage, x: { r: number; B: number; S: number }, left: number) {
-    const { ctx, t } = st, gap = 30, top = 10, w = (st.w - left) / x.r, h = (st.h - gap - top - 50) / 2;
-    label(st, 'born', left - 14, top + h / 2, { size: 28, align: 'right', color: t.muted });
-    label(st, 'survives', left - 14, top + gap + 1.5 * h, { size: 28, align: 'right', color: t.muted });
-    let changes = 0;
-    for (const [row, mask, col] of [[0, x.B, t.accent], [1, x.S, t.ink]] as const) {
-      const Y = top + row * (h + gap);
-      for (let i = 0; i < x.r; i++) {
-        const on = (mask >> i) & 1, X = left + i * w;
-        ctx.fillStyle = on ? col : t.panel; ctx.fillRect(X + 2, Y, w - 4, h);
-        if (!on) { ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.strokeRect(X + 3, Y + 1, w - 6, h - 2); }
-        if (i > 0 && ((mask >> i) & 1) !== ((mask >> (i - 1)) & 1)) {
-          changes++;
-          ctx.strokeStyle = t.danger; ctx.lineWidth = 7; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(X, Y - 8); ctx.lineTo(X, Y + h + 8); ctx.stroke();
-        }
-      }
-    }
-    label(st, `jaggedness ${Math.round((100 * changes) / (2 * (x.r - 1)))}%`, left, st.h - 18, { size: 32, color: t.danger, weight: 700 });
-  }
-
-  // ── G4: the two rules of G2, every change of answer between neighbouring intervals marked ──
+  // ── G4: the two rules of G2 on their rings; from the first click a red arrow at every change of answer between
+  // neighbouring slices, the flipped neighbour of the sensitivity slide ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.g4')) {
-    s.querySelectorAll<HTMLCanvasElement>('canvas.jdiag').forEach((c) => {
-      const [r, B, S] = c.dataset.rule!.split(',').map(Number);
-      onSize(c, () => { const st = stage(c); if (st) diagram(st, { r, B, S }, 150); });
-    });
+    const cs = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.jrings'));
+    let marked = false;
+    const paint = (c: HTMLCanvasElement) => {
+      const st = stage(c); if (!st) return;
+      const [r, B, S] = c.dataset.rule!.split(',').map(Number), R = Math.min(st.w / 4 - 40, st.h / 2 - 34), w = R * 0.41;
+      const rings: [Ring, number][] = [[{ x: st.w / 2 - R - 60, y: st.h / 2, R, w, on: false }, B], [{ x: st.w / 2 + R + 60, y: st.h / 2, R, w, on: true }, S]];
+      for (const [g, m] of rings) {
+        drawRing(st, g, r, m);
+        if (marked) for (let i = 1; i < r; i++) if (((m >> i) ^ (m >> (i - 1))) & 1) hop(st, g, r, i - 0.36, i + 0.36, st.t.danger);
+      }
+    };
+    slide(s, { set(b: number) { marked = b >= 1; cs.forEach(paint); } });
+    cs.forEach((c) => onSize(c, () => paint(c)));
   }
 </script>

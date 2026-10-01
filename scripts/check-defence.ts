@@ -180,19 +180,21 @@ assert.deepEqual(cousin({ r: 9, B: 488, S: 464 }), { r: 9, B: 488, S: 464 });
   assert.deepEqual([Math.min(...deg[0]), Math.max(...deg[0])], [2, 13]);
   assert.deepEqual([Math.min(...deg[1]), Math.max(...deg[1])], [5, 12]);
   assert.equal(deg[2].filter((d) => d === 4).length, 60); assert.equal(Math.max(...deg[2]), 52);
-  // F3: from each network's start, Maze freezes within ten rounds, the Game of Life all but dies out within forty
-  // (at most 5% on), and Replicator is still changing after a hundred
+  // F3: from each network's start, φ⁹₁₆₈,₄₈₆ keeps going on the random network (still changing after a hundred
+  // timesteps), fills up and freezes on the ring (nine in ten on, still within sixty) and all but dies out on the
+  // scale-free one (at most a tenth on after sixty); a node with two or four links can never be born under it
   const run = (k: number, rule: Rule, T: number) => {
     const net = nets[k];
     let a = trioStart(k, net.n), b = new Uint8Array(net.n), last = 0;
     for (let t = 1; t <= T; t++) { step(a, net, rule, b); let c = 0; for (let x = 0; x < net.n; x++) c += a[x] ^ b[x]; [a, b] = [b, a]; if (c > 0) last = t; }
     return { last, on: a.reduce((m, v) => m + v, 0) / net.n };
   };
-  for (const k of [0, 1, 2]) {
-    assert.ok(run(k, { r: 9, B: 8, S: 62 }, 50).last <= 10, `F3: Maze does not freeze on network ${k}`);
-    assert.ok(run(k, { r: 9, B: 8, S: 12 }, 40).on <= 0.05, `F3: the Game of Life lives on on network ${k}`);
-    assert.equal(run(k, { r: 9, B: 170, S: 170 }, 100).last, 100, `F3: Replicator stops on network ${k}`);
-  }
+  const F3: Rule = { r: 9, B: 168, S: 486 }, f3 = [0, 1, 2].map((k) => run(k, F3, k ? 60 : 100));
+  assert.equal(f3[0].last, 100, 'F3: the rule settles on the random network');
+  assert.ok(f3[0].on > 0.2 && f3[0].on < 0.7, `F3: the random network's share on: ${f3[0].on}`);
+  assert.ok(f3[1].last < 60 && f3[1].on >= 0.9, `F3: the ring does not fill up and freeze: ${JSON.stringify(f3[1])}`);
+  assert.ok(f3[2].on <= 0.1, `F3: the scale-free network lives on: ${f3[2].on}`);
+  assert.deepEqual([stepOne(F3, 2), stepOne(F3, 4)], [0, 0], 'F3: a node with two or four links can be born');
   // G2: under Miranda et al.'s rule (their uniform cut) all three stay lively and their fingerprints over the whole run
   // of 100 timesteps differ, from the networks' own starts and from any of 40 others; nodes with four neighbours can
   // never be born under it. Under the consensus-seeking winner all three are all off within twenty timesteps, and their
@@ -245,7 +247,7 @@ import { sensitivity, selfEquivalentRules, candidates, jaggedness, derrida } fro
 import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsTowardsHomogeneous, trial } from '../src/scripts/llna.ts';
 import { lattice } from '../src/scripts/net.ts';
 import { pearson } from '../src/scripts/stats.ts';
-import { curveOf, tangentOf, cobweb, STEPS, type Kind } from '../src/scripts/defence/curves.ts';
+import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts';
 import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
 {
   const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
@@ -314,18 +316,11 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
   const metric = R9(488, 464), tc = tan(metric, 'density'); near(tc.x, 0.5, 1e-3, 'consensus unstable equilibrium'); near(tc.slope, 1.148, 5e-3, 'consensus slope there');
   near(tan(life, 'defect').slope, sensitivity(life, 8).BS, 1e-3, 'Life defect tangent = BS8'); near(sensitivity(life, 8).BS, 3.17, 5e-3, 'Life BS8');
   near(tan(metric, 'defect').slope, 6.398, 1e-3, 'consensus defect tangent');
-  // the ring slides' numbers, and the random rule their clicks bring in (Metrics.astro), as the say slots quote them:
-  // Hamming weights 0.27, 0.50 and 0.48, Boolean sensitivities 3.17, 6.40 and 4.71; the random rule has no unstable
-  // equilibrium, and from 30% on its cobweb jumps past ½ and back, ending around half on; half of all 262 144 rules have
-  // a sensitivity between 3.6 and 5.4
-  const drawn = R9(11, 93), two = (x: number) => Math.round(x * 100) / 100;
-  assert.deepEqual([life, metric, drawn].map((r) => two(hammingWeight(r, 8))), [0.27, 0.5, 0.48], 'Hamming weights');
-  assert.deepEqual([life, metric, drawn].map((r) => two(sensitivity(r, 8).BS)), [3.17, 6.4, 4.71], 'Boolean sensitivities');
-  assert.equal(tangentOf(curveOf(drawn, 'density'), 'density'), null, 'the random rule has no unstable equilibrium');
-  const web = cobweb(curveOf(drawn, 'density'), 0.3, STEPS).filter((_, i) => i % 2).map(([, y]) => y);
-  assert.ok(web[0] > 0.5 && web[1] < 0.5 && Math.abs(web[web.length - 1] - 0.5) < 0.03, `the random rule's cobweb: ${web}`);
-  const all = Float64Array.from({ length: 512 * 512 }, (_, i) => sensitivity(R9(i >> 9, i & 511), 8).BS).sort();
-  assert.deepEqual([all[all.length >> 2], all[(3 * all.length) >> 2]].map((x) => Math.round(x * 10) / 10), [3.6, 5.4], 'the middle half of all rules');
+  // the ring slides' numbers (Metrics.astro), as the say slots quote them: Hamming weights 0.27 and 0.50, Boolean
+  // sensitivities 3.17 and 6.40
+  const two = (x: number) => Math.round(x * 100) / 100;
+  assert.deepEqual([life, metric].map((r) => two(hammingWeight(r, 8))), [0.27, 0.5], 'Hamming weights');
+  assert.deepEqual([life, metric].map((r) => two(sensitivity(r, 8).BS)), [3.17, 6.4], 'Boolean sensitivities');
   assert.equal(tangentOf(curveOf(R9(0, 0), 'density'), 'density'), null, 'a rule that switches everything off has no unstable equilibrium');
   // the detective slide counts the changes of answer on the rings: 6 of 16 for the consensus-seeking rule, 15 of 16 for Miranda's
   assert.deepEqual([jaggedness(metric).J, jaggedness(R9(170, 340)).J], [6, 15], 'changes of answer on the detective slide');
@@ -336,6 +331,7 @@ import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agre
 import { toyNet, toyFeatures, startSeed, lempelZiv, shannon, TOY } from '../src/scripts/defence/toy.ts';
 import { runFrom } from '../src/scripts/consensus.ts';
 import { buildNet } from '../src/scripts/net.ts';
+import { villageNet } from '../src/scripts/defence/village.ts';
 {
   // the worked example of Miranda et al. 2016 (supplement S2): 0101…01 of length 20 is seven blocks, 7 ln 20 / 20 =
   // 1.049; Shannon entropy in bits: 0 for a node that never changes, 1 for one on half of the time, 0.811 for a quarter
@@ -355,7 +351,7 @@ import { buildNet } from '../src/scripts/net.ts';
   // the three networks slide G3 shows reach consensus under the consensus-seeking rule
   for (const c of [0, 1, 2]) assert.ok(classify.consensusRounds[c * TOY.perType] !== null, `G3 network ${c} reaches consensus`);
   const clamp = JSON.parse(readFileSync(new URL('../src/data/defence/clamp.json', import.meta.url), 'utf8'));
-  const net = buildNet(clamp.params.spec, clamp.params.seed, 'none'), rule: Rule = { r: 9, B: 464, S: 488 };
+  const net = villageNet(clamp.params.village), rule: Rule = { r: 9, B: 464, S: 488 };
   assert.deepEqual(Array.from(net.deg), clamp.deg);
   const s0 = Uint8Array.from(clamp.demo.bits, (ch: string) => +ch), n = net.n, cl = new Int8Array(n);
   assert.equal(runFrom(net, rule, s0, 100).rho, 1, 'the H1 start ends all up');
@@ -365,10 +361,24 @@ import { buildNet } from '../src/scripts/net.ts';
   }
   assert.ok(clamp.summary.spearmanEtaDegree > 0.5 && clamp.summary.spearmanEtaDegree < 0.9);
   // H2 draws the very network the scores were computed on: its links are the network's, and its degrees count them;
-  // against the average degree of the neighbours the score goes nowhere
+  // against the average degree of the neighbours the score goes, if anything, the other way (the outskirts know
+  // well-connected people); and, as H2 and H3 say, the three villagers with the most contacts (21) are not among the
+  // ten most important
   const key = ([i, j]: number[]) => (i < j ? `${i}-${j}` : `${j}-${i}`);
   assert.deepEqual(clamp.edges.map(key).sort(), net.edges.map(key).sort(), 'H2 draws another network');
   assert.deepEqual(clamp.deg, neighbourDegree(clamp).map((_, i) => clamp.edges.filter((e: number[]) => e.includes(i)).length));
-  assert.ok(Math.abs(knnSpearman(clamp)) < 0.1, 'H2: the score goes with the average neighbour degree');
+  assert.ok(knnSpearman(clamp) < -0.2, 'H2: the score goes with the average neighbour degree');
+  const byEta = clamp.eta.map((_: number, i: number) => i).sort((a: number, b: number) => clamp.eta[b] - clamp.eta[a]);
+  const busiest = clamp.deg.map((_: number, i: number) => i).sort((a: number, b: number) => clamp.deg[b] - clamp.deg[a] || a - b).slice(0, 3);
+  assert.deepEqual(busiest.map((i: number) => clamp.deg[i]), [21, 21, 21], 'H3: three villagers with 21 contacts');
+  assert.ok(busiest.every((i: number) => byEta.indexOf(i) >= 10), 'H3: a best-connected villager among the ten most important');
+  // the closing summary's stubborn people replay: the best-connected one does not flip the village, the most important does
+  assert.deepEqual(clamp.cycle.map((x: { node: number }) => x.node), [busiest[0], byEta[0], clamp.demo.lo, clamp.demo.hi], 'I1: who is stubborn');
+  for (const x of clamp.cycle as { node: number; flips: boolean; bits: string }[]) {
+    cl.fill(-1); cl[x.node] = 0; const a = Uint8Array.from(x.bits, (ch) => +ch); a[x.node] = 0;
+    const o = runFrom(net, rule, a, 100, cl);
+    assert.ok(x.flips ? o.rho === 0 : o.rho >= 1 - 1.5 / n, `I1: stubborn ${x.node}`);
+  }
+  assert.deepEqual(clamp.cycle.map((x: { flips: boolean }) => x.flips), [false, true, false, true], 'I1: two follow, two do not');
   console.log('toy data for G and H replays');
 }

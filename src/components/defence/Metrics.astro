@@ -33,14 +33,14 @@ const slides = [
   { kind: 'defect', view: 'rings', label: 'Boolean sensitivity', title: 'The average next defect', cls: 'f4a', builds: 2, num: 'Boolean sensitivity', sym: String.raw`\mathrm{BS}_8`, first: '3.17', say: [
     `The second number is about differences. Take the same node and its eight neighbours, and flip one of its nine inputs. Flip a neighbour, and the share of neighbours on moves one slice along the ring, one way or the other: the red arrows. Flip the node itself, and it moves to the other ring. Does the node’s next state change? Count the inputs whose flip changes it, averaged over all 512 inputs: that is the Boolean sensitivity, ${BS}, split into the node itself (IS) and its neighbours (NS), at most 9. For the Game of Life it is 3.17: of a node’s nine inputs, about three matter.`,
     'The consensus-seeking rule: 6.40, twice as sensitive as the Game of Life.',
-    'The random rule: 4.71, about what a rule drawn at random has (half of all 262 144 rules lie between 3.6 and 5.4). What a single difference does over time is the curve of the next slide.',
+    'The random rule: 4.71, about what a rule drawn at random has (half of all 262 144 rules lie between 3.6 and 5.4). What a single difference does over time is the curve of the next slide.',
   ], aria: 'The rule as two rings, with a red arrow along each for one neighbour flipped, and its Boolean sensitivity under them' },
   { kind: 'defect', view: 'curve', label: 'The average next defect', title: 'The average next defect', cls: 'f4', builds: 4, say: [
     'The same question about differences, from any start. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one timestep later, on average? That is the average next defect (the Derrida curve), again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
     'The dashed line is the tangent at the origin, and its slope is the Boolean sensitivity of the slide before: how many nodes a single difference reaches in one timestep, on average. Above one, a single difference spreads; below one, it dies out. For the Game of Life, 3.17.',
     'The next click brings back the consensus-seeking rule: 6.40. A single difference spreads fast under this rule, and that will matter in the next chapter.',
     'And the random rule: 4.71, in between.',
-    'Our result: we worked out both numbers and both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
+    'Our result: we worked out both numbers and both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
   ], aria: 'The average next defect of the chosen rule against the defect now, with a cobweb from the start and the diagonal' },
 ];
 ---

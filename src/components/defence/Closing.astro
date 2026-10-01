@@ -10,11 +10,11 @@ const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
 const answers = [
   { half: 'What links rule and behaviour?', items: [
-    { ch: 5, say: 'Two curves read off the rule, worked out for Life-like network automata.' },
+    { ch: 5, say: 'Two numbers and two curves read off the rule, worked out for Life-like network automata.' },
     { ch: 6, say: 'From 262 144 rules to 27 that seek agreement, without a single simulation.' },
   ] },
   { half: 'Can we put that link to use?', items: [
-    { ch: 9, say: 'More jagged, sensitive rules tend to tell networks apart better.' },
+    { ch: 9, say: 'Rules that change their mind often, but not always, tell networks apart best.' },
     { ch: 10, say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
   ] },
 ];
@@ -38,8 +38,8 @@ const answers = [
     </div>
   </div>
   <p slot="say">Back to the research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? Four chapters answer it.</p>
-  <p slot="say">What links rule and behaviour: two curves that can be read off a rule before running it, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262 144 rules down to 27 candidates for bringing a network to agreement, without a single simulation, and the best of them, one of the most sensitive, brings most partly rewired networks there (Chapter 6).</p>
-  <p slot="say">Putting the link to use: more jagged, and so more sensitive, rules tend to tell networks apart better, which makes jaggedness a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
+  <p slot="say">What links rule and behaviour: two numbers and two curves that can be read off a rule before running it, the Hamming weight and the Boolean sensitivity, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262 144 rules down to 27 candidates for bringing a network to agreement, without a single simulation, and the best of them, one of the most sensitive, brings most partly rewired networks there (Chapter 6).</p>
+  <p slot="say">Putting the link to use: rules that change their mind often, but not always, sensitive but not chaotic, tend to tell networks apart best, which makes that count (the jaggedness) a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
 </Slide>
 
 <Slide label="Beyond this thesis" builds={3} class="i2">

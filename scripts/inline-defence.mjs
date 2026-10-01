@@ -13,9 +13,9 @@ const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 const dataUri = (path) => `data:${MIME[extname(path).toLowerCase()] ?? 'application/octet-stream'};base64,${readFileSync(join(dist, path)).toString('base64')}`;
 const local = (u) => u.startsWith('/') && !u.startsWith('//');
 
-// Stylesheets, with their urls inlined.
+// Stylesheets, with their urls inlined; of KaTeX's fonts only the woff2, which every browser the file targets reads.
 html = html.replace(/<link rel="stylesheet" href="([^"]+)"\s*\/?>/g, (_, href) => {
-  const css = readFileSync(join(dist, href), 'utf8').replace(/url\((['"]?)(\/[^)'"]+)\1\)/g, (m, q, u) => (local(u) ? `url(${dataUri(u)})` : m));
+  const css = readFileSync(join(dist, href), 'utf8').replace(/,url\([^)]+\.(?:woff|ttf)\)\s*format\("(?:woff|truetype)"\)/g, '').replace(/url\((['"]?)(\/[^)'"]+)\1\)/g, (m, q, u) => (local(u) ? `url(${dataUri(u)})` : m));
   return `<style>${css}</style>`;
 });
 

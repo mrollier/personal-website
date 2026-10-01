@@ -1,9 +1,11 @@
 ---
-// D2–D3: nature uses the same recipe as the Life-like network automata just before (a flock, a brain); the rule is the genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
+// D2–D3: nature uses the same recipe as the Life-like network automata just before (a flock, a brain); the rule is the
+// genotype, the behaviour the phenotype, and the thesis wants to narrow the gap between them.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
-const RULE = 54;
-const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (RULE >> n) & 1 }));
+import { phi } from './tex';
+// D3: the genotype's two rings, in design pixels of their canvas (src/scripts/defence/donut.ts draws them)
+const rings = [{ x: 185, y: 150, R: 135, w: 56, on: false }, { x: 535, y: 150, R: 135, w: 56, on: true }];
 ---
 <Slide label="Nature does this too: a flock" builds={2} class="d2 d2-flock">
   <h2>Nature does this too</h2>
@@ -49,33 +51,31 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   <p slot="say">On the right, an octopus fast asleep. Every so often a sleeping octopus slips into a short phase of active sleep, and its skin comes alive: it darkens, breaks into blotches and pales again, running through the same patterns it uses when it is awake, to hide or to signal. That skin is a screen of tiny colour cells, each opened and closed by nerves from the brain, so what we are watching is the brain at work, with nothing outside to react to. The researchers found that its brain activity in these moments looks like waking activity, and compare it to our own REM sleep, the sleep in which we dream. Nobody knows what an octopus experiences; but simple cells, wired together, produce something that looks remarkably like a dream. (Video: an octopus in active sleep, A. Pophale et al., Nature 2023, CC BY 4.0; cropped and trimmed.)</p>
 </Slide>
 
-<Slide label="Genotype and phenotype" builds={2} class="d3">
+<Slide label="Genotype and phenotype" builds={3} class="d3">
   <div class="d3-body">
   <div class="gp">
     <div class="col center">
       <h3>Genotype: the rule</h3>
-      <p>local, simple<br />what each cell does</p>
-      <div class="mini">
-        {cases.map((c) => (
-          <div class="case"><div class="three-bits">{c.bits.map((b) => <i class={b ? 'on' : ''} />)}</div><i class:list={['one', c.out && 'on']} /></div>
-        ))}
-      </div>
-      <p class="rule">rule {RULE}</p>
+      <p>local, simple<br />what each node does</p>
+      <canvas class="geno" data-rings={JSON.stringify(rings)} aria-label="The rule as two rings: where a node that is off is born, and where a node that is on survives"></canvas>
+      <p class="d3-phi" set:html={phi(9, 8, 12, true)} />
     </div>
     <div class="arrows" aria-hidden="true">⇄</div>
     <div class="col center">
       <h3>Phenotype: the behaviour</h3>
       <p>global, rich<br />what the whole does</p>
-      <canvas class="pheno" aria-label={`Rule ${RULE} from a random row, time running downward`}></canvas>
+      <div class="d3-box">
+        <canvas class="pheno" aria-label="The rule on the left, running on a small-world grid of 256 nodes"></canvas>
+        <SimButton class="d3-btn" />
+      </div>
     </div>
   </div>
-  <div class="rq" data-b="1">
+  <div class="rq" data-b="2">
     <p class="rq-label">The research question</p>
-    <p class="q">What links a simple local rule to the rich behaviour it produces, <span data-b="2">and can we put that link to use?</span></p>
+    <p class="q">What links a simple local rule to the rich behaviour it produces, <span data-b="3">and can we put that link to use?</span></p>
   </div>
   </div>
-  <p class="cite">Genotype and phenotype, after S. A. Kauffman, 1990</p>
-  <p slot="say">Borrowing two words from biology: the rule is the <em>genotype</em>, local and simple, what each cell does; the behaviour is the <em>phenotype</em>, global and rich, what the whole does. Here the rule is rule 54. Its table fits on one line, and yet you cannot read the pattern on the right off that table.</p>
+  <p slot="say">Borrowing two words from biology (after S. A. Kauffman, 1990): the rule is the <em>genotype</em>, local and simple, what each node does; the behaviour is the <em>phenotype</em>, global and rich, what the whole does. Here the rule is the Game of Life, <Fragment set:html={phi(9, 8, 12)} />, on a small-world grid of 256 nodes, started with a click. The rule fits in two rings, and yet you cannot read what the network does off those rings. On this page, click the rings to change the rule while it runs.</p>
   <p slot="say">That gap is what the thesis is about, and a Life-like network automaton is a good place to study it: the rule is as simple as a rule gets, the network can be anything, and every step can be watched. Its research question has two halves: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? The rule never tells the whole story, but it tells more than nothing, and the behaviour in turn tells us something about the rule and about the network it runs on.</p>
 </Slide>
 
@@ -95,23 +95,23 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
   .gp > .col { width: calc(720 * var(--u)); gap: calc(20 * var(--u)); }
   .gp h3 { font-size: calc(50 * var(--u)); }
   .arrows { font-size: calc(120 * var(--u)); color: var(--accent); align-self: center; line-height: 1; }
-  .mini { display: flex; gap: calc(12 * var(--u)); margin-top: calc(30 * var(--u)); }
-  .case { display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u)); }
-  .three-bits { display: flex; gap: calc(2 * var(--u)); }
-  .case i { display: block; width: calc(26 * var(--u)); height: calc(26 * var(--u)); background: var(--panel); border: calc(1.5 * var(--u)) solid var(--line); }
-  .case i.on { background: var(--ink); border-color: var(--ink); }
-  .gp p.rule { font-size: calc(32 * var(--u)); }
-  .pheno { width: calc(640 * var(--u)); height: calc(320 * var(--u)); }
-  .rq { margin-top: calc(40 * var(--u)); text-align: center; }
+  .geno { width: calc(720 * var(--u)); height: calc(300 * var(--u)); margin-top: calc(6 * var(--u)); }
+  .d3-phi { font-size: calc(58 * var(--u)); }
+  .d3-box { position: relative; }
+  .pheno { width: calc(400 * var(--u)); height: calc(400 * var(--u)); }
+  .d3-box :global(.d3-btn) { right: calc(-84 * var(--u)); bottom: calc(0 * var(--u)); }
+  .rq { margin-top: calc(20 * var(--u)); text-align: center; }
   .rq-label { font-size: calc(34 * var(--u)); color: var(--accent); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: calc(10 * var(--u)); }
   .q { font-weight: 700; font-size: calc(62 * var(--u)); line-height: 1.2; max-width: calc(1600 * var(--u)); margin: 0 auto; }
 </style>
 
 <script>
-  import { slide, sim } from '../../scripts/defence/deck';
+  import { slide, sim, fresh } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, pointer } from '../../scripts/defence/stage';
-  import { makeRng } from '../../scripts/net';
-  import { evolve, seedRow } from '../../scripts/eca';
+  import { makeRng, buildNet } from '../../scripts/net';
+  import { step, randomState, type Rule } from '../../scripts/llna';
+  import { picker, setPhi, type Ring } from '../../scripts/defence/donut';
+  import { picture, drawNet } from '../../scripts/defence/netdraw';
   import { flock, stepFlock } from '../../scripts/defence/boids';
   import { brain, fire, outline, FOLDS, BOX } from '../../scripts/defence/brain';
 
@@ -205,14 +205,27 @@ const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ bits: [(n >> 2) & 1, (n >> 
     onSize(b, paintBrain);
   }
 
-  // ── D3: rule 54 from a random row as the phenotype ──
-  for (const c of document.querySelectorAll<HTMLCanvasElement>('.slide.d3 canvas.pheno')) {
-    const W = 100, T = 50, rows = evolve(seedRow(W, 'random', makeRng(54)), 54, T - 1);
-    onSize(c, () => {
-      const st = stage(c); if (!st) return;
-      const cell = Math.min(st.w / W, st.h / T);
-      st.ctx.fillStyle = st.t.ink;
-      rows.forEach((r, y) => r.forEach((v, x) => { if (v) st.ctx.fillRect(x * cell, y * cell, cell - 0.8, cell - 0.8); }));
+  // ── D3: the genotype, the Game of Life as two rings at resolution 9 (clickable, donut.ts), beside its phenotype, the
+  // rule running on a small-world grid of 16 × 16 nodes, 5% of the links rewired (started at build 1). A click on the
+  // rings changes the rule as it runs. Start 70 on network 31 keeps the Game of Life busy for hundreds of rounds;
+  // a reset draws a new start. ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.d3')) {
+    const rc = s.querySelector<HTMLCanvasElement>('canvas.geno')!, nc = s.querySelector<HTMLCanvasElement>('canvas.pheno')!;
+    const label = s.querySelector('.d3-phi')!, LIFE = { r: 9, B: 8, S: 12 }, SEED = 70, RHO = 0.4;
+    const pic = picture(buildNet({ kind: 'lat', side: 16, degree: 8, p: 0.05 }, 31, 'grid'), 400, 14, 5.5), n = pic.net.n;
+    let rule: Rule = { ...LIFE }, first = randomState(n, RHO, makeRng(SEED)), a = first.slice(), b = new Uint8Array(n);
+    const paint = () => { const st = stage(nc); if (st) drawNet(st, pic, a); };
+    const run = ticker(nc, 5, () => { step(a, pic.net, rule, b); [a, b] = [b, a]; }, paint);
+    const rules = picker(rc, JSON.parse(rc.dataset.rings!) as [Ring, Ring], LIFE, (x) => { rule = x; setPhi(label, x); });
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { run.play(false); a = first.slice(); paint(); },
+      play() { run.play(true); },
+      reroll() { first = randomState(n, RHO, fresh()); },
     });
+    slide(s, {
+      enter() { rules.reset(LIFE); first = randomState(n, RHO, makeRng(SEED)); },
+      leave() { run.play(false); },
+    });
+    onSize(nc, paint);
   }
 </script>

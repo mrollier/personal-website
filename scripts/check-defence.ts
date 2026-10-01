@@ -9,6 +9,9 @@ import { makeRng } from '../src/scripts/net.ts';
 import { room, wire, degrees, SEATS, COLS, ROWS } from '../src/scripts/defence/room.ts';
 import { brain, fire, outline } from '../src/scripts/defence/brain.ts';
 import { flock, stepFlock } from '../src/scripts/defence/boids.ts';
+import { remap } from '../src/scripts/defence/rings.ts';
+import { step, randomState } from '../src/scripts/llna.ts';
+import type { NetSpec } from '../src/scripts/net.ts';
 
 // QR: the Reed–Solomon codewords of the ISO worked example (HELLO WORLD, 1-M) and the published format-bit table.
 assert.deepEqual(reedSolomon([32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17], 10), [196, 35, 39, 119, 235, 215, 231, 226, 93, 23]);
@@ -102,6 +105,37 @@ for (const L of [1, 3, 4, 5]) for (const t of bank(tiles, L)) {
   f.x[0] = 400; f.y[0] = 300; f.vx[0] = 2; f.vy[0] = 0;
   stepFlock(f, { x: 440, y: 300 });
   assert.ok(f.vx[0] < 2, 'the bird does not turn away from the pointer');
+}
+// C3: the tiles of levels 2 and 6 (src/data/defence/still.json) are still lifes on their own, like the others.
+{
+  const extra = JSON.parse(readFileSync(new URL('../src/data/defence/still.json', import.meta.url), 'utf8'));
+  for (const L of [2, 6]) {
+    const n = 6 * L, P = n + 4, g = new Uint8Array(P * P), bytes = Buffer.from(extra[L], 'base64');
+    for (let k = 0; k < n * n; k++) g[(Math.floor(k / n) + 2) * P + (k % n) + 2] = (bytes[k >> 3] >> (7 - (k & 7))) & 1;
+    assert.ok(g.some((v) => v === 1));
+    assert.equal(stepLife(g, P, P, new Uint8Array(P * P)), 0, `the level-${L} tile of C3 is not a still life`);
+  }
+}
+// F2 and D3: the rings keep the chosen density regions. Carried to a finer odd resolution and back, any rule at
+// resolution 5 comes back as it was; φ⁵₆,₁₁ at resolution 7 is φ⁷₁₄,₅₅ (worked out by hand).
+for (let x = 0; x < 32; x++) for (const r of [7, 9, 11, 13]) assert.equal(remap(remap(x, 5, r), r, 5), x, `rule ${x} through resolution ${r}`);
+assert.equal(remap(6, 5, 7), 14); assert.equal(remap(11, 5, 7), 55);
+// F3, as its say text tells: on the slide's small-world ring (network 31, start 1984) Maze freezes and the Game of Life
+// dies out within a few dozen rounds, while Replicator is still changing after a hundred. D3: on the 16 × 16 small-world
+// grid (network 31, start 70) the Game of Life is still busy after 300 rounds.
+{
+  const quiet = (spec: NetSpec, rule: Rule, seed: number, T: number) => {
+    const net = buildNet(spec, 31, 'none');
+    let a = randomState(net.n, 0.4, makeRng(seed)), b = new Uint8Array(net.n), last = 0;
+    for (let t = 1; t <= T; t++) { step(a, net, rule, b); let c = 0; for (let i = 0; i < net.n; i++) c += a[i] ^ b[i]; [a, b] = [b, a]; if (c > 0) last = t; }
+    return { last, on: a.reduce((m, v) => m + v, 0) };
+  };
+  const ring: NetSpec = { kind: 'ws', n: 60, k: 8, p: 0.1 };
+  assert.ok(quiet(ring, { r: 9, B: 8, S: 62 }, 1984, 200).last < 20, 'F3: Maze does not freeze on the ring');
+  const life = quiet(ring, { r: 9, B: 8, S: 12 }, 1984, 200);
+  assert.ok(life.last < 60 && life.on === 0, 'F3: the Game of Life does not die out on the ring');
+  assert.equal(quiet(ring, { r: 9, B: 170, S: 170 }, 1984, 100).last, 100, 'F3: Replicator stops on the ring');
+  assert.ok(quiet({ kind: 'lat', side: 16, degree: 8, p: 0.05 }, { r: 9, B: 8, S: 12 }, 70, 300).last === 300, 'D3: the Game of Life stops on the grid');
 }
 console.log('defence checks passed');
 

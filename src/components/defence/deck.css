@@ -48,6 +48,8 @@
 .slide .stack > * { grid-area: 1 / 1; }
 .slide canvas { display: block; }
 .slide sub, .slide sup { font-size: 0.62em; line-height: 0; }
+/* formulas are LaTeX (KaTeX, src/components/defence/tex.ts); its own 1.21em towers over the slide's sans */
+.deck .katex { font-size: 1.1em; }
 
 /* Controls on a slide, a button or a slider, sized with the slide. */
 .slide .ctl {

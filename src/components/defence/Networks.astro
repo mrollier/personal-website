@@ -1,12 +1,25 @@
 ---
-// Life on networks: from one long row to a grid to contacts anywhere in the room, and the room becomes a network of nodes;
-// then the Game of Life as a rule on shares, which makes it a rule for any network: the Life-like network automata,
-// the first contribution of the thesis. Both come before the thesis map, so neither has the ribbon.
+// Life on networks: from one long row to a grid to contacts anywhere in the room, and the room becomes a network of
+// nodes (F1); the Life-like network automata as two rings round a node, at ever finer resolution, the first contribution
+// of the thesis (F2); and the three Life-like rules of slide C4 again, now on three kinds of network (F3). All come
+// before the thesis map, so none has the ribbon. Formulas are LaTeX (./tex).
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
-const B = 8, S = 12, r = 9;
-const cells = Array.from({ length: r }, (_, i) => ({ b: (B >> i) & 1, s: (S >> i) & 1 }));
-const cw = 1160 / r;
+import SimButton from './SimButton.astro';
+import { tex, texify, phi } from './tex';
+
+// F2: the two rings in design pixels of the slide (src/scripts/defence/donut.ts draws them), and where 0, ½ and 1 sit
+// round each, at donut.ts's angle()
+const rings = [{ x: 500, y: 540, R: 215, w: 92, on: false }, { x: 1420, y: 540, R: 215, w: 92, on: true }];
+const angle = (share: number) => -Math.PI / 2 + 0.15 + share * (2 * Math.PI - 0.3);
+const ticks = rings.flatMap((g) => ([[0, '0'], [0.5, '\\dfrac12'], [1, '1']] as const).map(([v, t]) => ({ x: g.x + (g.R + (v === 0.5 ? 58 : 40)) * Math.cos(angle(v)), y: g.y + (g.R + (v === 0.5 ? 58 : 40)) * Math.sin(angle(v)), t })));
+// F3: Maze, Life and Replicator, as Life-like network automata at resolution 9, and the three kinds of network
+const likes = [
+  { id: 'maze', name: 'Maze', B: 8, S: 62 },
+  { id: 'life', name: 'Game of Life', B: 8, S: 12 },
+  { id: 'replicator', name: 'Replicator', B: 170, S: 170 },
+];
+const nets = ['small-world ring', 'small-world grid', 'scale-free'];
 ---
 <Slide label="Generalising even further" builds={5} class="f1">
   <div class="row grow f1-row">
@@ -29,33 +42,42 @@ const cw = 1160 / r;
   <p slot="say">But now some have four contacts and some thirteen, so a rule like “exactly three neighbours” no longer makes sense for everybody. From here on the people become nodes, and a hand up becomes a node that is on.</p>
 </Slide>
 
-<Slide label="Life-like network automata" builds={1} class="f2">
-  <h2>Life-like network automata</h2>
-  <p class="lede">A node looks at the share of its neighbours that are on.</p>
-  <div class="f2-diagram">
-    <p class="f2-name">The Game of Life, as a rule on shares</p>
-    <svg viewBox="0 0 1500 420" aria-label="The rule diagram of the Game of Life: nine intervals of the share, born in one, survive in two">
-      <text x="300" y="80" text-anchor="end" class="rl">off now:</text>
-      <text x="300" y="118" text-anchor="end" class="rs">born here</text>
-      <text x="300" y="220" text-anchor="end" class="rl">on now:</text>
-      <text x="300" y="258" text-anchor="end" class="rs">survives here</text>
-      {cells.map((c, i) => (
-        <>
-          <rect x={330 + i * cw + 3} y="30" width={cw - 6} height="120" class={c.b ? 'born' : 'off'} />
-          <rect x={330 + i * cw + 3} y="170" width={cw - 6} height="120" class={c.s ? 'keep' : 'off'} />
-        </>
-      ))}
-      <line x1="330" y1="316" x2={330 + r * cw} y2="316" class="ax" />
-      {Array.from({ length: r + 1 }, (_, i) => <line x1={330 + i * cw} y1="306" x2={330 + i * cw} y2="326" class="ax" />)}
-      <text x="330" y="370" text-anchor="middle" class="tk">0</text>
-      <text x={330 + 4.5 * cw} y="370" text-anchor="middle" class="tk">½</text>
-      <text x={330 + r * cw} y="370" text-anchor="middle" class="tk">1</text>
-      <text x={330 + 4.5 * cw} y="412" text-anchor="middle" class="rs">share of neighbours that are on, in nine intervals</text>
-    </svg>
+<Slide label="Life-like network automata" builds={4} class="f2">
+  <h2>Life-like network automata <span class="count">(∞)</span></h2>
+  <canvas class="f2-rings" data-rings={JSON.stringify(rings)} aria-label="The rule as two rings of intervals of the share of neighbours that are on: where a node that is off is born, and where a node that is on survives"></canvas>
+  {rings.map((g) => <p class="f2-lab" style={`left: calc(${g.x} * var(--u)); top: calc(${g.y - g.R - 105} * var(--u))`}>{g.on ? 'Surviving' : 'Being born'}</p>)}
+  {ticks.map((k) => <span class="f2-tick" style={`left: calc(${k.x.toFixed(1)} * var(--u)); top: calc(${k.y.toFixed(1)} * var(--u))`} set:html={tex(k.t)} />)}
+  <div class="f2-mid">
+    <p class="f2-phi" set:html={phi(5, 6, 11, true)} />
+    <label class="f2-res"><span set:html={tex('r')} /><input type="range" class="ctl" min="3" max="13" step="2" value="5" data-r aria-label="resolution" /></label>
   </div>
-  <p class="result" data-b="1"><b>Our first contribution</b> Life-like rules, defined properly for any network: 262,144 of them.</p>
-  <p slot="say">A node with ten neighbours and a node with three cannot follow a rule that counts neighbours. So count the share instead: the fraction of your neighbours that are on. Split that share into nine intervals, and a rule says in which intervals an off node is born and in which an on node survives. This is the Game of Life written as a rule on shares: born in one interval, surviving in two. It generalises the Game of Life in two directions at once: the rule can change, and so can the network.</p>
-  <p slot="say">Nine intervals for being born and nine for surviving give 2<sup>18</sup> = 262,144 rules: the Life-like network automata. Defining them properly, so that the same rule makes sense on any network whatever the number of neighbours, and so that a rule and its mirror image behave alike, is the first contribution of the thesis (Chapter 5, Physica D 2025). (Why nine, and why the intervals are placed symmetrically, is kept for the questions.)</p>
+  <p class="result f2-result" data-b="4"><b>Our first contribution</b> Life-like rules for any network, at any resolution, defined so that every rule has a cousin that behaves exactly the same with the colours swapped.</p>
+  <p slot="say" set:html={texify('A node with ten neighbours and a node with three cannot follow a rule that counts neighbours. So count the share instead: the fraction of a node’s neighbours that are on, which runs round each ring from 0 at the top, clockwise, to 1. Cut it into intervals, five here. A node that is off (left) is born when the share falls in one of its chosen intervals; a node that is on (right) survives when the share falls in one of its chosen intervals. On this page, click an interval to choose it or not. The rule’s name reads the chosen intervals as two binary numbers, as rule 90 did on the elementary table: in $\\phi^5_{6,11}$, born is 6, the second and third intervals, and survive is 11, the first, second and fourth.')} />
+  <p slot="say" set:html={texify('Each click cuts the share more finely, into 7, 9 and then 11 intervals: the resolution $r$ (the slider on this page). The rule keeps the regions it had, but its name changes, and every finer resolution can write rules that a coarser one cannot: there is no end to them. At $r = 9$, on a grid where everyone has eight neighbours, each interval holds exactly one number of live neighbours, and the Game of Life is $\\phi^9_{8,12}$.')} />
+  <p slot="say" set:html={texify('Defining these rules properly, for any network and at any resolution, is the first contribution of the thesis (Chapter 5, Physica D 2025). The intervals are placed symmetrically around $\\tfrac12$, and there is an odd number of them, so that every rule has a cousin that behaves exactly the same with on and off swapped: the same patterns, in the other colours. (Why the number is odd, and how to find a rule’s cousin, is kept for the questions.)')} />
+</Slide>
+
+<Slide label="Any rule, any network" builds={5} class="f3">
+  <div class="f3-head">
+    <h2>Any rule, any network</h2>
+    <div class="f3-nets" role="group" aria-label="the network">
+      {nets.map((n, i) => <button type="button" class="ctl" data-net={i} aria-pressed={i ? 'false' : 'true'}>{n}</button>)}
+    </div>
+  </div>
+  <div class="f3-likes">
+    {likes.map((g) => (
+      <figure>
+        <div class="f3-box">
+          <canvas data-rule={`${g.B},${g.S}`} aria-label={`${g.name} on a small network, from a random start`}></canvas>
+          <SimButton class="f3-btn" />
+        </div>
+        <figcaption><b>{g.name}</b> <span set:html={phi(9, g.B, g.S)} /></figcaption>
+      </figure>
+    ))}
+  </div>
+  <p slot="say">The same three rules as before, Maze, the Game of Life and Replicator, now as Life-like network automata at resolution 9, each started with its own button, all three from the same random start, on a ring of 60 nodes, each linked to its four nearest neighbours on either side, with some of the links rewired. Maze still freezes and Replicator still churns, but the Game of Life soon dies out here. Each reset draws a new start.</p>
+  <p slot="say">Two more clicks put the same three rules on other networks: a grid of 100 nodes with eight neighbours each, again with some links rewired, and a network of 100 nodes grown by preferential attachment, with a few hubs. Both the rule and the network can be changed, and every combination behaves in its own way: a great many situations to study.</p>
+  <p slot="say" set:html={texify('A word on the names. The ring and the grid are Watts–Strogatz networks (WSr and WSg in the thesis): a ring or a grid with some of its links rewired at random. “Small-world” is a shorthand: depending on how much is rewired, such a network is close to the lattice, a small world, or close to a random network, and most of the rewired networks in the thesis lean towards random. The third is grown by nonlinear preferential attachment (NPA): every newcomer links to earlier nodes with a probability that grows with their degree $k$, as $k^\\alpha + 1$. With $\\alpha = 1$, as here, it resembles a Barabási–Albert scale-free network without being quite one; other values of $\\alpha$ give no hubs at all ($\\alpha = 0$) or one giant hub.')} />
 </Slide>
 
 <style>
@@ -71,23 +93,43 @@ const cw = 1160 / r;
   .f1-p input { width: calc(560 * var(--u)); }
   .f1-p output { min-width: 3em; }
 
-  .f2-diagram { display: flex; flex-direction: column; gap: calc(10 * var(--u)); margin-top: calc(10 * var(--u)); }
-  .f2-name { font-size: calc(34 * var(--u)); }
-  .f2-diagram svg { width: calc(1500 * var(--u)); }
-  :global(.f2) rect.born { fill: var(--accent); }
-  :global(.f2) rect.keep { fill: var(--ink); }
-  :global(.f2) rect.off { fill: var(--panel); stroke: var(--line); stroke-width: 2; }
-  :global(.f2) .rl { font-family: var(--sans); font-size: 36px; font-weight: 600; fill: var(--ink); }
-  :global(.f2) .rs { font-family: var(--sans); font-size: 30px; fill: var(--muted); }
-  :global(.f2) .tk { font-family: var(--sans); font-size: 32px; fill: var(--muted); }
   :global(.f1.as-nodes) :global(.seat) { opacity: 0; }
-  :global(.f2) .ax { stroke: var(--muted); stroke-width: 3; }
-  :global(.f2) .result { margin-top: auto; }
+
+  .f2-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .f2-lab {
+    position: absolute; transform: translate(-50%, -50%); font-size: calc(54 * var(--u)); font-weight: 700; white-space: nowrap;
+    pointer-events: none;
+  }
+  .f2-tick { position: absolute; transform: translate(-50%, -50%); font-size: calc(36 * var(--u)); color: var(--muted); pointer-events: none; }
+  .f2-mid {
+    position: absolute; left: calc(960 * var(--u)); top: calc(540 * var(--u)); transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: calc(48 * var(--u));
+  }
+  .f2-phi { font-size: calc(78 * var(--u)); white-space: nowrap; }
+  .f2-res { display: flex; align-items: center; gap: calc(18 * var(--u)); font-size: calc(44 * var(--u)); color: var(--muted); }
+  .f2-res input { width: calc(300 * var(--u)); }
+  .f2-result { margin-top: auto; position: relative; }
+
+  .f3-head { display: flex; align-items: center; justify-content: space-between; gap: calc(40 * var(--u)); }
+  .f3-nets { display: flex; gap: calc(12 * var(--u)); }
+  .f3-nets .ctl { font-size: calc(30 * var(--u)); font-weight: 600; }
+  .f3-nets .ctl[aria-pressed="true"] { background: var(--ink); color: var(--sun); border-color: var(--ink); }
+  .f3-likes { display: flex; justify-content: space-between; flex: 1; align-items: center; }
+  .f3-likes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
+  .f3-box { position: relative; }
+  .f3-likes canvas { width: calc(540 * var(--u)); height: calc(540 * var(--u)); }
+  .f3-box :global(.f3-btn) { right: calc(-22 * var(--u)); bottom: calc(-22 * var(--u)); }
+  .f3-likes figcaption { display: flex; flex-direction: column; align-items: center; gap: calc(6 * var(--u)); font-size: calc(44 * var(--u)); }
+  .f3-likes figcaption span { font-size: calc(40 * var(--u)); color: var(--muted); }
 </style>
 
 <script>
-  import { slide, type How } from '../../scripts/defence/deck';
-  import { stage, onSize } from '../../scripts/defence/stage';
+  import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { picker, setPhi, type Ring } from '../../scripts/defence/donut';
+  import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
+  import { buildNet, makeRng, type NetSpec, type Layout } from '../../scripts/net';
+  import { step, randomState, type Rule } from '../../scripts/llna';
   import { room, wire, degrees, COLS, ROWS, SEATS } from '../../scripts/defence/room';
 
   // ── F1: the room, in three stages. Everyone in one long row, as in the experiment: a ring that snakes up from the back
@@ -215,5 +257,61 @@ const cw = 1160 / r;
     });
     setP(P0); mark();
     onSize(canvas, draw);
+  }
+
+  // ── F2: the rule as two rings (src/scripts/defence/donut.ts): φ⁵₆,₁₁ at resolution 5, then 7, 9 and 11, one per click
+  // (builds 0–3), the chosen regions kept; then our contribution (build 4). The slider sets the resolution as well, and
+  // a click on an interval changes the rule. ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f2')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.f2-rings')!, rings = JSON.parse(c.dataset.rings!) as [Ring, Ring];
+    const slider = s.querySelector<HTMLInputElement>('[data-r]')!, label = s.querySelector('.f2-phi')!;
+    const START = { r: 5, B: 6, S: 11 }, RS = [5, 7, 9, 11];
+    const p = picker(c, rings, START, (rule) => { setPhi(label, rule); slider.value = String(rule.r); });
+    slider.addEventListener('input', () => p.setR(+slider.value));
+    slide(s, {
+      set(b: number) { p.setR(RS[Math.min(b, 3)]); },
+      enter() { p.reset(START); },
+    });
+  }
+
+  // ── F3: Maze, Life and Replicator again (slide C4), now as Life-like network automata at resolution 9, each with its
+  // own button (builds 1–3), on a small-world ring; builds 4 and 5 move all three to a small-world grid and then a
+  // scale-free network (so do the buttons at the top), and what ran runs on. All three start from the same random
+  // state of their network; a reset draws a new one. The networks are built when first shown. ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.f3')) {
+    const SPECS: NetSpec[] = [{ kind: 'ws', n: 60, k: 8, p: 0.1 }, { kind: 'lat', side: 10, degree: 8, p: 0.1 }, { kind: 'npa', n: 100, m: 4, alpha: 1 }];
+    const LAYOUT: Layout[] = ['ring', 'grid', 'force'], SIZE = 540, RHO = 0.4;
+    const pics: Picture[] = [], firsts: Uint8Array[] = [];
+    const pic = (k: number) => (pics[k] ??= picture(buildNet(SPECS[k], 31 + k, LAYOUT[k]), SIZE, 26, k ? 8 : 9, k === 2));
+    const first = (k: number) => (firsts[k] ??= randomState(pic(k).net.n, RHO, makeRng(1984 + k)));
+    let kind = 0;
+    const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'), nets = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-net]'));
+    const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c, j) => {
+      const [B, S] = c.dataset.rule!.split(',').map(Number), rule: Rule = { r: 9, B, S };
+      let a = first(0).slice(), b = new Uint8Array(a.length);
+      const paint = () => { const st = stage(c); if (st) drawNet(st, pic(kind), a); };
+      const run = ticker(c, 5, () => { step(a, pic(kind).net, rule, b); [a, b] = [b, a]; }, paint);
+      const restart = () => { a = first(kind).slice(); b = new Uint8Array(a.length); paint(); };
+      sim(btns[j], 1 + j, {
+        reset() { run.play(false); restart(); },
+        play() { run.play(true); },
+        reroll() { firsts[kind] = randomState(pic(kind).net.n, RHO, fresh()); },
+      });
+      onSize(c, paint);
+      return { run, restart };
+    });
+    const show = (k: number) => {
+      nets.forEach((x, i) => x.setAttribute('aria-pressed', String(i === k)));
+      if (k === kind) return;
+      kind = k;
+      for (const p of panels) p.restart();
+    };
+    nets.forEach((x, i) => x.addEventListener('click', () => show(i)));
+    slide(s, {
+      // a network picked by hand stays until a build picks one: 4, 5, or any step back or jump
+      set(b: number, how: How) { if (b >= 4 || how !== 'next') show(b >= 5 ? 2 : b >= 4 ? 1 : 0); },
+      enter() { firsts.length = 0; kind = -1; show(0); },
+      leave() { for (const p of panels) p.run.play(false); },
+    });
   }
 </script>

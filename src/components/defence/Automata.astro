@@ -5,6 +5,7 @@ import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import tiles from '../../data/tiles.json';
 import extra from '../../data/defence/still.json';
+import { tex } from './tex';
 
 const cases = [7, 6, 5, 4, 3, 2, 1, 0].map((n) => ({ n, bits: [(n >> 2) & 1, (n >> 1) & 1, n & 1], out: (90 >> n) & 1 }));
 // rule 168 dies out after about ten rows (rule 8 after two, too fast to see). Rule 1's background blinks, on and off
@@ -126,7 +127,7 @@ const likes = [
       </figure>
     ))}
   </div>
-  <p slot="say">Just as rule 90 is one of 256 elementary rules, the Game of Life is one of many Life-like rules: a dead cell is born with some numbers of live neighbours (B), a live cell survives with others (S). The Game of Life is B3/S23; there are 2<sup>18</sup> = 262,144 such rules, and again they behave very differently.</p>
+  <p slot="say">Just as rule 90 is one of 256 elementary rules, the Game of Life is one of many Life-like rules: a dead cell is born with some numbers of live neighbours (B), a live cell survives with others (S). The Game of Life is B3/S23; there are <Fragment set:html={tex('2^{18} = 262{,}144')} /> such rules, and again they behave very differently.</p>
   <p slot="say">Three of them, each started with its own button: Maze (B3/S12345) freezes into corridors within a few steps, the Game of Life keeps something going that is hard to name, and Replicator (B1357/S1357), the parity rule on eight neighbours, looks like noise. Each reset draws a new random start.</p>
 </Slide>
 

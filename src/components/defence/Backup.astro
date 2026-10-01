@@ -1,7 +1,9 @@
 ---
 // The appendix: backup slides for questions, reachable only by `a`, a slide number or the index. Each is a question,
-// three to five bullets from the thesis, and where in the thesis it is. No names of jury members anywhere here.
+// three to five bullets from the thesis, and where in the thesis it is. No names of jury members anywhere here. A
+// bullet writes its formulas as LaTeX between dollars.
 import Slide from './Slide.astro';
+import { texify } from './tex';
 import clamp from '../../data/defence/clamp.json';
 const cs = clamp.summary;
 const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
@@ -17,12 +19,12 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     'Mechanisms are proposed, not shown: that sensitive rules synchronise and jagged rules discriminate is a reading of a pattern.' ] },
   { id: 'q3', q: 'Why these networks and these parameter ranges?', ref: 'Ch. 3', bullets: [
     'A Life-like rule only reads the share of a node’s neighbours that are on, so what matters is how the degrees are spread and how the links are arranged.',
-    'Each family is a dial for one of those: rewiring p runs a ring or grid from clustered and long to random and short; the power α runs preferential attachment from no hubs to one hub.',
-    'At p = 0 the rings and grids are the neighbourhoods of classical cellular automata, which anchors each dial in known territory.',
+    'Each family is a dial for one of those: rewiring $p$ runs a ring or grid from clustered and long to random and short; the power $\\alpha$ runs preferential attachment from no hubs to one hub.',
+    'At $p = 0$ the rings and grids are the neighbourhoods of classical cellular automata, which anchors each dial in known territory.',
     'Synthetic networks only: empirical ones are the next step.' ] },
   { id: 'q4', q: 'Is your Lyapunov exponent really an entropy?', ref: 'Ch. 4', bullets: [
     'It is a tangent-space quantity: the growth rate of a count of walks along which a defect can travel, which makes it entropy-like by construction.',
-    'For the parity rule on a graph the exponents are ln|λₖ(A) + a∘|, the maximal one ln ρ(A + a∘I); for the rule without self, the logarithms of the adjacency eigenvalues.',
+    'For the parity rule on a graph the exponents are $\\ln\\lvert\\lambda_k(A) + a_\\circ\\rvert$, the maximal one $\\ln \\rho(A + a_\\circ I)$; for the rule without self, the logarithms of the adjacency eigenvalues.',
     'The thesis itself calls it closer to an entropy than to a rate of separation.',
     'Wolfram (1984) introduced both notions for cellular automata side by side.' ] },
   { id: 'q5', q: 'Without a chaos claim, why keep the name “Lyapunov spectrum”?', ref: 'Ch. 4 §4.4', bullets: [
@@ -32,25 +34,25 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     'Still, the chapter stands somewhat apart from the rest of the thesis.' ] },
   { id: 'q6', q: 'Why odd resolutions and mirrored intervals?', ref: 'Ch. 5 §5.2, App. C', bullets: [
     'Complementation symmetry: swapping on and off must map the rule space onto itself.',
-    'That needs the cut of the density axis mirrored around ½, with a middle interval that contains ½, hence an odd number of intervals.' ] },
+    'That needs the cut of the density axis mirrored around $\\tfrac12$, with a middle interval that contains $\\tfrac12$, hence an odd number of intervals.' ] },
   { id: 'q7', q: 'How good is the mean-field approximation?', ref: 'Ch. 5 §5.3', bullets: [
     'It is one step deep and annealed: every round, contacts are redrawn at random.',
     'It ignores correlations and clustering, which the real network builds up at once.',
     'Hence simulation remains necessary; the genotype narrows the search, it does not replace it.' ] },
   { id: 'q8', q: 'Is the genotype filter really cheaper than a genetic algorithm?', ref: 'Ch. 6 §6.1.3', bullets: [
-    'The genetic algorithm of Das et al. spends some 10⁷ to 10⁸ simulations on the search.',
+    'The genetic algorithm of Das et al. spends some $10^7$ to $10^8$ simulations on the search.',
     'The filter simulates nothing: a bitwise condition and 512 mean-field curves, in a fraction of a second.',
     'Verification costs both the same order: the saving is in the search.',
-    'The evolved rules of Das et al. synchronise better, on lattices: φ⁹₂₃,₄₇ is not the best synchroniser available, and the rule spaces differ.' ] },
+    'The evolved rules of Das et al. synchronise better, on lattices: $\\phi^9_{23,47}$ is not the best synchroniser available, and the rule spaces differ.' ] },
   { id: 'q9', q: 'Does small-world structure cause synchronisation?', ref: 'Ch. 3 §3.3.2, Ch. 6 §6.1.3', bullets: [
-    'No causal claim. The rule fails for p ≤ 0.04, peaks near p ≈ 0.3 (94%), beyond the small-world band, and drops to 39% at p = 1.',
+    'No causal claim. The rule fails for $p \\le 0.04$, peaks near $p \\approx 0.3$ (94%), beyond the small-world band, and drops to 39% at $p = 1$.',
     'Short paths look necessary but not sufficient, for this rule.',
-    'Rewired grids behave differently: 82% unrewired, above 95% for 0.02 ≤ p ≤ 0.4.',
-    'At p = 0.2 the thesis reports 83% from the screening and 78% from the sweep, both at half the nodes on: two estimates of one point.',
-    'p is not the same amount of rewiring in both families: a ring changes 2p − p² of its links, a grid p. The text now says so; the simulations stand, only the comparison between the two p axes shifts.' ] },
+    'Rewired grids behave differently: 82% unrewired, above 95% for $0.02 \\le p \\le 0.4$.',
+    'At $p = 0.2$ the thesis reports 83% from the screening and 78% from the sweep, both at half the nodes on: two estimates of one point.',
+    '$p$ is not the same amount of rewiring in both families: a ring changes $2p - p^2$ of its links, a grid $p$. The text now says so; the simulations stand, only the comparison between the two $p$ axes shifts.' ] },
   { id: 'q10', q: 'Can the network’s spectrum predict where the synchroniser works, as for oscillators?', ref: 'Chs. 4, 6, 11', bullets: [
     'Not studied.',
-    'The spectrum governs the dynamics exactly only for affine rules such as parity; φ⁹₂₃,₄₇ is not affine.',
+    'The spectrum governs the dynamics exactly only for affine rules such as parity; $\\phi^9_{23,47}$ is not affine.',
     'The closest bridge is pinning control, which Ch. 11 names as a direction.' ] },
   { id: 'q11', q: 'Can a classifier discover behaviour classes, or only transfer known ones?', ref: 'Ch. 8', bullets: [
     'Its output only transfers the labels it was trained on.',
@@ -65,7 +67,7 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     'The analysis works at the level of partitions of the rule space by jaggedness, not rule by rule; the best individual rules were not examined one by one.',
     'Calling the rules in the sweet spot “complex”, or placing them at an edge of chaos, is a hypothesis; no measure of their behaviour was computed to test it.',
     'The edge of chaos is contested anyway: Mitchell, Hraber and Crutchfield (1993) could not reproduce Packard’s 1988 result.',
-    'Part of it may be counting: partitions are largest near a jaggedness of ½, and the best of many rules looks better than the best of few.' ] },
+    'Part of it may be counting: partitions are largest near a jaggedness of $\\tfrac12$, and the best of many rules looks better than the best of few.' ] },
   { id: 'q14', q: 'Why not graph neural networks or graph kernels for classification?', ref: 'Ch. 9 §9.7', bullets: [
     'Beating them was not the aim; on social and chemical benchmarks they do better.',
     'The rule-based pipeline needs no node attributes, handles networks of any size, and comes with one interpretable parameter: the rule.' ] },
@@ -82,12 +84,12 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     'Swap the most central person who is up with the least central one who is down, again and again.',
     'On preferential-attachment networks with 8 contacts: at most 10 swaps by closeness flip the outcome 90% of the time.',
     'Random swaps only push the outcome towards a coin toss: the 90% mark is never reached.',
-    'That random reference covers one setting only, α = 0, reconstructed from saved, binned output: thin, and a full rerun is the next step.',
+    'That random reference covers one setting only, $\\alpha = 0$, reconstructed from saved, binned output: thin, and a full rerun is the next step.',
     'Clamping needs no such control: it tests every node, blind to any centrality.' ] },
   { id: 'q18', q: 'Is dynamical importance confounded by conditioning on consensus?', ref: 'Ch. 10 §10.2.2, §10.4, Tab. 11.1', bullets: [
-    'η pools clampings that change a node’s start (its hand was up) with ones that only confirm it (already down).',
+    '$\\eta$ pools clampings that change a node’s start (its hand was up) with ones that only confirm it (already down).',
     'Which starts reach consensus is itself linked to centrality; the thesis does not separate the two.',
-    `On the toy network of tonight: Spearman(η, degree) = ${cs.spearmanEtaDegree.toFixed(2)} overall, ${cs.spearmanGenuineDegree.toFixed(2)} from the changing clampings only, ${cs.spearmanConfirmatoryDegree.toFixed(2)} from the confirming ones only.`,
+    `On the toy network of tonight, the Spearman correlation of $\\eta$ and degree is $${cs.spearmanEtaDegree.toFixed(2)}$ overall, $${cs.spearmanGenuineDegree.toFixed(2)}$ from the changing clampings only, $${cs.spearmanConfirmatoryDegree.toFixed(2)}$ from the confirming ones only.`,
     'So the ranking survives the split here, on one toy network; that is an illustration, not a result.',
     'Why not split the thesis’s own scores? The raw clamping outputs are no longer available, so it needs a rerun; it is listed as the next step.' ] },
   { id: 'q19', q: 'Could the score find keystone species, or whom to vaccinate?', ref: 'Chs. 10, 11', bullets: [
@@ -121,7 +123,7 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
 {qs.map((x) => (
   <Slide label={x.q} appendix id={x.id} class="bk">
     <h2 class="bq">{x.q}</h2>
-    <ul class="bl">{x.bullets.map((b) => <li>{b}</li>)}</ul>
+    <ul class="bl">{x.bullets.map((b) => <li set:html={texify(b)} />)}</ul>
     <p class="cite">{x.ref} · <a href="#backup" data-go="backup">back to the questions</a></p>
   </Slide>
 ))}

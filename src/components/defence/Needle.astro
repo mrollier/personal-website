@@ -4,6 +4,7 @@
 // synchroniser into a consensus-seeker.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
+import { tex } from './tex';
 ---
 <Slide label="A needle in a haystack" builds={4} class="f5" ch={6}>
   <div class="row grow f5-row">
@@ -50,7 +51,7 @@ import SimButton from './SimButton.astro';
       <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262,144, without a single simulation. The best one synchronises most partly rewired networks.</p>
     </div>
   </div>
-  <p class="cite">The winner on a 30 × 30 grid, 20% of links rewired</p>
+  <p class="cite">The winner on a <Fragment set:html={tex('30 \\times 30')} /> grid, 20% of links rewired</p>
   <p class="illus">illustration</p>
   <p slot="say">The winner at work, on a grid of 900 nodes where a fifth of the links have been rewired, starting from half on. At first the network looks chaotic; then patches start flashing, the patches fall into step, and from about round 31 the whole grid flashes gently together. The curve on the right shows the share of nodes that are on, round by round.</p>
   <p slot="say">Then twenty fresh networks, each with its own random start: 19 of the 20 synchronise. In the thesis, on rewired rings of 1000 nodes with eight neighbours each, the winner succeeds about 80% of the time when a fifth of the links are rewired, up to 94% near 30%, and 39% when the links are fully random; on rewired grids it succeeds more than 95% of the time. It fails on the bare ring and always fails with only six neighbours: the network matters in ways the rule alone cannot see.</p>

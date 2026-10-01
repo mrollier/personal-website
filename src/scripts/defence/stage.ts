@@ -21,6 +21,12 @@ export function stage(c: HTMLCanvasElement): Stage | null {
   return { ctx, w: r.width / s, h: r.height / s, s, t: { ...tokens(c), sans: getComputedStyle(c).getPropertyValue('--sans').trim() } };
 }
 
+/** The canvas's size in design pixels, without touching its bitmap (stage clears it). */
+export function size(c: HTMLCanvasElement): { w: number; h: number } {
+  const r = c.getBoundingClientRect(), s = scaleOf(c);
+  return { w: r.width / s, h: r.height / s };
+}
+
 /** The pointer in design pixels. */
 export function pointer(c: HTMLCanvasElement, e: MouseEvent): { x: number; y: number } {
   const r = c.getBoundingClientRect(), s = scaleOf(c);

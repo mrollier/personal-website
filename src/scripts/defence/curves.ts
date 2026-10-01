@@ -1,6 +1,6 @@
 // The two average curves of a rule, the maths only (no drawing, so the checks can run it in Node): the average next
 // density (the mean-field curve) and the average next defect (the Derrida curve, at density ½), for eight neighbours
-// each; where the density curve meets the diagonal; the red tangent; and a cobweb's corners.
+// each; where the density curve meets the diagonal; the tangent that measures the rule; and a cobweb's corners.
 import { meanField, type Rule } from '../llna.ts';
 import { derridaCoeffs, derridaAt } from '../genotype.ts';
 
@@ -30,7 +30,7 @@ export function equilibria(f: (x: number) => number, n = 2000): { x: number; slo
   return out;
 }
 
-/** The red line: the tangent at the steepest unstable equilibrium of the density, or through the origin of the defect;
+/** The tangent at the steepest unstable equilibrium of the density, or through the origin of the defect;
  * null when the density has no unstable equilibrium. */
 export function tangentOf(f: (x: number) => number, kind: Kind): Tangent | null {
   if (kind === 'defect') return { x: 0, y: 0, slope: slopeOf(f, 0) };

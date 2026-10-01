@@ -227,7 +227,7 @@ import { type Rule, hammingWeight, meanField, complement, selfEquivalent, flipsT
 import { lattice } from '../src/scripts/net.ts';
 import { pearson } from '../src/scripts/stats.ts';
 import { curveOf, tangentOf, type Kind } from '../src/scripts/defence/curves.ts';
-import { agree, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
+import { agree, agreement, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
 {
   const R9 = (B: number, S: number): Rule => ({ r: 9, B, S });
   const near = (a: number, b: number, tol: number, what: string) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
@@ -279,6 +279,15 @@ import { agree, WINNER, THRESHOLD } from '../src/scripts/defence/agree.ts';
   const race = (mission.candidates as Rule[]).map((c) => ({ c, v: again(R9(c.B, c.S), mission.demo.netSeed, mission.demo.startSeed, 100) }));
   assert.deepEqual(race.filter((x) => x.v.ok).map((x) => `${x.c.B},${x.c.S}`).sort(), ['368,482', '432,484', '488,464'], 'F5: who agrees');
   assert.deepEqual(race.find((x) => x.c.B === THRESHOLD.B && x.c.S === THRESHOLD.S)!.v, { ok: false, tick: 10 }, 'F5: the threshold rule');
+  // and, as its conclusion tells, no other rule that is its own cousin agrees for good in that race: of all 512, only these
+  // three (a synchroniser makes every node the same colour too, but flips them all the next round)
+  const net0 = lattice(30, 8, 0.2, makeRng(mission.demo.netSeed)), start0 = randomState(900, 0.5, makeRng(mission.demo.startSeed));
+  const lasting = (rule: Rule) => {
+    const run = agreement(net0, rule, start0, 100);
+    let o = run.next(); while (!o) o = run.next();
+    return o.ok && step(run.state, net0, rule).every((v, i) => v === run.state[i]);
+  };
+  assert.deepEqual(selfEquivalentRules(9).filter(lasting).map((r) => `${r.B},${r.S}`).sort(), ['368,482', '432,484', '488,464'], 'F5: no other rule that is its own cousin');
   // the metrics slides' red lines, as their say slots quote them: Life unstable near a fifth with slope 1.7, sensitivity
   // about three; the consensus-seeker unstable at ½, sensitivity over six; the defect tangent is the Boolean sensitivity
   const life = R9(8, 12), tan = (rule: Rule, kind: Kind) => tangentOf(curveOf(rule, kind), kind)!;

@@ -1,9 +1,10 @@
 ---
 // F5 and F7, the mission of Ch. 6: from a random start, after a while every node the same colour. F5: a funnel of
 // numbers, each with a picture beside it: all 262 144 rules (two rings), the 512 that are their own cousin (symmetry: either
-// colour may win) and the 27 whose average next density moves away from half and half (their 27 curves), found without a
-// simulation; then all 27 race on one rewired grid from one start (the network and start of F7), within the thesis's 100
-// rounds: a few agree, the simple threshold rule is stuck. F7:
+// colour may win) and the 27 whose average next density moves away from half and half (each rule's two curves, in the
+// place where it will run), found without a simulation; then all 27 race on one rewired grid from one start (the network
+// and start of F7), within the thesis's 100 rounds: a few agree, the simple threshold rule is stuck, and no other rule
+// that is its own cousin agrees there: a strong filter, the conclusion under the funnel once the race is over. F7:
 // the winner at work on that grid, the threshold rule on the same start, and twenty fresh networks. Data:
 // src/data/defence/consensus.json (scripts/defence/precompute.ts); the run and its verdict: src/scripts/defence/agree.ts.
 import Slide from './Slide.astro';
@@ -12,34 +13,33 @@ import { texify, phi } from './tex';
 // F5: the two rings, in design pixels of their canvas (src/scripts/defence/donut.ts draws them)
 const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235, R: 195, w: 80, on: true }];
 ---
-<Slide id="ch-synchronisation" label="Can the rule predict the behaviour?" builds={5} class="f5" ch={6}>
-  <h2>Can the rule predict the behaviour?</h2>
-  <p class="lede">The mission: after a while, all nodes the same colour.</p>
+<Slide id="ch-synchronisation" label="The mission: looking for consensus" builds={5} class="f5" ch={6}>
+  <h2>The mission: looking for consensus</h2>
   <div class="row grow f5-row">
     <div class="funnel">
       <div class="tier" data-b="1"><b>262&#8239;144</b></div>
       <div class="tier" data-b="2"><b>512</b></div>
       <div class="tier last" data-b="3"><b>27</b></div>
-      <p class="nosim" data-b="3">without a single simulation</p>
+      <p class="concl">Strong filter:<br />metrics inform behaviour</p>
     </div>
     <div class="pane">
       <div class="f5-rings" data-b-only="1 2">
         <canvas class="rings" data-rings={JSON.stringify(f5rings)} aria-label="A rule as two rings: where a node that is off is born, and where a node that is on survives"></canvas>
         <p class="sym" data-b="2"><b>symmetry</b><button type="button" class="ctl f5-cousin" data-cousin>⇄ its cousin</button></p>
       </div>
-      <canvas class="mf" data-b-only="3" aria-label="The average next density of each of the 27 rules: every one crosses the diagonal at one half and moves away from it"></canvas>
-      <div class="race" data-b="4">
+      <div class="race" data-b="3">
         <div class="race-box">
-          <canvas class="tiles" aria-label="The 27 rules, each on the same rewired grid of 900 nodes from the same start"></canvas>
-          <SimButton class="f5-btn" />
+          <canvas class="tiles" data-b="4" aria-label="The 27 rules, each on the same rewired grid of 900 nodes from the same start"></canvas>
+          <canvas class="mf" data-b-only="3" aria-label="The 27 rules, each in its place with its two curves: the average next density in blue and the average next defect in red, each with its tangent"></canvas>
+          <div data-b="4"><SimButton class="f5-btn" /></div>
         </div>
-        <p class="race-key"><span class="key thr">simple threshold</span><span class="key win">the winner</span><b data-count></b></p>
+        <p class="race-key" data-b="4"><span class="key thr">simple threshold</span><span class="key win">the winner</span><b data-count></b></p>
       </div>
     </div>
   </div>
-  <p slot="say">Can we really use what a rule looks like to predict what it will do? A test, in the form of a mission: from a random start, after a while every node should have the same colour, all on or all off. The obvious candidates are threshold rules: do what most of your neighbours do. On a network they get stuck, in patches that each agree with themselves but never with each other.</p>
-  <p slot="say" set:html={texify('There are 262 144 rules at resolution 9: every way of colouring the two rings, here the Game of Life. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: symmetry, it must be its own cousin, like the simple threshold rule shown here (the button says so). That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Their 27 curves all cross the diagonal at one half, steeply: from half and half, the network is pushed away.')} />
-  <p slot="say" set:html={texify('Now we can afford to run every one of them. One click puts them in place, the next runs them: all 27 on the same grid of 900 nodes, a fifth of its links rewired, from the same random start, for at most 100 rounds, as in the thesis. Most of them freeze in patches within a few rounds, or keep churning, and fade; the simple threshold rule is stuck from round 10. Three reach agreement. Run over hundreds of networks, one of them is clearly the best: $\phi^9_{488,464}$, which brought more than 96% of the rewired grids of the thesis to agreement. It is among the most sensitive of the 27, but sensitivity alone is not enough: the filter narrows the search down, and only a run decides (Chapter 6, Physica D 2025).')} />
+  <p slot="say">Can we really use what a rule looks like to predict what it will do? A test, in the form of a mission: looking for consensus. From a random start, after a while every node should have the same colour, all on or all off. The obvious candidates are threshold rules: do what most of your neighbours do. On a network they get stuck, in patches that each agree with themselves but never with each other.</p>
+  <p slot="say" set:html={texify('There are 262 144 rules at resolution 9: every way of colouring the two rings, here the Game of Life. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: symmetry, it must be its own cousin, like the simple threshold rule shown here (the button says so). That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Here each of them stands where it will run, with its two curves of before: the average next density in blue and the average next defect in red, each with its tangent. Every blue curve leaves one half more steeply than the diagonal, so from half and half the network is pushed away; the red tangent says how sensitive the rule is.')} />
+  <p slot="say" set:html={texify('Now we can afford to run every one of them. One click puts them in place, the next runs them: all 27 on the same grid of 900 nodes, a fifth of its links rewired, from the same random start, for at most 100 rounds, as in the thesis. Most of them freeze in patches within a few rounds, or keep churning, and fade; the simple threshold rule is stuck from round 10. Three reach agreement, and they are the only ones: of all 512 rules that treat on and off alike, no other reaches a lasting agreement in this race. A strong filter: the metrics inform the behaviour, and a run decides which rule is best. Run over hundreds of networks, one of them clearly is: $\phi^9_{488,464}$, which brought more than 96% of the rewired grids of the thesis to agreement. It is among the most sensitive of the 27, but sensitivity alone is not enough (Chapter 6, Physica D 2025).')} />
 </Slide>
 
 <Slide label="Watch it work" builds={3} class="f7" ch={6}>
@@ -67,7 +67,7 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
 </Slide>
 
 <style>
-  .f5-row { gap: calc(64 * var(--u)); align-items: flex-start; }
+  .f5-row { gap: calc(64 * var(--u)); align-items: flex-start; margin-top: calc(100 * var(--u)); }
   .funnel { width: calc(560 * var(--u)); flex: none; display: flex; flex-direction: column; align-items: center; }
   .tier { display: flex; justify-content: center; padding: calc(16 * var(--u)) calc(20 * var(--u)); border: calc(3 * var(--u)) solid var(--line); background: var(--panel); position: relative; }
   .tier:nth-child(1) { width: 100%; }
@@ -78,7 +78,9 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   /* the funnel narrows: an arrow down into each tier */
   .tier + .tier::before { content: ''; position: absolute; top: calc(-42 * var(--u)); left: 50%; transform: translateX(-50%); border: calc(16 * var(--u)) solid transparent; border-top-color: var(--accent); }
   .tier.last { background: var(--ink); border-color: var(--ink); color: var(--sun); }
-  .nosim { font-size: calc(38 * var(--u)); font-weight: 700; margin-top: calc(28 * var(--u)); }
+  /* the conclusion, once the race is over */
+  .concl { font-size: calc(38 * var(--u)); font-weight: 700; line-height: 1.3; text-align: center; margin-top: calc(36 * var(--u)); transition: opacity 0.4s ease; }
+  :global(.f5:not(.raced)) .concl { opacity: 0; }
   /* one picture at a time, all in the place of the race */
   .pane { flex: 1; display: grid; }
   .pane > * { grid-area: 1 / 1; }
@@ -87,10 +89,11 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   .sym { display: flex; align-items: center; gap: calc(36 * var(--u)); }
   .sym b { font-size: calc(56 * var(--u)); color: var(--accent); }
   .f5-cousin { font-size: calc(34 * var(--u)); min-width: calc(330 * var(--u)); }
-  .mf { width: calc(1010 * var(--u)); height: calc(600 * var(--u)); }
   .race { display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
   .race-box { position: relative; }
-  .tiles { width: calc(1010 * var(--u)); height: calc(584 * var(--u)); }
+  .tiles { width: calc(1010 * var(--u)); height: calc(584 * var(--u)); display: block; }
+  /* the curves in the tiles' place, over them */
+  .mf { position: absolute; left: 0; top: 0; width: calc(1010 * var(--u)); height: calc(584 * var(--u)); }
   .race-box :global(.f5-btn) { right: calc(-6 * var(--u)); bottom: calc(10 * var(--u)); }
   /* a fixed height, so nothing moves when the winner and the count come in */
   .race-key { font-size: calc(32 * var(--u)); display: flex; align-items: center; gap: calc(36 * var(--u)); height: calc(56 * var(--u)); }
@@ -128,6 +131,7 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   import { picker, type Ring } from '../../scripts/defence/donut';
   import { cousin } from '../../scripts/defence/rings';
   import { curveOf } from '../../scripts/defence/curves';
+  import { hue, tangent } from '../../scripts/defence/cobweb';
   import { makeRng, lattice } from '../../scripts/net';
   import { type Rule, randomState, density } from '../../scripts/llna';
   import { agreement, WINNER, THRESHOLD, type Agreement, type Outcome } from '../../scripts/defence/agree';
@@ -142,7 +146,7 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
 
   // ── F5: a funnel of numbers, a picture beside each in the place of the race: the rings of the Game of Life (every rule
   // is a way of colouring them; a click on an interval changes it), then the simple threshold rule, which is its own cousin
-  // (symmetry), then the 27 curves of the average next density; then the 27 race on the same grid from the same start,
+  // (symmetry), then each of the 27 with its two curves in its tile; then the 27 race on the same grid from the same start,
   // five rounds a second, for at most the thesis's 100 rounds. A tile that reaches agreement is framed; one that freezes or is still churning at the end
   // fades. The simple threshold rule is ringed from the start, the winner once the race is over. The start is fixed:
   // the speaker text quotes the outcome, and F7 replays two of the tiles. ──
@@ -195,16 +199,24 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     });
     swap.addEventListener('click', () => rules.cousin());
 
-    // the 27 average next density curves (eight neighbours each), all through (½, ½) and away from it
-    const mf = s.querySelector<HTMLCanvasElement>('canvas.mf')!, fs = cands.map((r) => curveOf({ r: 9, B: r.B, S: r.S }, 'density'));
+    // each rule's two curves in its tile (eight neighbours each), as on the metrics slides but without words: the average
+    // next density in blue, with its tangent at ½ (how unstable), and the average next defect in red, with its tangent at
+    // the origin (how sensitive); a frame, no diagonal
+    const mf = s.querySelector<HTMLCanvasElement>('canvas.mf')!;
+    const pairs = cands.map((r) => ({ d: curveOf({ r: 9, B: r.B, S: r.S }, 'density'), e: curveOf({ r: 9, B: r.B, S: r.S }, 'defect'), r }));
     const paintCurves = () => {
       const st = stage(mf); if (!st) return;
-      const side = st.h - 110, q: Plot = { x: (st.w - side) / 2 + 40, y: 10, w: side, h: side, x0: 0, x1: 1, y0: 0, y1: 1 };
-      axes(st, q, { xticks: [[0, '0'], [0.5, '½'], [1, '1']], yticks: [[0, '0'], [0.5, '½'], [1, '1']], xname: 'current density', yname: 'next density' });
-      curve(st, q, (x) => x, st.t.muted, 2, [6, 8]);
-      st.ctx.globalAlpha = 0.75;
-      for (const f of fs) curve(st, q, f, st.t.accent, 3);
-      st.ctx.globalAlpha = 1;
+      const { ctx, t } = st, T = (st.w - 2 * PAD - (COLS - 1) * GAP) / COLS, IN = 10, DASH = [7, 6];
+      pairs.forEach(({ d, e, r }, i) => {
+        const x = PAD + (i % COLS) * (T + GAP), y = PAD + Math.floor(i / COLS) * (T + GAP);
+        ctx.fillStyle = t.panel; ctx.fillRect(x, y, T, T);
+        ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, T, T);
+        const q: Plot = { x: x + IN, y: y + IN, w: T - 2 * IN, h: T - 2 * IN, x0: 0, x1: 1, y0: 0, y1: 1 };
+        tangent(st, q, { x: 0.5, y: 0.5, slope: r.slope }, hue(t, 'density'), 2.5, DASH);
+        tangent(st, q, { x: 0, y: 0, slope: r.bs8 }, hue(t, 'defect'), 2.5, DASH);
+        curve(st, q, d, hue(t, 'density'), 4);
+        curve(st, q, e, hue(t, 'defect'), 4);
+      });
     };
 
     slide(s, {

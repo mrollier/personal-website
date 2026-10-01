@@ -1,12 +1,17 @@
 // The two average curves of a rule, as the metrics slides and the answers slide draw them: the average next density
 // (the mean-field curve) and the average next defect (the Derrida curve, at density ½), for eight neighbours each. The
-// unit square gets a strip along each axis (density: off to on; defect: none to all red), the diagonal, the curve, a
-// cobweb of a few steps from a start, and the red tangent that measures the rule: through the steepest unstable
-// equilibrium of the density (|slope| > 1, the flipping kind too), through the origin for the defect.
+// density is blue and the defect red, wherever they are drawn (the mission slide's small plots too). The unit square
+// gets a strip along each axis (density: off to on; defect: none to all red), a faint diagonal, the curve, a cobweb of a
+// few steps from a start, and the dashed tangent that measures the rule, in the curve's colour: through the steepest
+// unstable equilibrium of the density (|slope| > 1, the flipping kind too), through the origin for the defect.
 import type { Stage } from './stage';
 import { curve, dot, line, label, px, py, type Plot } from './plot';
 import { cobweb, STEPS, type Kind, type Tangent } from './curves';
+import type { Tokens } from '../figure';
 export { K, STEPS, curveOf, equilibria, tangentOf, cobweb, type Kind, type Tangent } from './curves';
+
+/** The colour of a curve and its tangent: the density blue, the defect red. */
+export const hue = (t: Tokens, kind: Kind) => (kind === 'density' ? t.accent : t.danger);
 
 /** The plot box for a canvas of w × h design pixels: a square, with room on the left and below for strips and labels. */
 export function box(w: number, h: number): Plot {
@@ -40,7 +45,7 @@ export type View = {
   kind: Kind; f: (x: number) => number;
   /** the start, and how much of the cobweb is drawn: 0 to STEPS, fractions draw part of a step */
   start: number; progress: number;
-  /** the red line: undefined hides it, null says there is none */
+  /** the tangent: undefined hides it, null says there is none */
   red?: Tangent | null;
   /** a start the reader can drag: a larger handle */
   handle?: boolean;
@@ -49,10 +54,10 @@ export type View = {
 };
 
 export function draw(st: Stage, p: Plot, v: View): void {
-  const { ctx, t } = st;
+  const { ctx, t } = st, h = hue(t, v.kind);
   frame(st, p, v.kind);
-  curve(st, p, (x) => x, t.muted, 2, [10, 10]);
-  curve(st, p, (x) => Math.max(0, Math.min(1, v.f(x))), t.accent, 6);
+  ctx.globalAlpha = 0.3; curve(st, p, (x) => x, t.muted, 2); ctx.globalAlpha = 1;
+  curve(st, p, (x) => Math.max(0, Math.min(1, v.f(x))), h, 6);
   // the cobweb, segment by segment: each step is a vertical then a horizontal segment
   const pts = cobweb(v.f, v.start), segs = v.ghost ? pts.length - 1 : Math.min(pts.length - 1, v.progress * 2);
   ctx.strokeStyle = t.ink; ctx.lineWidth = v.ghost ? 2 : 3; ctx.globalAlpha = v.ghost ? 0.35 : 1; ctx.lineJoin = 'round'; ctx.beginPath();
@@ -63,13 +68,16 @@ export function draw(st: Stage, p: Plot, v: View): void {
   }
   ctx.stroke(); ctx.globalAlpha = 1;
   if (segs >= pts.length - 1 && !v.ghost) { const [ex, ey] = pts[pts.length - 1]; dot(st, px(p, ex), py(p, ey), 9, t.ink); }
-  dot(st, px(p, v.start), py(p, 0), v.handle ? 15 : 10, t.accent, v.handle ? t.bg : undefined);
+  dot(st, px(p, v.start), py(p, 0), v.handle ? 15 : 10, h, v.handle ? t.bg : undefined);
   if (v.red === undefined) return;
-  if (v.red === null) { label(st, 'no unstable equilibrium', p.x + 24, p.y + 30, { color: t.danger, size: 34, weight: 600, bg: true }); return; }
-  // the tangent, clipped to the unit square
-  const { x, y, slope: s } = v.red;
+  if (v.red === null) { label(st, 'no unstable equilibrium', p.x + 24, p.y + 30, { color: h, size: 34, weight: 600, bg: true }); return; }
+  tangent(st, p, v.red, h, 5, [16, 12]);
+  dot(st, px(p, v.red.x), py(p, v.red.y), 11, h);
+}
+
+/** A tangent, clipped to the unit square, dashed. */
+export function tangent(st: Stage, p: Plot, { x, y, slope: s }: Tangent, color: string, width: number, dash: number[]): void {
   let xa = 0, xb = 1;
   if (s !== 0) { const x0 = x + (0 - y) / s, x1 = x + (1 - y) / s; xa = Math.max(0, Math.min(x0, x1)); xb = Math.min(1, Math.max(x0, x1)); }
-  line(st, px(p, xa), py(p, y + s * (xa - x)), px(p, xb), py(p, y + s * (xb - x)), t.danger, 5);
-  dot(st, px(p, x), py(p, y), 11, t.danger);
+  line(st, px(p, xa), py(p, y + s * (xa - x)), px(p, xb), py(p, y + s * (xb - x)), color, width, dash);
 }

@@ -2,8 +2,8 @@
 // G2 and G4, network classification (Ch. 9). G2: one rule on the talk's three networks (src/scripts/defence/trio.ts);
 // under each network three histograms, empty until ▶, then computed live from the last rounds (./print): the Shannon
 // entropy and the Lempel–Ziv complexity of every node's row, as Miranda et al. 2016 define them, and the neighbourhood
-// density that Ch. 9 used; then a fingerprint in their place (a whorl, a loop, a tented arch), and the message: we look
-// for rules whose fingerprints differ. First the consensus-seeking rule: every network agrees, and the three fingerprints
+// density that Ch. 9 used; then a fingerprint in their place (a whorl, a loop, a tented arch). The title asks whether
+// behaviour predicts topology, and under it the hunt: rules whose fingerprints are distinct. First the consensus-seeking rule: every network agrees, and the three fingerprints
 // are one (a plain arch); then Miranda et al.'s rule from the same start, and three different prints. G4: the same two rules, every
 // change of answer marked: jaggedness, our result, and the bridge to what consensus-seeking rules are good for instead.
 import Slide from './Slide.astro';
@@ -28,16 +28,13 @@ const sides = [
 // arch once the networks look alike
 const kinds = ['whorl', 'loop', 'tented'];
 ---
-<Slide id="ch-classification" label="Which network is this?" builds={5} class="g2" ch={9}>
+<Slide id="ch-classification" label="Does behaviour predict topology?" builds={5} class="g2" ch={9}>
+  <h2>Does behaviour predict topology?</h2>
   <div class="g2-head">
-    <h2>Which network is this?</h2>
+    <p class="g2-lede">Hunting for distinct fingerprints</p>
     <div class="g2-rules" role="group" aria-label="Rule">
       {rules.map((r, i) => <button type="button" class="ctl" data-rule={r.id} aria-pressed={i ? 'false' : 'true'}>{r.name} <span set:html={phi(r.r, r.B, r.S)} /></button>)}
     </div>
-  </div>
-  <div class="stack g2-lede">
-    <p data-b-off="5">One rule, three networks. Does what it does give the network away?</p>
-    <p data-b="5">We look for rules whose fingerprints are clearly <b>different</b>.</p>
   </div>
   <div class="g2-grid">
     {rows.map((r, k) => <p class="g2-row" data-b="1" style={`grid-row: ${k + 3}`}>{r.name}</p>)}

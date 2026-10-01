@@ -1,7 +1,8 @@
 ---
 // F3–F4: the two curves that read a rule before it runs, the average next density and the average next defect, each
-// with a start the reader drags and a cobweb of a few steps showing where the network goes on average; then one red
-// line: the tangent at the unstable equilibrium (how unstable) and at the origin (how sensitive); then a click brings in
+// with a start the reader drags and a cobweb of a few steps showing where the network goes on average (the density in
+// blue, the defect in red, as on the mission slide); then one dashed line: the tangent at the unstable equilibrium (how
+// unstable) and at the origin (how sensitive); then a click brings in
 // the consensus-seeking rule, the one the next chapter goes looking for. Three rules to switch between, shared by both
 // slides, its name under them. Drawing in src/scripts/defence/cobweb.ts.
 import Slide from './Slide.astro';
@@ -14,12 +15,12 @@ const rules = [
 const slides = [
   { kind: 'density', title: 'The average next density', cls: 'f3', builds: 2, say: [
     'Can we say something about a rule before we run it? Take a network in which some share of the nodes is on: its density, from all off on the left to all on on the right. What is the density one round later, on average? That is this curve, the average next density, worked out from the rule alone, as if every node had eight neighbours picked at random. Follow it step by step, up to the curve and across to the diagonal, and this cobweb shows where the network would go on average. On this page you can drag the start (the dot on the bottom axis; the cobweb follows as a ghost and draws itself when you let go), and switch between the Game of Life, a consensus-seeking rule and a random rule; the ↺ next to Random rule draws another one. Under the buttons is the rule’s name.',
-    'Where the curve crosses the diagonal, the density stays put: an equilibrium. Some of them pull the network in, others push it away. The red line is the tangent at the unstable one: the steeper it is, the harder the network is pushed away. Its slope says how unstable a rule is. For the Game of Life it is 1.7, at a density of about a fifth; many random rules have no unstable equilibrium at all. All of this is an approximation that ignores who is next to whom, which is why we still simulate.',
+    'Where the curve crosses the diagonal, the density stays put: an equilibrium. Some of them pull the network in, others push it away. The dashed line is the tangent at the unstable one: the steeper it is, the harder the network is pushed away. Its slope says how unstable a rule is. For the Game of Life it is 1.7, at a density of about a fifth; many random rules have no unstable equilibrium at all. All of this is an approximation that ignores who is next to whom, which is why we still simulate.',
     'One more click brings in the consensus-seeking rule, the kind of rule the next chapter goes looking for. Its unstable equilibrium sits at one half, and the same click moves the start to 30% on: the network is pushed away from half and half, here towards all off (from a little over half, towards all on). How we found it comes after the next slide.',
   ], aria: 'The average next density of the chosen rule against the density now, with a cobweb from the start and the diagonal' },
   { kind: 'defect', title: 'The average next defect', cls: 'f4', builds: 3, say: [
     'The second curve asks the same question about differences. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one round later, on average? That is the average next defect, again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
-    'The red line is the tangent at the origin: how many nodes a single difference reaches in one round, on average. Its slope says how sensitive a rule is: above one, a single difference spreads; below one, it dies out. For the Game of Life it is about three.',
+    'The dashed line is the tangent at the origin: how many nodes a single difference reaches in one round, on average. Its slope says how sensitive a rule is: above one, a single difference spreads; below one, it dies out. For the Game of Life it is about three.',
     'The next click brings back the consensus-seeking rule: more than six. A single difference spreads fast under this rule, and that will matter in the next chapter.',
     'Our result: we worked out both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
   ], aria: 'The average next defect of the chosen rule against the defect now, with a cobweb from the start and the diagonal' },

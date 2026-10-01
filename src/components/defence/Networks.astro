@@ -131,12 +131,13 @@ const nets = TRIO.map((t) => t.name);
   import { trioNet, trioStart, RHO0 } from '../../scripts/defence/trio';
   import { step, randomState, type Rule } from '../../scripts/llna';
   import { room, wire, degrees, COLS, ROWS, SEATS } from '../../scripts/defence/room';
+  import { parse, mix, css, type RGB } from '../../scripts/palette';
 
   // ── F1: the room, in three stages. Everyone in one long row, as in the experiment: a ring that snakes up from the back
   // of the room to the front and closes over the back edge (build 1); everyone linked to the eight people around them,
   // the links growing out of each person around the row (build 2); a share p of the links rewired across the room, live
   // on a slider, the moving ends swinging over (build 3). Then the fewest and the most contacts circled (build 4), and
-  // the people become nodes (build 5). The room wraps round at its edges, so a link over an edge is drawn as a stub on
+  // the people become nodes (build 5): their bodies fade, and their heads glide down to where the links meet. The room wraps round at its edges, so a link over an edge is drawn as a stub on
   // either side. The links (and the nodes) are drawn on a canvas behind the seats, so a tween repaints the canvas and
   // never the eighty people. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f1')) {
@@ -157,6 +158,11 @@ const nets = TRIO.map((t) => t.name);
     // each link's moving end: drawn at (x, y), on its way from (fx, fy) to where it belongs; `moving` lists the links in flight
     const x = new Float32Array(n), y = new Float32Array(n), fx = new Float32Array(n), fy = new Float32Array(n);
     let to = wire(R, 0), at = 0, t0 = 0, dur = 1, raf = 0, moving: number[] = [], shown = '', grown = SEATS, rowRaf = 0;
+    // the heads: where a seat's head sits (its pictogram is 84 wide at x + 13, y + 8, the head a circle of 17 at
+    // (42, 40) of 100 × 130), and how far into becoming a node they are (0: a head, 1: a node), in the colours each seat
+    // had when it started
+    const HEAD_Y = (i: number) => 96 + Math.floor(i / COLS) * GY + 8 + 40 * 0.84, HEAD_R = 17 * 0.84, HEAD_W = 3 * 0.84, MORPH_MS = 1300;
+    let morph = 1, morphRaf = 0, looks: { fill: RGB; stroke: RGB }[] = [];
     const tx = (k: number) => (to[k] === R.links[k].home ? hx(k) : cx(to[k])), ty = (k: number) => (to[k] === R.links[k].home ? hy(k) : cy(to[k]));
     R.links.forEach((_, k) => { x[k] = hx(k); y[k] = hy(k); });
     const mine = (k: number) => R.links[k].stay === you || to[k] === you;
@@ -188,10 +194,16 @@ const nets = TRIO.map((t) => t.name);
       ctx.lineCap = 'round';
       ctx.strokeStyle = t.muted; ctx.globalAlpha = bold ? 0.9 : 0.45; ctx.lineWidth = (bold ? 4 : 2) * k; ctx.stroke(paths[0]);
       ctx.strokeStyle = t.accent; ctx.globalAlpha = 1; ctx.lineWidth = (bold ? 4 : 2.5) * k; ctx.stroke(paths[1]);
-      if (at >= 5) for (let i = 0; i < SEATS; i++) {
-        ctx.beginPath(); ctx.arc(cx(i) * k, cy(i) * k, 15 * k, 0, 2 * Math.PI);
-        ctx.fillStyle = i === you ? t.accent : t.panel; ctx.fill();
-        ctx.lineWidth = 3 * k; ctx.strokeStyle = i === you ? t.accent : t.ink; ctx.stroke();
+      if (at >= 5) {
+        // the heads stay while the bodies fade (the first 30%), then glide down into the network and take its colours
+        const g = Math.max(0, Math.min(1, (morph - 0.3) / 0.7)), e = g < 0.5 ? 2 * g * g : 1 - (-2 * g + 2) ** 2 / 2;
+        const ink = parse(t.ink), panel = parse(t.panel), acc = parse(t.accent);
+        for (let i = 0; i < SEATS; i++) {
+          const own = i === you, look = e < 1 ? looks[i] : undefined;
+          ctx.beginPath(); ctx.arc(cx(i) * k, (HEAD_Y(i) + (cy(i) - HEAD_Y(i)) * e) * k, (HEAD_R + (15 - HEAD_R) * e) * k, 0, 2 * Math.PI);
+          ctx.fillStyle = look ? css(mix(look.fill, own ? acc : panel, e)) : own ? t.accent : t.panel; ctx.fill();
+          ctx.lineWidth = (HEAD_W + (3 - HEAD_W) * e) * k; ctx.strokeStyle = look ? css(mix(look.stroke, own ? acc : ink, e)) : own ? t.accent : t.ink; ctx.stroke();
+        }
       }
     }
     const frame = (now: number) => {
@@ -220,6 +232,14 @@ const nets = TRIO.map((t) => t.name);
       grown = 0; draw(); rowRaf = requestAnimationFrame(tick);
     }
     const stopRow = () => { cancelAnimationFrame(rowRaf); rowRaf = 0; grown = SEATS; };
+    /** The people become nodes: each head keeps its seat's colours as the bodies fade, then glides into the network. */
+    function becomeNodes() {
+      looks = seats.map((u) => { const cs = getComputedStyle(u); return { fill: parse(cs.fill), stroke: parse(cs.stroke) }; });
+      const start = performance.now();
+      const tick = (now: number) => { morph = Math.min(1, (now - start) / MORPH_MS); draw(); morphRaf = morph < 1 ? requestAnimationFrame(tick) : 0; };
+      morph = 0; morphRaf = requestAnimationFrame(tick);
+    }
+    const stopMorph = () => { cancelAnimationFrame(morphRaf); morphRaf = 0; morph = 1; };
     // who is highlighted: you, your contacts; from build 4 the fewest and the most contacts, circled, the number up and
     // out of the circle, in the gap between the seats
     function mark() {
@@ -244,6 +264,8 @@ const nets = TRIO.map((t) => t.name);
     slide(s, {
       set(b: number, how: How) {
         const was = at; at = b;
+        stopMorph();
+        if (b === 5 && was === 4 && how === 'next') becomeNodes();
         s.classList.toggle('as-nodes', b >= 5);
         stages.forEach((li, i) => li.classList.toggle('past', i + 1 < Math.min(b, 3)));
         stopRow();
@@ -253,7 +275,7 @@ const nets = TRIO.map((t) => t.name);
         if (was < 2 || how === 'jump') go(+slider.value, 0); else { mark(); draw(); }
       },
       enter() { setP(P0); },
-      leave: stopRow,
+      leave() { stopRow(); stopMorph(); },
     });
     setP(P0); mark();
     onSize(canvas, draw);

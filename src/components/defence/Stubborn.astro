@@ -24,10 +24,8 @@ import clamp from '../../data/defence/clamp.json';
       <p class="h1-state" data-state></p>
     </div>
   </div>
-  <p class="cite">A consensus-seeking rule on a scale-free network of 100 people, about eight contacts each · the same start every time</p>
-  <p class="illus" data-b="1">illustration</p>
   <p slot="say">The second application uses the consensus-seeking rules that were such bad detectives. Imagine everyone in the room follows one: after a few rounds every hand is up. Now one person refuses and keeps their hand down, whatever happens. Does the room follow them?</p>
-  <p slot="say">The same on a network of 100 people. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation.</p>
+  <p slot="say">The same on a network of 100 people. With nobody stubborn, it ends with every hand up. When a quiet person at the edge is stubborn (ringed), nobody else follows. When an important person is stubborn, the whole network flips to every hand down. Holding one node fixed like this is called clamping, or pinning: it is an intervention, not just an observation. (An illustration: a consensus-seeking rule on a scale-free network of 100 people, about eight contacts each, from the same start every time.)</p>
 </Slide>
 
 <Slide label="Clamp everyone, one at a time" builds={2} class="h2" ch={10}>
@@ -41,9 +39,7 @@ import clamp from '../../data/defence/clamp.json';
       <p class="result" data-b="2"><b>Our result</b> An importance found by simulation alone. It goes with how central a person is, but no single measure of centrality explains it.</p>
     </div>
   </div>
-  <p class="cite">Chapter 10, work in progress · {clamp.summary.starts} starts that reach consensus, each person stubborn in each</p>
-  <p class="illus">illustration</p>
-  <p slot="say">Now make everyone stubborn in turn, one at a time, and record how much of the room ends up with a hand down: that is each person’s dynamical importance. On this network most people change almost nothing, and a few flip the room most of the time.</p>
+  <p slot="say">Now make everyone stubborn in turn, one at a time, and record how much of the room ends up with a hand down: that is each person’s dynamical importance. On this network most people change almost nothing, and a few flip the room most of the time. (Chapter 10, work in progress; the picture is an illustration, over {clamp.summary.starts} starts that reach consensus, with each person stubborn in each.)</p>
   <p slot="say">Against the number of contacts, importance is clearly related to position, but not one-to-one. In the thesis, across families of networks, it correlates with the usual measures of centrality but reduces to none of them; in one family, a node whose neighbours are hubs even matters less. What makes the score attractive is that it needs no measure of centrality at all, only the ability to simulate, and we rarely know the rule that real people or cells follow. This part of the thesis is unpublished and still in progress; its limitations are in the thesis and gladly discussed afterwards.</p>
 </Slide>
 

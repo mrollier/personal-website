@@ -4,6 +4,7 @@
 // bullet writes its formulas as LaTeX between dollars.
 import Slide from './Slide.astro';
 import { texify } from './tex';
+import Phones from './Phones.astro';
 import clamp from '../../data/defence/clamp.json';
 const cs = clamp.summary;
 const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
@@ -118,6 +119,7 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
   <h2>Questions</h2>
   <ol class="index">
     {qs.map((x) => <li><a href={`#${x.id}`} data-go={x.id}>{x.q}</a></li>)}
+    <li><a href="#phones" data-go="phones">What could network classification be for?</a></li>
   </ol>
 </Slide>
 {qs.map((x) => (
@@ -127,6 +129,7 @@ const qs: { id: string; q: string; bullets: string[]; ref: string }[] = [
     <p class="cite">{x.ref} · <a href="#backup" data-go="backup">back to the questions</a></p>
   </Slide>
 ))}
+<Phones />
 
 <style>
   .index { columns: 2; column-gap: calc(60 * var(--u)); font-size: calc(29 * var(--u)); display: block; margin-top: calc(10 * var(--u)); }

@@ -39,18 +39,18 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     </div>
   </div>
   <p slot="say">Can we really use what a rule looks like to predict what it will do? A test, in the form of a mission: looking for consensus. From a random start, after a while every node should have the same colour, all on or all off. The obvious candidates are threshold rules: do what most of your neighbours do. On a network they get stuck, in patches that each agree with themselves but never with each other.</p>
-  <p slot="say" set:html={texify('There are 262 144 rules at resolution 9: every way of colouring the two rings, here the Game of Life. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: symmetry, it must be its own cousin, like the simple threshold rule shown here (the button says so). That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Here each of them stands where it will run, with its two curves of before: the average next density in blue and the average next defect in red, each with its tangent. Every blue curve leaves one half more steeply than the diagonal, so from half and half the network is pushed away; the red tangent says how sensitive the rule is.')} />
+  <p slot="say" set:html={texify('There are 262 144 rules at resolution 9: every way of colouring the two rings, here the Game of Life. First filter: we do not care which colour wins, only that both are equally likely, so the rule must treat on and off alike: symmetry, it must be its own cousin, like the simple threshold rule shown here (the button says so). That leaves 512. Second filter, on the average next density: from half on and half off, the network must move away, towards all on or all off. That leaves 27, about one rule in ten thousand, found in a fraction of a second without a single simulation. Here each of them stands where it will run, with the two curves behind the numbers of before, just for a glance (the thesis has the details): in blue the average next density from any start, in red the average next defect, each with its tangent. Every blue curve leaves one half more steeply than the diagonal, so from half and half the network is pushed away; the red tangent is the Boolean sensitivity.')} />
   <p slot="say" set:html={texify('Now we can afford to run every one of them. One click puts them in place, the next runs them: all 27 on the same grid of 900 nodes, a fifth of its links rewired, from the same random start, for at most 100 timesteps, as in the thesis. Most of them freeze in patches within a few rounds, or keep churning, and fade; the simple threshold rule is stuck from timestep 10. Three reach agreement, and they are the only ones: of all 512 rules that treat on and off alike, no other reaches a lasting agreement in this race. A strong filter: the metrics inform the behaviour, and a run decides which rule is best. Run over hundreds of networks, one of them clearly is: $\phi^9_{488,464}$, which brought more than 96% of the rewired grids of the thesis to agreement. It is among the most sensitive of the 27, but sensitivity alone is not enough (Chapter 6, Physica D 2025).')} />
 </Slide>
 
-<Slide label="Watch it work" builds={3} class="f7" ch={6}>
+<Slide label="Watch it work" builds={2} class="f7" ch={6}>
   <div class="row grow f7-row">
     <div class="f7-left">
       <div class="f7-box">
         <canvas class="grid" aria-label="The chosen rule on a rewired 30 by 30 grid"></canvas>
         <SimButton class="f7-btn" />
       </div>
-      <label class="f7-p">rewired<input type="range" class="ctl" min="-3" max="0" step="0.01" value="-0.7" data-p aria-label="share of links rewired, on a logarithmic scale" /><output data-pv>20%</output></label>
+      <label class="f7-p">rewired<input type="range" class="ctl" min="-3.3" max="0" step="0.01" value="-0.7" data-p aria-label="share of links rewired: none at the left end, then on a logarithmic scale" /><output data-pv>20%</output></label>
     </div>
     <div class="col f7-side">
       <h2>Watch it work</h2>
@@ -59,13 +59,12 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
         <button type="button" class="ctl" data-rule="threshold" aria-pressed="false">Simple threshold <span set:html={phi(9, 480, 496)} /></button>
       </div>
       <canvas class="trace" aria-label="Share of nodes on, timestep by timestep"></canvas>
-      <p class="result" data-b="2"><b>Our result</b> Filter for rules that do what we want.</p>
-      <p class="f7-next" data-b="3">Can we also start from rules that do what we want, and find out <b>what makes them work</b>?</p>
+      <p class="result" data-b="2"><b>Our result</b> Filter for rules that do what we want</p>
     </div>
   </div>
   <p slot="say">The winner at work, on the grid of the race (900 nodes, eight neighbours each, a fifth of the links rewired), from the same random start with half of the nodes on. Patches form and fight, and from timestep 31 every node is on. The curve on the right is the share of nodes that are on, timestep by timestep. The buttons switch to the simple threshold rule, on the same network from the same start: within a dozen timesteps it freezes into patches, each content with its own majority, a few nodes blinking at the borders.</p>
-  <p slot="say">The slider under the grid rewires it, on a logarithmic scale from one link in a thousand to all of them; back at 20% it is the race’s grid again. The talk stays there: on rewired grids like this one, the winner brought more than 96% of the networks of the thesis to agreement at a fifth rewired, but only 21% of the grids without rewiring and 37% of the fully rewired ones. On this grid and from this start it agrees within the thesis’s 100 timesteps from about 2% to 50% rewired, and not below or above. The thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks; these grids are a small illustration.</p>
-  <p slot="say">Our result: with the metrics as a filter, we find rules that do what we want before running a single one. Which raises the question the other way round: can we start from rules that already do something we want, such as telling networks apart, and find out what makes them work?</p>
+  <p slot="say">The slider under the grid rewires it: none at the left end, then on a logarithmic scale from one link in a thousand to all of them; back at 20% it is the race’s grid again. Moved while the rule runs, it only swaps the links: every node keeps its colour and the run goes on (one that was stuck may come loose). The talk stays there: on rewired grids like this one, the winner brought more than 96% of the networks of the thesis to agreement at a fifth rewired, but only 21% of the grids without rewiring and 37% of the fully rewired ones. On this grid and from this start it agrees within the thesis’s 100 timesteps from about 2% to 50% rewired, and not below or above. The thesis ran 900 samples for every setting, on rewired rings, rewired grids and scale-free networks; these grids are a small illustration.</p>
+  <p slot="say">Our result: with the metrics as a filter, we find rules that do what we want before running a single one. (To say out loud, not on the slide: which raises the question the other way round. Can we start from rules that already do something we want, such as telling networks apart, and find out what makes them work?)</p>
 </Slide>
 
 <style>
@@ -122,8 +121,8 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
   .f7-rules .ctl { font-size: calc(30 * var(--u)); padding: calc(8 * var(--u)) calc(20 * var(--u)); }
   .f7-rules .ctl[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sun); }
   .trace { width: 100%; height: calc(260 * var(--u)); }
-  :global(.f7) .result { font-size: calc(40 * var(--u)); }
-  .f7-next { font-size: calc(44 * var(--u)); line-height: 1.25; }
+  /* room to breathe: the result alone under the trace */
+  :global(.f7) .result { font-size: calc(48 * var(--u)); padding: calc(30 * var(--u)) calc(36 * var(--u)); margin-top: calc(30 * var(--u)); }
 </style>
 
 <script>
@@ -230,17 +229,19 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     onSize(c, paint); onSize(mf, paintCurves);
   }
 
-  // ── F7: the winner (or the threshold rule) on the race's grid. The slider under it rewires the grid on a
-  // logarithmic scale, from one link in a thousand to all of them, always with the race's seed, so 20% is the race's
-  // grid again; the slide opens there. ──
+  // ── F7: the winner (or the threshold rule) on the race's grid. The slider under it rewires the grid: none at its left
+  // end, then on a logarithmic scale from one link in a thousand to all of them, always with the race's seed, so 20% is
+  // the race's grid again; the slide opens there. A rewiring while the rule runs keeps every node's state: only the
+  // links change, and a run that was stuck goes on. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f7')) {
     const [grid, trace] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas'));
     const side = SIDE, N = side * side, first = demoStart();
     const slider = s.querySelector<HTMLInputElement>('[data-p]')!, pv = s.querySelector<HTMLOutputElement>('[data-pv]')!;
     let p = P_REWIRE, net = demoNet();
-    /** The share the slider points at, to two significant digits (so 20% is exactly the race's fifth); true if it changed. */
+    /** The share the slider points at, to two significant digits (so 20% is exactly the race's fifth), 0 below a
+     * thousandth; true if it changed. */
     const rewire = () => {
-      const q = Number((10 ** +slider.value).toPrecision(2));
+      const v = +slider.value, q = v < -3.15 ? 0 : Number((10 ** Math.max(-3, v)).toPrecision(2));
       pv.textContent = `${+(q * 100).toPrecision(2)}%`;
       if (q === p) return false;
       p = q; net = lattice(side, 8, p, makeRng(demo.netSeed));
@@ -276,10 +277,17 @@ const f5rings = [{ x: 255, y: 235, R: 195, w: 80, on: false }, { x: 755, y: 235,
     }, () => { paintGrid(); paintTrace(); });
     const mark = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.rule === pick)));
     const gridBtn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;
-    // another rule or another rewiring: back to the same start, and what was started runs on
+    // another rule: back to the same start, and what was started runs on
     const restart = () => { const going = !!gridBtn.dataset.run; ticks.play(false); reset(); paintGrid(); paintTrace(); if (going) ticks.play(true); };
     buttons.forEach((b) => b.addEventListener('click', () => { if (b.dataset.rule === pick) return; pick = b.dataset.rule!; mark(); restart(); }));
-    slider.addEventListener('input', () => { if (rewire()) restart(); });
+    // another rewiring: the same nodes in the same states on the new links; before ▶ nothing else changes, after it the
+    // run goes on, and one that was stuck tries again, up to the horizon (an agreement stays one)
+    slider.addEventListener('input', () => {
+      if (!rewire()) return;
+      run.rewire(net);
+      if (!gridBtn.dataset.run || run.round >= HORIZON) return;
+      if (end && !end.ok) { end = null; ticks.play(true); }
+    });
     reset();
     sim(gridBtn, 1, { reset() { ticks.play(false); reset(); paintGrid(); paintTrace(); }, play() { ticks.play(true); } });
     slide(s, { enter() { pick = 'winner'; mark(); slider.value = '-0.7'; rewire(); reset(); }, leave() { ticks.play(false); } });

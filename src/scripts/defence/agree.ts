@@ -11,14 +11,16 @@ export const THRESHOLD: Rule = { r: 9, B: 480, S: 496 }; // do what most of your
 export const LIMIT = 300;
 
 export type Outcome = { ok: boolean; tick: number };
-export type Agreement = { readonly state: Uint8Array; readonly round: number; next(): Outcome | null };
+export type Agreement = { readonly state: Uint8Array; readonly round: number; next(): Outcome | null; rewire(net: Net): void };
 
-/** A run of `rule` on `net` from `start` (copied). `next` plays one round and returns the outcome once it is in. */
+/** A run of `rule` on `net` from `start` (copied). `next` plays one round and returns the outcome once it is in;
+ * `rewire` swaps the network under the run, every node keeping its state (same nodes, other links). */
 export function agreement(net: Net, rule: Rule, start: Uint8Array, limit = LIMIT): Agreement {
   let a = start.slice(), b = new Uint8Array(net.n), c = new Uint8Array(net.n), t = 0; // c: two rounds ago
   return {
     get state() { return a; },
     get round() { return t; },
+    rewire(other: Net) { net = other; },
     next() {
       step(a, net, rule, b); t++;
       let p1 = true, p2 = t >= 2;

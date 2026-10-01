@@ -1,7 +1,7 @@
 ---
 // Life on networks: from one long row to a grid to contacts anywhere in the room, and the room becomes a network of
 // nodes (F1); the Life-like network automata as two rings round a node, at ever finer resolution, the first contribution
-// of the thesis (F2); and the three Life-like rules of slide C4 again, now on three kinds of network (F3). All come
+// of the thesis (F2); and one rule on the three networks of the rest of the talk, where the network decides what it does (F3). All come
 // before the thesis map, so none has the ribbon. Formulas are LaTeX (./tex).
 import Slide from './Slide.astro';
 import Seats from './Seats.astro';
@@ -11,12 +11,7 @@ import { TRIO } from '../../scripts/defence/trio';
 
 // F2: the two rings in design pixels of the slide (src/scripts/defence/donut.ts draws them)
 const rings = [{ x: 500, y: 540, R: 215, w: 92, on: false }, { x: 1420, y: 540, R: 215, w: 92, on: true }];
-// F3: Maze, Life and Replicator, as Life-like network automata at resolution 9, and the three kinds of network
-const likes = [
-  { id: 'maze', name: 'Maze', B: 8, S: 62 },
-  { id: 'life', name: 'Game of Life', B: 8, S: 12 },
-  { id: 'replicator', name: 'Replicator', B: 170, S: 170 },
-];
+// F3: one rule on the three kinds of network
 const nets = TRIO.map((t) => t.name);
 ---
 <Slide label="Generalising even further" builds={5} class="f1">
@@ -55,27 +50,24 @@ const nets = TRIO.map((t) => t.name);
   <p slot="say" set:html={texify('Defining these rules properly, for any network and at any resolution, is the first contribution of the thesis (Chapter 5, Physica D 2025), and the point of the definition is symmetry. Which ends each interval includes is chosen so that every rule has a cousin that behaves exactly the same with on and off swapped: the same patterns, in the other colours. The button on this page swaps a rule for its cousin: born becomes the complement of survive read backwards, and survive the complement of born read backwards; some rules are their own cousin. At an odd resolution the intervals below $\\tfrac12$ include their left end, those above it their right end, and the middle one both. An even resolution has no middle interval, so there the two rings give $\\tfrac12$ to different sides: the born ring to the interval just left of it, the survive ring to the one just right of it (Appendix C of the thesis).')} />
 </Slide>
 
-<Slide label="Any rule, any network" builds={5} class="f3">
+<Slide label="The network matters too" builds={1} class="f3">
   <div class="f3-head">
-    <h2>Any rule, any network</h2>
-    <div class="f3-nets" role="group" aria-label="the network">
-      {nets.map((n, i) => <button type="button" class="ctl" data-net={i} aria-pressed={i ? 'false' : 'true'}>{n}</button>)}
-    </div>
+    <h2>The network matters too</h2>
+    <p class="f3-rule" set:html={phi(9, 168, 486)} />
   </div>
   <div class="f3-likes">
-    {likes.map((g) => (
+    {nets.map((name, k) => (
       <figure>
         <div class="f3-box">
-          <canvas data-rule={`${g.B},${g.S}`} aria-label={`${g.name} on a small network, from a random start`}></canvas>
-          <SimButton class="f3-btn" />
+          <canvas data-net={k} aria-label={`one rule on the ${name} network, from a random start`}></canvas>
+          {k === 2 && <SimButton class="f3-btn" />}
         </div>
-        <figcaption><b>{g.name}</b> <span set:html={phi(9, g.B, g.S)} /></figcaption>
+        <figcaption><b>{name}</b></figcaption>
       </figure>
     ))}
   </div>
-  <p slot="say">The same three rules as before, Maze, the Game of Life and Replicator, now as Life-like network automata at resolution 9, each started with its own button, all three from the same random start, on a random network of 150 nodes (between two and thirteen neighbours each, about seven on average). Maze still freezes within a few rounds and Replicator still churns, but the Game of Life all but dies out within seconds. Each reset draws a new start.</p>
-  <p slot="say">Two more clicks put the same three rules on the other two networks of the rest of the talk: a small-world network grown from a ring of 150 nodes, each linked to its four nearest neighbours on either side, with a tenth of the links rewired; and a scale-free network of 150 nodes in which two in five nodes have only four links and a few hubs have forty or fifty (drawn larger). The three behave alike on all three here, but both the rule and the network can be changed, and every combination is a situation of its own: a great many to study.</p>
-  <p slot="say" set:html={texify('A word on the names. The random network is an Erdős–Rényi network: every pair of nodes is linked with the same small probability. The ring is a Watts–Strogatz network (WSr in the thesis): a ring with some of its links rewired at random. “Small-world” is a shorthand: depending on how much is rewired, such a network is close to the lattice, a small world, or close to a random network, and most of the rewired networks in the thesis lean towards random. The third is grown by nonlinear preferential attachment (NPA): every newcomer links to earlier nodes with a probability that grows with their degree $k$, as $k^\\alpha + 1$. With $\\alpha = 1$ it resembles a Barabási–Albert scale-free network without being quite one; here $\\alpha = 1.5$, so a few hubs take most of the links, on the way to a star ($\\alpha = 0$ gives no hubs at all, a large $\\alpha$ one giant hub).')} />
+  <p slot="say" set:html={texify('Life-like network automata can run any rule on any network, and the network matters as much as the rule. Here one rule, $\\phi^9_{168,486}$, on the three networks of the rest of the talk, 150 nodes each, from a random start with three in ten on; the click starts all three. On the random network it never settles; on the small-world ring it fills up and freezes; on the scale-free network it all but dies out. Why? On the scale-free network 60 of the 150 nodes have exactly four links, and a node with four links only ever sees none, a quarter, half, three quarters or all of its neighbours on: shares in which this rule never lets a node be born. So they can never switch on. On the ring every node has about eight neighbours, and on the random network anything from two to thirteen. Same rule, three different behaviours: a great many combinations to study. (On the page, ↺ draws new starts.)')} />
+  <p slot="say" set:html={texify('A word on the names. The random network is an Erdős–Rényi network: every pair of nodes is linked with the same small probability. The ring is a Watts–Strogatz network (WSr in the thesis): a ring of 150 nodes, each linked to its four nearest neighbours on either side, with a tenth of the links rewired at random. “Small-world” is a shorthand: depending on how much is rewired, such a network is close to the lattice, a small world, or close to a random network, and most of the rewired networks in the thesis lean towards random. The third is grown by nonlinear preferential attachment (NPA): every newcomer links to earlier nodes with a probability that grows with their degree $k$, as $k^\\alpha + 1$. With $\\alpha = 1$ it resembles a Barabási–Albert scale-free network without being quite one; here $\\alpha = 1.5$, so a few hubs take most of the links (drawn larger), on the way to a star ($\\alpha = 0$ gives no hubs at all, a large $\\alpha$ one giant hub).')} />
 </Slide>
 
 <style>
@@ -110,16 +102,13 @@ const nets = TRIO.map((t) => t.name);
   .f2-result { margin-top: auto; position: relative; }
 
   .f3-head { display: flex; align-items: center; justify-content: space-between; gap: calc(40 * var(--u)); }
-  .f3-nets { display: flex; gap: calc(12 * var(--u)); }
-  .f3-nets .ctl { font-size: calc(30 * var(--u)); font-weight: 600; }
-  .f3-nets .ctl[aria-pressed="true"] { background: var(--ink); color: var(--sun); border-color: var(--ink); }
+  .f3-rule { font-size: calc(56 * var(--u)); }
   .f3-likes { display: flex; justify-content: space-between; flex: 1; align-items: center; }
   .f3-likes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); }
   .f3-box { position: relative; }
   .f3-likes canvas { width: calc(540 * var(--u)); height: calc(540 * var(--u)); }
   .f3-box :global(.f3-btn) { right: calc(-22 * var(--u)); bottom: calc(-22 * var(--u)); }
-  .f3-likes figcaption { display: flex; flex-direction: column; align-items: center; gap: calc(6 * var(--u)); font-size: calc(44 * var(--u)); }
-  .f3-likes figcaption span { font-size: calc(40 * var(--u)); color: var(--muted); }
+  .f3-likes figcaption { font-size: calc(44 * var(--u)); }
 </style>
 
 <script>
@@ -260,7 +249,9 @@ const nets = TRIO.map((t) => t.name);
     }
     const pct = (p: number) => `${Math.round(p * 100)}%`;
     const setP = (p: number) => { slider.value = String(p); pv.value = pct(p); };
-    slider.addEventListener('input', () => { const p = +slider.value; pv.value = pct(p); go(p, 450); });
+    // while the slider is dragged only its number follows; the links swing over when it is let go
+    slider.addEventListener('input', () => { pv.value = pct(+slider.value); });
+    slider.addEventListener('change', () => go(+slider.value, 450));
     slide(s, {
       set(b: number, how: How) {
         const was = at; at = b;
@@ -300,44 +291,27 @@ const nets = TRIO.map((t) => t.name);
     });
   }
 
-  // ── F3: Maze, Life and Replicator again (slide C4), now as Life-like network automata at resolution 9, each with its
-  // own button (builds 1–3), on a random network; builds 4 and 5 move all three to a small-world ring and then a
-  // scale-free network (so do the buttons at the top), and what ran runs on: the talk's three networks (trio.ts). All
-  // three start from the same random state of their network; a reset draws a new one. The networks are built when first
-  // shown. ──
+  // ── F3: one rule, φ⁹₁₆₈,₄₈₆, on the talk's three networks side by side (trio.ts), all three started by one ▶ (build 1):
+  // it keeps going on the random network, fills up and freezes on the ring, and all but dies out on the scale-free
+  // network, whose many nodes with four links can never be born under it (npm test checks all three). The networks are
+  // built when first drawn; each starts from its own start, and a reset by hand draws new ones. ──
   for (const s of document.querySelectorAll<HTMLElement>('.slide.f3')) {
-    const SIZE = 540;
-    const pics: Picture[] = [], firsts: Uint8Array[] = [];
+    const SIZE = 540, RULE: Rule = { r: 9, B: 168, S: 486 };
+    const canvases = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-net]')), pics: Picture[] = [];
     const pic = (k: number) => (pics[k] ??= picture(trioNet(k), SIZE, 26, k === 1 ? 5 : 6.5, k === 2 ? 0.6 : false));
-    const first = (k: number) => (firsts[k] ??= trioStart(k, pic(k).net.n));
-    let kind = 0;
-    const btns = s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'), nets = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-net]'));
-    const panels = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas[data-rule]')).map((c, j) => {
-      const [B, S] = c.dataset.rule!.split(',').map(Number), rule: Rule = { r: 9, B, S };
-      let a = first(0).slice(), b = new Uint8Array(a.length);
-      const paint = () => { const st = stage(c); if (st) drawNet(st, pic(kind), a); };
-      const run = ticker(c, 5, () => { step(a, pic(kind).net, rule, b); [a, b] = [b, a]; }, paint);
-      const restart = () => { a = first(kind).slice(); b = new Uint8Array(a.length); paint(); };
-      sim(btns[j], 1 + j, {
-        reset() { run.play(false); restart(); },
-        play() { run.play(true); },
-        reroll() { firsts[kind] = randomState(pic(kind).net.n, RHO0, fresh()); },
-      });
-      onSize(c, paint);
-      return { run, restart };
-    });
-    const show = (k: number) => {
-      nets.forEach((x, i) => x.setAttribute('aria-pressed', String(i === k)));
-      if (k === kind) return;
-      kind = k;
-      for (const p of panels) p.restart();
+    let firsts: Uint8Array[] | null = null, a: Uint8Array[] = [], b: Uint8Array[] = [];
+    const restart = () => {
+      firsts ??= canvases.map((_, k) => trioStart(k, pic(k).net.n));
+      a = firsts.map((x) => x.slice()); b = a.map((x) => new Uint8Array(x.length));
     };
-    nets.forEach((x, i) => x.addEventListener('click', () => show(i)));
-    slide(s, {
-      // a network picked by hand stays until a build picks one: 4, 5, or any step back or jump
-      set(b: number, how: How) { if (b >= 4 || how !== 'next') show(b >= 5 ? 2 : b >= 4 ? 1 : 0); },
-      enter() { firsts.length = 0; kind = -1; show(0); },
-      leave() { for (const p of panels) p.run.play(false); },
+    const paint = () => canvases.forEach((c, k) => { const st = stage(c); if (st && a[k]) drawNet(st, pic(k), a[k]); });
+    const run = ticker(s, 5, () => { for (let k = 0; k < a.length; k++) { step(a[k], pic(k).net, RULE, b[k]); const x = a[k]; a[k] = b[k]; b[k] = x; } }, paint);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { run.play(false); restart(); paint(); },
+      play() { run.play(true); },
+      reroll() { const rnd = fresh(); firsts = canvases.map((_, k) => randomState(pic(k).net.n, RHO0, rnd)); },
     });
+    slide(s, { enter() { firsts = null; restart(); }, leave() { run.play(false); } });
+    for (const c of canvases) onSize(c, () => { if (!a.length) restart(); paint(); });
   }
 </script>

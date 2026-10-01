@@ -1,0 +1,97 @@
+---
+// A backup slide (it was the end of the classification chapter until round 17): what network classification could be
+// for. 48 phones that only sense who is near, on a contact network nobody holds (trio.ts PHONES), each running a good
+// detective; their fingerprint gives the network away, and the rule is chosen in advance. Reached from the backup index.
+import Slide from './Slide.astro';
+import SimButton from './SimButton.astro';
+---
+<Slide label="Who meets whom?" builds={3} class="g5" appendix id="phones">
+  <h2>Who meets whom?</h2>
+  <p class="g5-sub">Identifying a network nobody can see</p>
+  <div class="g5-row">
+    <div class="g5-crowd">
+      <canvas class="phones" aria-label="Forty-eight phones, each switching its screen on and off by one rule, on a network of contacts nobody can see"></canvas>
+      <SimButton class="g5-btn" />
+    </div>
+    <p class="g5-arrow" data-b="2" aria-hidden="true">→</p>
+    <canvas class="g5-print" data-b="2" data-kind="tented" data-seed="13" aria-label="the phones' fingerprint"></canvas>
+    <p class="g5-arrow" data-b="2" aria-hidden="true">→</p>
+    <p class="g5-answer" data-b="2">a few hubs:<br /><b>superspreaders</b></p>
+  </div>
+  <p class="g5-rule" data-b="3">The rule to load: one that changes its mind <b>often, but not always</b>.</p>
+  <p class="cite">Ch. 9 · <a href="#backup" data-go="backup">back to the questions</a></p>
+  <p slot="say">What could this be good for, when nobody has the network? Six years ago this week, on 30 September 2020, Belgium launched its contact-tracing app, Coronalert: every phone sensed over Bluetooth which phones came near it, and to protect our privacy nobody ever held the network of who met whom. Now imagine every phone running one simple rule with the phones around it, and reporting only its own ons and offs, never whom it met. The next click starts them: a small network of 48 phones, hidden.</p>
+  <p slot="say">From those rows of ons and offs alone, the fingerprint says what kind of network we live in: whether our contacts run through a few hubs, superspreaders, or are well mixed. Here the hidden network is scale-free, with one phone linked to 34 others (its links appear on this click), and the phones run Miranda et al.’s rule, so the fingerprint is the scale-free one of before. A thought experiment, of course: real contacts change from hour to hour.</p>
+  <p slot="say">But which rule do we load into millions of phones? We cannot try thousands of rules on real people. This is where knowing what makes a good detective pays off: a rule that changes its mind often, but not always, chosen in advance from simulations alone. And the consensus-seeking rules, such bad detectives, turn out to be good at something else: finding who matters.</p>
+</Slide>
+
+<style>
+  .g5-sub { font-size: calc(40 * var(--u)); margin-top: calc(-12 * var(--u)); }
+  .g5-row { flex: 1; display: flex; align-items: center; gap: calc(36 * var(--u)); }
+  .g5-crowd { position: relative; flex: none; }
+  .phones { display: block; width: calc(820 * var(--u)); height: calc(640 * var(--u)); }
+  .g5-crowd :global(.g5-btn) { right: calc(-84 * var(--u)); bottom: 0; }
+  .g5-arrow { font-size: calc(90 * var(--u)); color: var(--muted); }
+  .g5-print { width: calc(240 * var(--u)); height: calc(300 * var(--u)); flex: none; }
+  .g5-answer { font-size: calc(48 * var(--u)); line-height: 1.25; }
+  .g5-rule { font-size: calc(44 * var(--u)); line-height: 1.25; }
+  .g5-sub + .g5-row { margin-top: calc(10 * var(--u)); }
+  .cite a { color: var(--ink); text-decoration: none; }
+</style>
+
+<script>
+  import { slide, sim, fresh } from '../../scripts/defence/deck';
+  import { stage, onSize, ticker } from '../../scripts/defence/stage';
+  import { PHONES } from '../../scripts/defence/trio';
+  import { buildNet, makeRng } from '../../scripts/net';
+  import { type Rule, step, randomState } from '../../scripts/llna';
+  import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
+
+  const RULES: Record<string, Rule> = { miranda: { r: 9, B: 170, S: 340, part: 'uni' } };
+  // ── G5: 48 phones in a loose crowd, eight by six, each in a random place (the network is hidden, so where a phone
+  // stands says nothing about it; trio.ts PHONES), a screen filled when on; Miranda et al.'s rule switches them, two timesteps a second, from ▶ (build 1); build 2 shows the hidden links
+  // faintly, with the fingerprint (the scale-free print of G2) and what it says; build 3 the rule to load. A reset by hand
+  // draws a new start. ──
+  for (const s of document.querySelectorAll<HTMLElement>('.slide.g5')) {
+    const c = s.querySelector<HTMLCanvasElement>('canvas.phones')!, pc = s.querySelector<HTMLCanvasElement>('canvas.g5-print')!;
+    let net: ReturnType<typeof buildNet> | null = null, first: Uint8Array | null = null, a = new Uint8Array(0), b = new Uint8Array(0), seen = false;
+    const phones = () => (net ??= buildNet(PHONES.spec, PHONES.seed, 'none'));
+    const COLS = 8, ROWS = 6, spot: [number, number][] = (() => {
+      const rnd = makeRng(PHONES.seed + 100), at = Array.from({ length: COLS * ROWS }, (_, k) => k);
+      for (let k = at.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [at[k], at[j]] = [at[j], at[k]]; }
+      return at.map((k) => [(k % COLS + 0.5 + (rnd() - 0.5) * 0.4) / COLS, (Math.floor(k / COLS) + 0.5 + (rnd() - 0.5) * 0.4) / ROWS]);
+    })();
+    const restart = () => { const g = phones(); first ??= randomState(g.n, 0.5, makeRng(PHONES.start)); a = first.slice(); b = new Uint8Array(g.n); };
+    function paint() {
+      const st = stage(c); if (!st) return;
+      const { ctx, t } = st, g = phones(), W = 40, H = 68;
+      const X = (i: number) => spot[i][0] * st.w, Y = (i: number) => spot[i][1] * st.h;
+      if (seen) {
+        ctx.strokeStyle = t.muted; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.beginPath();
+        for (const [i, j] of g.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      for (let i = 0; i < g.n; i++) {
+        const x = X(i) - W / 2, y = Y(i) - H / 2;
+        ctx.beginPath(); ctx.roundRect(x, y, W, H, 8); ctx.fillStyle = t.panel; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(x + 6, y + 9, W - 12, H - 20, 2); ctx.fillStyle = a[i] ? t.ink : t.panel; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke();
+      }
+    }
+    const run = ticker(s, 2, () => { step(a, phones(), RULES.miranda, b); [a, b] = [b, a]; }, paint);
+    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
+      reset() { run.play(false); restart(); paint(); },
+      play() { run.play(true); },
+      reroll() { first = randomState(phones().n, 0.5, fresh()); },
+    });
+    slide(s, {
+      set(k: number) { seen = k >= 2; paint(); },
+      enter() { first = null; restart(); },
+      leave() { run.play(false); },
+    });
+    restart();
+    onSize(c, paint);
+    const lines = ridges(pc.dataset.kind as PrintKind, +pc.dataset.seed!);
+    onSize(pc, () => { const st = stage(pc); if (!st) return; const h = st.h - 4; drawPrint(st.ctx, lines, (st.w - h / 1.25) / 2, 2, h, st.t.ink); });
+  }
+</script>

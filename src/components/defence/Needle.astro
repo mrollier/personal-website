@@ -1,19 +1,19 @@
 ---
-// F5–F8: the synchronisation task, 262,144 rules narrowed to 27 by the genotype alone; among them, the best ones are
+// F5–F8: the synchronisation task, 262 144 rules narrowed to 27 by the genotype alone; among them, the best ones are
 // sensitive (said intuitively, the numbers left off); the winner at work on a rewired grid; and the flip that turns a
 // synchroniser into a consensus-seeker.
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { tex } from './tex';
 ---
-<Slide label="A needle in a haystack" builds={4} class="f5" ch={6}>
+<Slide id="ch-synchronisation" label="A needle in a haystack" builds={4} class="f5" ch={6}>
   <div class="row grow f5-row">
-    <canvas class="rules" aria-label="Every one of the 262,144 rules as one pixel: where it is born down, where it survives across"></canvas>
+    <canvas class="rules" aria-label="Every one of the 262 144 rules as one pixel: where it is born down, where it survives across"></canvas>
     <div class="col f5-side">
       <h2>A needle in a haystack</h2>
       <p class="lede">The task: from a random start, all nodes flash in step. All on, all off, all on, …</p>
       <ol class="steps">
-        <li data-b="1"><b>262,144</b> rules, one pixel each</li>
+        <li data-b="1"><b>262 144</b> rules, one pixel each</li>
         <li data-b="2"><b>512</b> look the same with on and off swapped, as the task does</li>
         <li data-b="3"><b>27</b> leave half on, half off while flipping it, found <b>without a single simulation</b></li>
         <li data-b="4">Simulated: <b>22</b> never synchronised once. One stands out.</li>
@@ -22,7 +22,7 @@ import { tex } from './tex';
   </div>
   <p class="cite">The global synchronisation task: R. Das, J. P. Crutchfield, M. Mitchell, J. E. Hanson, 1995</p>
   <p slot="say">What can the two curves do? A classic test for cellular automata is the global synchronisation task: starting from a random pattern, get every node to flash in step, all on, then all off, then all on again. No node can see the whole network, so this is hard for local rules.</p>
-  <p slot="say">Here are all 262,144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the average next density keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
+  <p slot="say">Here are all 262 144 rules, one pixel each. The task treats on and off the same, so a good rule should too: that leaves 512. Of those, two conditions on the average next density keep the rules that push the network away from half on, half off while flipping it: 27 remain. That filter takes a fraction of a second and needs no simulation at all. Only then do we simulate the 27: 22 never synchronise once, and one stands out. For comparison, a genetic algorithm searching for such rules simulates some ten to a hundred million times.</p>
 </Slide>
 
 <Slide label="We want sensitive rules" builds={1} class="f6" ch={6}>
@@ -48,7 +48,7 @@ import { tex } from './tex';
         <p><span data-won>0</span> of 20 fresh networks synchronised</p>
         <div class="dots" data-dots>{Array.from({ length: 20 }, () => <i />)}<SimButton class="f7-btn2" /></div>
       </div>
-      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262,144, without a single simulation. The best one synchronises most partly rewired networks.</p>
+      <p class="result" data-b="3"><b>Our result</b> 27 candidates out of 262 144, without a single simulation. The best one synchronises most partly rewired networks.</p>
     </div>
   </div>
   <p class="cite">The winner on a <Fragment set:html={tex('30 \\times 30')} /> grid, 20% of links rewired</p>

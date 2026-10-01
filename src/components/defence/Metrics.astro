@@ -17,12 +17,12 @@ const slides = [
   { kind: 'defect', title: 'The average next defect', cls: 'f4', builds: 2, say: [
     'The second curve asks the same question about differences. Take two copies of a network, identical except for some share of the nodes: the defect, in red. What is the defect one round later, on average? That is the average next defect, again worked out from the rule alone, for a network that is half on and eight neighbours each. The cobweb shows where a small defect goes: in the Game of Life it grows.',
     'The red line is the tangent at the origin: how many nodes a single difference reaches in one round, on average. Its slope says how sensitive a rule is: above one, a single difference spreads; below one, it dies out. For the Game of Life it is about three, for the consensus-seeking rule more than six.',
-    'Our result: we worked out both curves for Life-like network automata, so that they can be read off any of the 262,144 rules before running it. They are what the filter on the next slide is made of.',
+    'Our result: we worked out both curves for Life-like network automata, so that they can be read off any of the 262 144 rules before running it. They are what the filter on the next slide is made of.',
   ], aria: 'The average next defect of the chosen rule against the defect now, with a cobweb from the start and the diagonal' },
 ];
 ---
-{slides.map((sl) => (
-  <Slide label={sl.title} builds={sl.builds} class={`${sl.cls} avg`} ch={5}>
+{slides.map((sl, i) => (
+  <Slide id={i ? undefined : 'ch-metrics'} label={sl.title} builds={sl.builds} class={`${sl.cls} avg`} ch={5}>
     <div class="row grow avg-row">
       <div class="col avg-side">
         <h2>{sl.title}</h2>

@@ -2,16 +2,18 @@
 // The four chapters of the talk in small along the bottom of every slide after the thesis map, so the room keeps track
 // of where the talk is: in the two halves of the research question, getting to know the rules and applying them, two
 // chapters each, with the current one filled (class `cur`; the site already uses `now`). `ch` = 0 fills none, and a
-// slide's script can set `cur` on a tile itself. The map slide shows where the ribbon comes from.
-import { HALVES } from '../../scripts/defence/ribbon';
+// slide's script can set `cur` on a tile itself; the half holding the current chapter is set in bold. Every tile is a
+// link to the first slide of its chapter (the deck jumps there while presenting). The map slide shows where the ribbon
+// comes from.
+import { HALVES, START } from '../../scripts/defence/ribbon';
 type Props = { ch: number };
 const { ch } = Astro.props;
 ---
-<div class="ribbon" aria-hidden="true">
+<nav class="ribbon" aria-label="Chapters of the talk">
   {HALVES.map((h) => (
     <span class="rhalf">
       <span class="rh">{h.name}</span>
-      {h.chs.map((c) => <span class:list={['rch', c.ch === ch && 'cur']} data-ch={c.ch}>{c.name}</span>)}
+      {h.chs.map((c) => <a class:list={['rch', c.ch === ch && 'cur']} data-ch={c.ch} href={`#${START[c.ch]}`} data-go={START[c.ch]}>{c.name}</a>)}
     </span>
   ))}
-</div>
+</nav>

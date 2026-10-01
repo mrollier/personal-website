@@ -60,9 +60,10 @@ import SimButton from './SimButton.astro';
 
   .r-label { font-size: calc(72 * var(--u)); font-weight: 700; }
   .r-top { gap: calc(12 * var(--u)); }
-  .r-count { font-size: calc(260 * var(--u)); font-weight: 700; line-height: 1; min-height: 1em; color: var(--ink); }
+  /* fixed heights, so the round's name stays put whatever the counter and the note show */
+  .r-count { font-size: calc(260 * var(--u)); font-weight: 700; line-height: 1; height: calc(260 * var(--u)); display: flex; align-items: center; color: var(--ink); }
   .r-count.sw { color: var(--accent); font-size: calc(200 * var(--u)); }
-  .r-note { font-size: calc(40 * var(--u)); min-height: 2.5em; max-width: calc(1300 * var(--u)); text-align: center; text-wrap: balance; }
+  .r-note { font-size: calc(40 * var(--u)); height: 2.6em; max-width: calc(1300 * var(--u)); text-align: center; text-wrap: balance; }
 
   .r90-box { position: relative; align-self: center; flex: 1; min-height: 0; display: flex; align-items: center; }
   .r90-canvas { width: calc(1400 * var(--u)); height: calc(728 * var(--u)); }

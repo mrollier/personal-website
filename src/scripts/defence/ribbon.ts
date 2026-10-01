@@ -9,6 +9,8 @@ export const PARTS: { n: string; name: string; chs: Chapter[] }[] = [
   { n: 'IV', name: 'Applications in network science', chs: [{ ch: 9, name: 'network classification' }, { ch: 10, name: 'impact analysis' }] },
 ];
 const name = (ch: number) => PARTS.flatMap((p) => p.chs).find((c) => c.ch === ch)!.name;
+/** The id of the first slide of each chapter of the talk, where a click on its tile in the ribbon goes. */
+export const START: Record<number, string> = { 5: 'ch-metrics', 6: 'ch-synchronisation', 9: 'ch-classification', 10: 'ch-impact' };
 export const HALVES: { name: string; chs: Chapter[] }[] = [
   { name: 'getting to know the rules', chs: [5, 6] },
   { name: 'applying them', chs: [9, 10] },

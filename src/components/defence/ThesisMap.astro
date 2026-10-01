@@ -32,9 +32,10 @@ const talk = new Set(HALVES.flatMap((h) => h.chs.map((c) => c.ch)));
 </Slide>
 
 <style>
-  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(32 * var(--u)); flex: 1; min-height: 0; }
+  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(32 * var(--u)); flex: 1; min-height: 0; margin-top: calc(44 * var(--u)); }
   .part { border-top: calc(6 * var(--u)) solid var(--ink); padding-top: calc(20 * var(--u)); display: flex; flex-direction: column; gap: calc(16 * var(--u)); }
   .part.skip { border-top-style: dashed; border-top-color: var(--line); }
+  .part.skip .pn, .part.skip h3 { opacity: 0.6; } /* a part tonight skips altogether, greyed like its chapters */
   .pn { font-size: calc(30 * var(--u)); font-weight: 700; color: var(--accent); }
   .part h3 { font-size: calc(40 * var(--u)); min-height: 2.4em; }
   .part ul { list-style: none; padding: 0; gap: calc(16 * var(--u)); }
@@ -44,7 +45,7 @@ const talk = new Set(HALVES.flatMap((h) => h.chs.map((c) => c.ch)));
   .ch { font-size: calc(38 * var(--u)); line-height: 1.15; }
   .where { font-size: calc(26 * var(--u)); color: var(--muted); }
   .half { margin-top: auto; border: calc(4 * var(--u)) solid var(--accent); color: var(--accent); padding: calc(16 * var(--u)) calc(20 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; line-height: 1.2; }
-  :global(.e1:not(.rib)) :global(.ribbon) { opacity: 0; }
+  :global(.e1:not(.rib)) :global(.ribbon) { opacity: 0; pointer-events: none; }
 </style>
 
 <script>

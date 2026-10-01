@@ -1,81 +1,95 @@
 ---
-// I1–I3: our answers to the research question, one chapter at a time, each with a small animation to remind the room
-// what happened and the ribbon lighting its chapter; three directions beyond the thesis, as pictures with a few words;
-// and the close: the title's slogan over the cover's landscape, brought together, then its colours drained away and
-// one flipped cell that sets the still life moving, and a QR code to the site (drawn at build time, no library at run time).
+// I1–I3: the summary, laid out as the ribbon is, in its two halves, one chapter per click, each with a small animation
+// that keeps going by itself (no buttons: they only remind the room what happened); three directions beyond the
+// thesis, one at a time in the middle of the slide: spatiotemporal modelling at BionamiX (groundwater, then a wildfire),
+// influence maximisation, and inside artificial minds (a small neural network at work); and the close: the title's
+// slogan over the cover's landscape, brought together, then its colours drained away and one flipped cell that sets the
+// still life moving, and a QR code to the site (drawn at build time, no library at run time).
 import Slide from './Slide.astro';
 import SimButton from './SimButton.astro';
 import { qr, qrPath } from '../../scripts/defence/qr';
 const code = qr('https://michielrollier.be', 'M');
 const qd = qrPath(code), qsize = code.size + 8;
-const answers = [
-  { half: 'What links rule and behaviour?', items: [
-    { ch: 5, say: 'Two numbers and two curves read off the rule, worked out for Life-like network automata.' },
-    { ch: 6, say: 'From 262 144 rules to 27 that seek agreement, without a single simulation.' },
+// the summary's words are the ribbon's: its two halves and its four chapters
+const halves = [
+  { name: 'Getting to know the rules', items: [
+    { ch: 'metrics', say: 'define and quantify LLNAs', act: 'rings', aria: 'A rule’s two rings with its Hamming weight and Boolean sensitivity, for one rule after another' },
+    { ch: 'synchronisation', say: 'filter for rules that do what we want', act: 'agree', aria: 'The consensus-seeking rule bringing a rewired grid to agreement, from one random start after another' },
   ] },
-  { half: 'Can we put that link to use?', items: [
-    { ch: 9, say: 'Rules that change their mind often, but not always, tell networks apart best.' },
-    { ch: 10, say: 'A consensus-seeking rule shows who matters, by simulation alone.' },
+  { name: 'Applying them', items: [
+    { ch: 'network classification', say: 'understand rules that generate distinct fingerprints', act: 'prints', aria: 'Miranda et al.’s rule on the three networks, each with its fingerprint over it' },
+    { ch: 'impact analysis', say: 'assign a dynamical importance score', act: 'stubborn', aria: 'The village with one stubborn person after another, and whether the village follows' },
   ] },
 ];
 ---
-<Slide label="Our answers" builds={4} class="i1" ch={0}>
-  <h2 class="i1-q">What links a simple local rule to the rich behaviour it produces, and can we put that link to use?</h2>
-  <div class="row grow i1-row">
-    <div class="col i1-list">
-      {answers.map((g, gi) => (
-        <section class="i1-group" data-b={gi ? 3 : 1}>
-          <p class="i1-half">{g.half}</p>
-          <ol>
-            {g.items.map((it, k) => <li data-b={gi * 2 + k + 1} data-k={gi * 2 + k}><b>{it.ch}</b><span>{it.say}</span></li>)}
-          </ol>
-        </section>
-      ))}
-    </div>
-    <div class="i1-box" data-b="1">
-      <canvas class="i1-anim" aria-label="A small animation of the chapter named on the left"></canvas>
-      <SimButton class="i1-btn" />
-    </div>
+<Slide label="Summary" builds={4} class="i1" ch={0}>
+  <h2>Summary</h2>
+  <div class="i1-halves">
+    {halves.map((h, hi) => (
+      <section class="i1-half">
+        <p class="i1-hname" data-b={hi * 2 + 1}>{h.name}</p>
+        <div class="i1-pair">
+          {h.items.map((it, k) => (
+            <figure class="i1-item" data-b={hi * 2 + k + 1}>
+              <canvas class="i1-anim" data-act={it.act} aria-label={it.aria}></canvas>
+              <figcaption><b>{it.ch}</b>: {it.say}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+    ))}
   </div>
-  <p slot="say">Back to the research question: what links a simple local rule to the rich behaviour it produces, and can we put that link to use? Four chapters answer it.</p>
-  <p slot="say">What links rule and behaviour: two numbers and two curves that can be read off a rule before running it, the Hamming weight and the Boolean sensitivity, the average next density and the average next defect, worked out for Life-like network automata; their slopes say how unstable a rule is and how sensitive (Chapter 5). They are enough to narrow 262 144 rules down to 27 candidates for bringing a network to agreement, without a single simulation, and the best of them, one of the most sensitive, brings most partly rewired networks there (Chapter 6).</p>
-  <p slot="say">Putting the link to use: rules that change their mind often, but not always, sensitive but not chaotic, tend to tell networks apart best, which makes that count (the jaggedness) a guide for choosing a rule without trying them all (Chapter 9). And a consensus-seeking rule, together with one stubborn node at a time, shows which nodes matter, by simulation alone (Chapter 10, work in progress).</p>
+  <p slot="say">To sum up, along the two halves of the research question, and the chapters along the bottom of the slides.</p>
+  <p slot="say">Getting to know the rules. Metrics: we defined Life-like network automata so that every rule has its cousin, and worked out numbers and curves that quantify a rule before it runs, such as the Hamming weight and the Boolean sensitivity, here for one rule after another (Chapter 5).</p>
+  <p slot="say">Synchronisation: with those metrics as a filter, we find rules that do what we want, here a consensus-seeking rule that brings a rewired grid to agreement, from one random start after another (Chapter 6).</p>
+  <p slot="say">Applying them. Network classification: we understand which rules give networks distinct fingerprints, those that change their mind often, but not always (Chapter 9).</p>
+  <p slot="say">And impact analysis: making every node stubborn in turn gives each a dynamical importance score. Here the best-connected villager, the most important one, a quiet one and another important one, in turn: twice the village follows, twice it does not, each time what that person does in most starts (Chapter 10, work in progress).</p>
 </Slide>
 
-<Slide label="Beyond this thesis" builds={3} class="i2">
+<Slide label="Beyond this thesis" builds={4} class="i2">
   <h2>Beyond this thesis</h2>
   <div class="i2-stack grow">
-    <figure class="i2-item" data-b-only="0 1">
-      <div class="i2-box">
-        <canvas class="i2-pic" data-pic="fire" aria-label="A wildfire spreading through a forest, cell by cell"></canvas>
-        <SimButton class="i2-btn" />
+    <div class="i2-item i2-st" data-b-only="0 1 2">
+      <div class="i2-head"><img src="/demos/defence/logos/bionamix.webp" alt="BionamiX" /><b>Spatiotemporal modelling</b></div>
+      <div class="i2-row">
+        <div class="i2-gw" data-b="1">
+          <p class="i2-sub">Groundwater flow</p>
+          <p class="pub"><b>The MACCA-GW groundwater flow model: application to De Wilde Landen, the Netherlands</b><span>M. Rollier, L. Landuyt, J. M. Baetens</span><span>ACRI 2026, accepted</span></p>
+        </div>
+        <div class="i2-fire" data-b="2">
+          <p class="i2-sub">Wildfires</p>
+          <div class="i2-box">
+            <canvas class="i2-firepic" aria-label="A wildfire spreading through a forest, cell by cell"></canvas>
+            <SimButton class="i2-btn" />
+          </div>
+          <ul class="key"><li><i class="tree"></i>tree</li><li><i class="fire"></i>on fire</li><li><i class="ash"></i>burnt</li></ul>
+        </div>
       </div>
+    </div>
+    <figure class="i2-item" data-b-only="3">
+      <div class="i2-box"><canvas class="i2-pic" data-pic="net" aria-label="The village of the impact slides, every villager coloured by how much they matter"></canvas></div>
       <figcaption>
-        <b>A wildfire, cell by cell</b>
-        <span>at BionamiX: wildfires and groundwater flow</span>
-        <ul class="key"><li><i class="tree"></i>tree</li><li><i class="fire"></i>on fire</li><li><i class="ash"></i>burnt</li></ul>
-        <p class="pub" data-b="1">MACCA-GW groundwater model <span>ACRI 2026 proceedings, accepted</span></p>
-      </figcaption>
-    </figure>
-    <figure class="i2-item" data-b-only="2">
-      <div class="i2-box"><canvas class="i2-pic" data-pic="net" aria-label="The stubborn person's network, every node coloured by how much it matters"></canvas></div>
-      <figcaption>
-        <b>Which nodes to watch?</b>
-        <span>the stubborn person on real networks</span>
+        <b>Influence maximisation</b>
+        <span>Many open questions, many relevant applications</span>
         <p class="ramp">matters little <i></i> matters most</p>
       </figcaption>
     </figure>
-    <figure class="i2-item" data-b-only="3">
-      <div class="i2-box"><canvas class="i2-pic" data-pic="ai" aria-label="A small neural network"></canvas></div>
+    <figure class="i2-item" data-b-only="4">
+      <div class="i2-box">
+        <canvas class="i2-pic" data-pic="ai" aria-label="A small neural network with random weights, passing one input after another through its layers"></canvas>
+        <SimButton class="i2-btn" />
+      </div>
       <figcaption>
-        <b>Inside artificial intelligence</b>
-        <span>simple operations, iterated: the same gap</span>
+        <b>Inside artificial minds</b>
+        <span>The same gap, with very high stakes</span>
       </figcaption>
     </figure>
   </div>
-  <p slot="say">Where does this go next? At BionamiX, cellular automata model processes in space and time, such as the spread of wildfires and groundwater flow. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods. The picture is a wildfire as a simple cellular automaton, an illustration and not the BionamiX model: green trees, red fire, a wind from the left; a burning tree burns for several timesteps and can set each of its eight neighbours alight, most easily downwind. A first result of that work, the MACCA-GW groundwater flow model, is accepted for publication in the ACRI 2026 proceedings; it is not part of the thesis.</p>
-  <p slot="say">The stubborn-person probe could be tried on real networks, to ask which nodes to watch or where an intervention would matter most. That is a possibility, not yet a result. The picture is the network of the stubborn person, every node coloured by how much it matters, the one that matters most ringed.</p>
-  <p slot="say">And next for me: what goes on inside artificial intelligence. A trained neural network is also simple operations, iterated, with behaviour that nobody wrote down: the same gap between rule and behaviour. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
+  <p slot="say">Where does this go next? First, at BionamiX: spatiotemporal modelling, where cellular automata model processes in space and time. Those need the extensions from the taxonomy of Chapter 2: rules that differ from cell to cell, more states, larger neighbourhoods.</p>
+  <p slot="say">Groundwater flow: the MACCA-GW model, a cellular automaton for groundwater flow, applied to De Wilde Landen in the Netherlands, is accepted for the ACRI 2026 proceedings (with L. Landuyt and J. M. Baetens). It is not part of the thesis: a model in space, not a network automaton. Next to established models such as MODFLOW it offers simplicity, and many runs at once for ensembles.</p>
+  <p slot="say">And wildfires, close to home: in August a fire in the Hautes Fagnes burnt some 3,000 hectares, one of the largest in Belgian history, and villages had to be evacuated. The picture is a wildfire as a simple cellular automaton, an illustration and not the BionamiX model, started with this click: green trees, red fire, charcoal where it has passed, a wind from the left; a burning tree burns for several timesteps and can set each of its eight neighbours alight, most easily downwind. Models like this ask where a fire goes next, and where a firebreak would help most.</p>
+  <p slot="say">Second: influence maximisation. I wish I had started on node importance earlier: it holds many open questions and many relevant applications. Which few people, chosen together, reach the most? Does a stand-in rule pick the same people as the real processes on a network, an epidemic, an opinion, a product spreading? The claims of the impact chapter still have to be checked against such processes, and on real networks. The picture is the village of before, every villager coloured by importance, the most important ringed.</p>
+  <p slot="say">And next for me: what goes on inside artificial minds. A neural network is also simple operations, iterated: every node adds up what comes in, each input with its weight, adds a bias, and passes the sum on only if it is positive (a ReLU). Here a small one with random weights and biases, started with this click, processes one input after another: dots carry what each link passes on, a node fills as it fires, and the largest output is ringed. Nobody writes down what a trained network does: the same gap between rule and behaviour, with very high stakes. The results of this thesis do not carry over directly, but the way of thinking, from the parts to the whole and back, can help.</p>
 </Slide>
 
 <Slide label="Thank you" builds={2} class="i3">
@@ -99,29 +113,35 @@ const answers = [
 </Slide>
 
 <style>
-  .i1-q { font-size: calc(50 * var(--u)); max-width: calc(1500 * var(--u)); }
-  .i1-row { gap: calc(70 * var(--u)); align-items: center; }
-  .i1-list { width: calc(800 * var(--u)); flex: none; gap: calc(40 * var(--u)); }
-  .i1-half { font-size: calc(38 * var(--u)); font-weight: 700; color: var(--accent); margin-bottom: calc(14 * var(--u)); }
-  .i1-group ol { list-style: none; padding: 0; gap: calc(16 * var(--u)); }
-  .i1-group li { display: flex; gap: calc(20 * var(--u)); align-items: baseline; font-size: calc(36 * var(--u)); line-height: 1.25; color: var(--muted); }
-  .i1-group li b { flex: none; width: calc(56 * var(--u)); height: calc(56 * var(--u)); display: inline-grid; place-items: center; border: calc(3 * var(--u)) solid var(--line); font-size: calc(30 * var(--u)); }
-  .i1-group li.cur { color: var(--ink); }
-  .i1-group li.cur b { background: var(--ink); border-color: var(--ink); color: var(--sun); }
-  .i1-box { position: relative; flex: none; }
-  .i1-anim { display: block; width: calc(860 * var(--u)); height: calc(640 * var(--u)); }
-  .i1-box :global(.i1-btn) { right: calc(-24 * var(--u)); bottom: calc(-16 * var(--u)); }
+  /* the summary as the ribbon: two halves of two chapters each, every chapter an animation over its words */
+  .i1-halves { display: flex; justify-content: center; gap: calc(90 * var(--u)); margin-top: calc(24 * var(--u)); }
+  .i1-half { display: flex; flex-direction: column; gap: calc(22 * var(--u)); }
+  .i1-hname { font-size: calc(40 * var(--u)); font-weight: 700; color: var(--accent); padding-bottom: calc(10 * var(--u)); border-bottom: calc(3 * var(--u)) solid var(--line); }
+  .i1-pair { display: flex; gap: calc(40 * var(--u)); }
+  .i1-item { margin: 0; width: calc(380 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .i1-anim { display: block; width: calc(380 * var(--u)); height: calc(380 * var(--u)); }
+  .i1-item figcaption { font-size: calc(34 * var(--u)); line-height: 1.3; }
 
-  /* one direction at a time, each in the same place: the picture on the left, its words on the right */
-  .i2-stack { display: grid; align-items: center; --tree: #4a7c32; --fire: #d8311c; --ash: #3d3833; }
-  .i2-item { grid-area: 1 / 1; margin: 0; display: flex; align-items: center; gap: calc(80 * var(--u)); }
+  /* one direction at a time, each in the middle of the slide */
+  .i2-stack { display: grid; align-items: center; justify-items: center; --tree: #4a7c32; --fire: #d8311c; --ash: #3d3833; }
+  .i2-item { grid-area: 1 / 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: calc(80 * var(--u)); }
   .i2-box { position: relative; flex: none; }
   .i2-pic { display: block; width: calc(672 * var(--u)); height: calc(672 * var(--u)); }
   .i2-box :global(.i2-btn) { right: calc(-24 * var(--u)); bottom: calc(-16 * var(--u)); }
-  .i2-item figcaption { display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .i2-item figcaption { display: flex; flex-direction: column; gap: calc(18 * var(--u)); flex: none; max-width: calc(900 * var(--u)); }
   .i2-item figcaption b { font-size: calc(60 * var(--u)); line-height: 1.1; }
   .i2-item figcaption > span { font-size: calc(40 * var(--u)); color: var(--muted); }
-  .key { list-style: none; padding: 0; flex-direction: row; gap: calc(36 * var(--u)); font-size: calc(36 * var(--u)); margin-top: calc(20 * var(--u)); }
+  /* spatiotemporal modelling: the logo and the heading, then groundwater and wildfires side by side */
+  .i2-st { flex-direction: column; gap: calc(36 * var(--u)); }
+  .i2-head { display: flex; align-items: center; gap: calc(36 * var(--u)); }
+  .i2-head img { height: calc(96 * var(--u)); width: auto; }
+  .i2-head b { font-size: calc(60 * var(--u)); line-height: 1.1; }
+  .i2-row { display: flex; align-items: flex-start; gap: calc(90 * var(--u)); }
+  .i2-gw, .i2-fire { display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+  .i2-gw { width: calc(640 * var(--u)); }
+  .i2-sub { font-size: calc(44 * var(--u)); font-weight: 700; }
+  .i2-firepic { display: block; width: calc(500 * var(--u)); height: calc(500 * var(--u)); }
+  .key { list-style: none; padding: 0; flex-direction: row; gap: calc(36 * var(--u)); font-size: calc(36 * var(--u)); }
   .key li { display: flex; align-items: center; gap: calc(12 * var(--u)); }
   .key i, .ramp i { display: inline-block; width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
   .key .tree { background: var(--tree); }
@@ -129,8 +149,8 @@ const answers = [
   .key .ash { background: var(--ash); }
   .ramp { display: flex; align-items: center; gap: calc(16 * var(--u)); font-size: calc(36 * var(--u)); margin-top: calc(20 * var(--u)); }
   .ramp i { width: calc(220 * var(--u)); background: linear-gradient(to right, var(--panel), var(--accent)); border: calc(2 * var(--u)) solid var(--line); }
-  .pub { font-size: calc(32 * var(--u)); background: var(--panel); padding: calc(12 * var(--u)) calc(18 * var(--u)); border-left: calc(6 * var(--u)) solid var(--accent); width: fit-content; margin-top: calc(28 * var(--u)); }
-  .pub span { display: block; color: var(--muted); }
+  .pub { font-size: calc(36 * var(--u)); line-height: 1.3; background: var(--panel); padding: calc(22 * var(--u)) calc(28 * var(--u)); border-left: calc(8 * var(--u)) solid var(--accent); display: flex; flex-direction: column; gap: calc(10 * var(--u)); }
+  .pub span { color: var(--muted); font-size: calc(32 * var(--u)); }
 
   .art { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* three states: the halves far apart; brought together (.together); moved up to make room for the thanks (.thanked) */
@@ -161,142 +181,201 @@ const answers = [
 <script>
   import { slide, sim, fresh, type How } from '../../scripts/defence/deck';
   import { stage, onSize, ticker, type Stage } from '../../scripts/defence/stage';
-  import { curveOf, box, draw, STEPS } from '../../scripts/defence/cobweb';
   import { decodeMosaic, mosaicPainter, drain, type MosaicJson } from '../../scripts/defence/mosaic';
   import { spark } from '../../scripts/defence/cover';
   import { ActiveLife } from '../../scripts/life';
   import { lattice, makeRng, build } from '../../scripts/net';
-  import { type Rule, step, randomState, density } from '../../scripts/llna';
+  import { type Rule, step, randomState, hammingWeight } from '../../scripts/llna';
+  import { sensitivity } from '../../scripts/genotype';
   import { stepClamped } from '../../scripts/consensus';
   import { wildfire, TREE, BURNING, BURNT } from '../../scripts/defence/wildfire';
-  import { TRIO, trioNet, RHO0 } from '../../scripts/defence/trio';
+  import { TRIO, trioNet } from '../../scripts/defence/trio';
   import { picture, drawNet, type Picture } from '../../scripts/defence/netdraw';
+  import { drawRing, type Ring } from '../../scripts/defence/donut';
+  import { ridges, drawPrint, type PrintKind } from '../../scripts/defence/fingerprint';
+  import { agreement, agree, WINNER, type Agreement } from '../../scripts/defence/agree';
   import { parse, mix, css } from '../../scripts/palette';
   import mosaicData from '../../data/defence/mosaic.json';
   import consensus from '../../data/defence/consensus.json';
-  import { WINNER } from '../../scripts/defence/agree';
   import clamp from '../../data/defence/clamp.json';
 
-  // ── I1: one small animation per answer, in one canvas, square cells throughout ──
+  // ── I1: the summary. Each chapter's animation starts with the click that shows it and keeps going, in a loop of its own ──
   type Act = { rate: number; reset(): void; advance(): void; paint(st: Stage): void };
-  /** A grid of W × H square cells centred in the canvas; `on(x, y)` gives the colour of a cell, or null. */
+  /** A grid of W × H square cells centred in the canvas; `fill(x, y)` gives the colour of a cell, or null. */
   function cells(st: Stage, W: number, H: number, fill: (x: number, y: number) => string | null) {
     const { ctx, t } = st, c = Math.floor(Math.min(st.w / W, st.h / H)), x0 = (st.w - W * c) / 2, y0 = (st.h - H * c) / 2;
     ctx.fillStyle = t.panel; ctx.fillRect(x0, y0, W * c, H * c);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const f = fill(x, y); if (f) { ctx.fillStyle = f; ctx.fillRect(x0 + x * c, y0 + y * c, c, c); } }
   }
 
-  // 5. the average next density of the Game of Life (slide F3), its cobweb drawn from one start after another
-  const WEB = (() => {
-    const f = curveOf({ r: 9, B: 8, S: 12 }, 'density'), starts = [0.5, 0.3, 0.85, 0.22, 0.65, 0.15];
-    let k = 0, done = 0, hold = 0;
+  // metrics: a rule's two rings with its two numbers, the Game of Life, the consensus-seeking rule, then two rules drawn
+  // at random, and round again, one every two and a half seconds
+  const RINGS = (() => {
+    const known: Rule[] = [{ r: 9, B: 8, S: 12 }, { r: 9, B: 488, S: 464 }];
+    let k = 0, rule = known[0];
+    const at = (i: number): Rule => (i % 4 < 2 ? known[i % 4] : { r: 9, B: Math.floor(Math.random() * 512), S: Math.floor(Math.random() * 512) });
     return {
-      rate: 8,
-      reset() { k = 0; done = 0; hold = 0; },
-      advance() { if (done < STEPS) done = Math.min(STEPS, done + 0.25); else if (++hold > 12) { hold = 0; done = 0; k = (k + 1) % starts.length; } },
-      paint(st) { draw(st, box(st.w, st.h), { kind: 'density', f, start: starts[k], progress: done }); },
+      rate: 0.4,
+      // a tile that starts playing advances at once, so it starts one before the Game of Life
+      reset() { k = -1; rule = known[0]; },
+      advance() { rule = at(++k); },
+      paint(st) {
+        // the rings and the two numbers under them, as one group in the middle of the tile
+        const { ctx, t } = st, R = (st.w - 40) / 4, w = R * 0.41, top = (st.h - (2 * R + 112)) / 2, y = top + R;
+        const rings: Ring[] = [{ x: st.w / 2 - R - 10, y, R, w, on: false }, { x: st.w / 2 + R + 10, y, R, w, on: true }];
+        drawRing(st, rings[0], rule.r, rule.B); drawRing(st, rings[1], rule.r, rule.S);
+        ctx.font = `600 30px ${t.sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = t.accent; ctx.fillText(`Hamming weight ${hammingWeight(rule, 8).toFixed(2)}`, st.w / 2, top + 2 * R + 64);
+        ctx.fillStyle = t.danger; ctx.fillText(`Boolean sensitivity ${sensitivity(rule, 8).BS.toFixed(2)}`, st.w / 2, top + 2 * R + 110);
+      },
     } satisfies Act;
   })();
 
-  // 6. the winner of the mission on the rewired grid of slide F7: patches, then the whole grid agrees; it holds the
-  // agreement a few seconds and starts again. Three rounds a second
+  // synchronisation: the winner of the mission on the rewired grid of the race, from a new random start each time (one
+  // that agrees within the thesis's 100 timesteps, as more than nine in ten do), five timesteps a second; it holds the
+  // agreement two seconds and starts again
   const AGREE = (() => {
-    const side = 30, N = side * side, WIN: Rule = WINNER, net = lattice(side, 8, 0.2, makeRng(consensus.demo.netSeed));
-    let a = new Uint8Array(N), b = new Uint8Array(N), after = -1;
-    const act = {
-      rate: 3,
-      reset() { a = randomState(N, 0.5, makeRng(consensus.demo.startSeed)); after = -1; act.rate = 3; },
-      advance() {
-        step(a, net, WIN, b); [a, b] = [b, a];
-        const r = density(a);
-        if (after < 0 && (r === 0 || r === 1)) { after = 0; act.rate = 2; }
-        if (after >= 0 && ++after > 12) act.reset();
-      },
-      paint(st: Stage) { cells(st, side, side, (x, y) => (a[y * side + x] ? st.t.ink : null)); },
+    const side = 30, N = side * side, net = lattice(side, 8, 0.2, makeRng(consensus.demo.netSeed));
+    const start = () => { let s0 = randomState(N, 0.5, fresh()); for (let k = 0; k < 20 && !agree(net, WINNER, s0, 100).ok; k++) s0 = randomState(N, 0.5, fresh()); return s0; };
+    let run: Agreement = agreement(net, WINNER, new Uint8Array(N), 100), hold = -1;
+    const act: Act = {
+      rate: 5,
+      reset() { run = agreement(net, WINNER, start(), 100); hold = -1; },
+      advance() { if (hold >= 0) { if (++hold > 10) act.reset(); return; } if (run.next()) hold = 0; },
+      paint(st) { cells(st, side, side, (x, y) => (run.state[y * side + x] ? st.t.ink : null)); },
     };
     return act;
   })();
 
-  // 9. Miranda et al.'s jagged rule on the talk's three networks (slide G2), running, each with its name
-  const DETECT = (() => {
-    const rule: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, SIDE = 260;
-    let pics: Picture[] | null = null, st0: Uint8Array[] = [], out: Uint8Array[] = [];
-    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), SIDE, 8, k === 1 ? 2.6 : 3, k === 2 ? 0.6 : false)));
+  // network classification: Miranda et al.'s rule on the three networks (two above, one below), faint, each with its
+  // fingerprint over it, five timesteps a second from a new start
+  const PRINTS = (() => {
+    const rule: Rule = { r: 9, B: 170, S: 340, part: 'uni' }, S = 186, kinds: PrintKind[] = ['whorl', 'loop', 'tented'];
+    let pics: Picture[] | null = null, a: Uint8Array[] = [], b: Uint8Array[] = [];
+    const pic = () => (pics ??= TRIO.map((_, k) => picture(trioNet(k), S, 6, k === 1 ? 2 : 2.4, k === 2 ? 0.6 : false)));
+    const lines = kinds.map((kd, k) => ridges(kd, 11 + k)), H = 150;
+    // each print drawn once on a canvas of its own, at the pixels it is shown at: its fade towards the edge would wipe
+    // the network under it
+    let prints: HTMLCanvasElement[] = [], printScale = 0;
+    const layer = document.createElement('canvas');
+    const printsAt = (scale: number, ink: string) => {
+      if (scale === printScale) return prints;
+      printScale = scale;
+      return (prints = lines.map((l) => {
+        const o = document.createElement('canvas'); o.width = Math.ceil((H / 1.25) * scale); o.height = Math.ceil(H * scale);
+        const c = o.getContext('2d')!; c.scale(scale, scale); drawPrint(c, l, 0, 0, H, ink);
+        return o;
+      }));
+    };
+    const ready = () => { if (a.length) return; const rnd = fresh(); a = pic().map((p) => randomState(p.net.n, 0.3, rnd)); b = pic().map((p) => new Uint8Array(p.net.n)); };
     return {
       rate: 5,
-      reset() { st0 = pic().map((p) => randomState(p.net.n, RHO0, fresh())); out = pic().map((p) => new Uint8Array(p.net.n)); },
-      advance() { pic().forEach((p, c) => { step(st0[c], p.net, rule, out[c]); [st0[c], out[c]] = [out[c], st0[c]]; }); },
+      // the networks are built, and a start drawn, when the tile is first drawn, not at page load
+      reset() { a = []; },
+      advance() { ready(); pic().forEach((p, k) => { step(a[k], p.net, rule, b[k]); [a[k], b[k]] = [b[k], a[k]]; }); },
       paint(st) {
-        const { ctx, t } = st, gap = (st.w - 3 * SIDE) / 4, y0 = (st.h - SIDE - 50) / 2;
+        ready();
+        const { ctx, t } = st, at = [[0, 0], [st.w - S, 0], [(st.w - S) / 2, st.h - S]];
+        const scale = st.s * Math.min(2, devicePixelRatio || 1), imgs = printsAt(scale, t.ink);
         pic().forEach((p, k) => {
-          const x0 = gap + k * (SIDE + gap);
-          ctx.save(); ctx.translate(x0, y0); drawNet(st, p, st0[k]); ctx.restore();
-          ctx.font = `400 28px ${t.sans}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink;
-          ctx.fillText(TRIO[k].name, x0 + SIDE / 2, y0 + SIDE + 14);
+          // the network faint: drawn on a layer of its own, laid down at under half its strength
+          layer.width = Math.ceil(S * scale); layer.height = Math.ceil(S * scale);
+          const lc = layer.getContext('2d')!; lc.setTransform(scale, 0, 0, scale, 0, 0);
+          drawNet({ ...st, ctx: lc, w: S, h: S }, p, a[k]);
+          ctx.save(); ctx.translate(at[k][0], at[k][1]);
+          ctx.globalAlpha = 0.45; ctx.drawImage(layer, 0, 0, S, S); ctx.globalAlpha = 1;
+          ctx.globalAlpha = 0.9; ctx.drawImage(imgs[k], (S - H / 1.25) / 2, (S - H) / 2, H / 1.25, H); ctx.globalAlpha = 1;
+          ctx.restore();
         });
       },
     } satisfies Act;
   })();
 
-  /** The toy network of slide H1, nodes coloured by `fill`, one of them ringed: drawn last, over its neighbours. */
-  function drawClampNet(st: Stage, fill: (i: number) => string, ring = -1) {
-    const { ctx, t } = st, s = Math.min(st.w, st.h), bx = { x: (st.w - s) / 2 + 20, y: (st.h - s) / 2 + 20, w: s - 40, h: s - 40 };
-    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = (i: number) => 7 + 1.6 * Math.sqrt(clamp.deg[i]);
+  /** The village (clamp.json) in a square canvas of any size, nodes coloured by `fill`, one of them ringed in red, drawn
+   * last on a cream halo, over its neighbours. */
+  function drawVillage(st: Stage, fill: (i: number) => string, ring = -1) {
+    const { ctx, t } = st, s = Math.min(st.w, st.h), k = s / 700, pad = 20 * k, bx = { x: (st.w - s) / 2 + pad, y: (st.h - s) / 2 + pad, w: s - 2 * pad, h: s - 2 * pad };
+    const X = (i: number) => bx.x + clamp.xy[2 * i] * bx.w, Y = (i: number) => bx.y + clamp.xy[2 * i + 1] * bx.h, R = (i: number) => k * (7 + 1.6 * Math.sqrt(clamp.deg[i]));
     const ringed = (r: number, width: number, color: string) => { ctx.beginPath(); ctx.arc(X(ring), Y(ring), r, 0, 2 * Math.PI); ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke(); };
-    const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R(i), 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = t.muted; ctx.stroke(); };
-    ctx.strokeStyle = t.line; ctx.lineWidth = 1.5; ctx.beginPath();
+    const node = (i: number) => { ctx.beginPath(); ctx.arc(X(i), Y(i), R(i), 0, 2 * Math.PI); ctx.fillStyle = fill(i); ctx.fill(); ctx.lineWidth = Math.max(1, 1.5 * k); ctx.strokeStyle = t.muted; ctx.stroke(); };
+    ctx.strokeStyle = t.line; ctx.lineWidth = Math.max(1, 1.5 * k); ctx.beginPath();
     for (const [i, j] of clamp.edges) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
     ctx.stroke();
     for (let i = 0; i < clamp.deg.length; i++) if (i !== ring) node(i);
     if (ring < 0) return;
-    node(ring); ringed(R(ring) + 9, 13, t.panel); ringed(R(ring) + 9, 6, t.danger); // on a cream halo, over whatever is behind
-
+    node(ring); ringed(R(ring) + 9 * k + 2, 13 * k + 3, t.panel); ringed(R(ring) + 9 * k + 2, 6 * k + 2, t.danger);
   }
 
-  // 10. the stubborn person of slide H1 on the toy network: the important one, and the whole room follows
+  // impact analysis: one stubborn person after another (clamp.json's cycle: the best-connected, the most important, a
+  // quiet one, another important one), hand down and ringed, each from a start where they do what they do in most
+  // starts; four timesteps a second until nothing changes, held two seconds
   const STUB = (() => {
     const RULE: Rule = { r: 9, B: 464, S: 488 }, n = clamp.deg.length, net = build('ba', n, clamp.edges as [number, number][]);
-    const start = Uint8Array.from(clamp.demo.bits, (ch) => +ch), who = clamp.demo.hi, cl = new Int8Array(n).fill(-1); cl[who] = 0;
-    let a = start.slice(), b = new Uint8Array(n), hold = 0;
+    const cl = new Int8Array(n);
+    let k = 0, a = new Uint8Array(n), b = new Uint8Array(n), hold = -1, t = 0;
+    const load = () => { const x = clamp.cycle[k]; a = Uint8Array.from(x.bits, (ch) => +ch); a[x.node] = 0; cl.fill(-1); cl[x.node] = 0; hold = -1; t = 0; };
     return {
-      rate: 3,
-      reset() { a = start.slice(); a[who] = 0; hold = 0; },
-      advance() { if (density(a) > 0) { stepClamped(a, net, RULE, cl, b); [a, b] = [b, a]; } else if (++hold > 6) this.reset(); },
-      paint(st) { drawClampNet(st, (i) => (a[i] ? st.t.ink : st.t.panel), who); },
+      rate: 4,
+      reset() { k = 0; load(); },
+      advance() {
+        if (hold >= 0) { if (++hold > 8) { k = (k + 1) % clamp.cycle.length; load(); } return; }
+        stepClamped(a, net, RULE, cl, b);
+        let same = true; for (let i = 0; i < n && same; i++) if (a[i] !== b[i]) same = false;
+        [a, b] = [b, a];
+        if (same || ++t >= 60) hold = 0;
+      },
+      paint(st) { drawVillage(st, (i) => (a[i] ? st.t.ink : st.t.panel), clamp.cycle[k].node); },
     } satisfies Act;
   })();
 
-  const ACTS: Act[] = [WEB, AGREE, DETECT, STUB], CHS = [5, 6, 9, 10];
+  const ACTS: Record<string, Act> = { rings: RINGS, agree: AGREE, prints: PRINTS, stubborn: STUB }, CHS = [5, 6, 9, 10];
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i1')) {
-    const c = s.querySelector<HTMLCanvasElement>('canvas.i1-anim')!, items = Array.from(s.querySelectorAll<HTMLElement>('.i1-group li'));
-    const tiles = Array.from(s.querySelectorAll<HTMLElement>('.ribbon .rch')), btn = s.querySelector<HTMLButtonElement>('[data-simbtn]')!;
-    let at = 0;
-    const paint = () => { const st = stage(c); if (st && at > 0) ACTS[at - 1].paint(st); };
-    const run = ticker(s, 4, () => { ACTS[at - 1].advance(); run.rate = ACTS[at - 1].rate; }, paint);
-    // each answer's animation starts with the click that shows it; its button only restarts or pauses it
-    const mark = (running: boolean) => { btn.dataset.run = running ? '1' : ''; btn.title = running ? 'reset' : 'start'; btn.setAttribute('aria-label', btn.title); };
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation(); if (at < 1) return;
-      if (btn.dataset.run) { run.play(false); ACTS[at - 1].reset(); paint(); mark(false); } else { run.play(true); mark(true); }
+    const canvases = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i1-anim')), tiles = Array.from(s.querySelectorAll<HTMLElement>('.ribbon .rch'));
+    const tiles4 = canvases.map((c) => {
+      const act = ACTS[c.dataset.act!], paint = () => { const st = stage(c); if (st) act.paint(st); };
+      const run = ticker(s, act.rate, () => act.advance(), paint);
+      act.reset(); onSize(c, paint);
+      return { act, run, paint };
     });
     slide(s, {
       set(b: number) {
-        at = b;
-        items.forEach((li, k) => li.classList.toggle('cur', k === b - 1));
         tiles.forEach((t) => t.classList.toggle('cur', b > 0 && +t.dataset.ch! === CHS[b - 1]));
-        run.play(false);
-        if (b > 0) { ACTS[b - 1].reset(); run.rate = ACTS[b - 1].rate; paint(); run.play(true); mark(true); } else mark(false);
+        // the tiles shown keep going; the others wait on their first frame
+        tiles4.forEach((x, k) => {
+          if (k < b) { if (!x.run.playing) x.run.play(true); }
+          else { x.run.play(false); x.act.reset(); x.paint(); }
+        });
       },
-      leave() { run.play(false); },
+      enter() { tiles4.forEach((x) => { x.run.play(false); x.act.reset(); x.paint(); }); },
+      leave() { tiles4.forEach((x) => x.run.play(false)); },
     });
-    mark(false);
-    onSize(c, paint);
   }
 
-  // ── I2: one direction at a time: a wildfire spreading from cell to cell (./wildfire, started with its button), the
-  // toy network coloured by importance, and a small neural network ──
+  // ── I2: one direction at a time. Spatiotemporal modelling: groundwater (build 1), a wildfire spreading from cell to
+  // cell (./wildfire, started by the click that shows it, build 2); influence maximisation: the village coloured by
+  // importance (3); inside artificial minds: a small neural network at work (4, started by that click). ──
+  /** A small multilayer perceptron with random weights and biases (scaled by the number of inputs, a fixed seed): ReLU in
+   * the hidden layers, the outputs as shares (softmax). */
+  function perceptron(L: number[], seed: number) {
+    const rnd = makeRng(seed), gauss = () => { let u = 0; while (!u) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
+    const W = L.slice(1).map((m, l) => Array.from({ length: m }, () => Array.from({ length: L[l] }, () => gauss() * Math.sqrt(2 / L[l]))));
+    const B = L.slice(1).map((m) => Array.from({ length: m }, () => 0.2 * gauss()));
+    /** Every layer's values for input x: the input itself, then each layer's ReLU(W·x + b), the last as shares. */
+    const forward = (x: number[]) => {
+      const out = [x];
+      W.forEach((Wl, l) => {
+        const z = Wl.map((row, j) => row.reduce((sum, w, i) => sum + w * out[l][i], B[l][j]));
+        if (l < W.length - 1) out.push(z.map((v) => Math.max(0, v)));
+        else { const m = Math.max(...z), e = z.map((v) => Math.exp(v - m)), sum = e.reduce((p, q) => p + q, 0); out.push(e.map((v) => v / sum)); }
+      });
+      return out;
+    };
+    return { W, forward };
+  }
+
   for (const s of document.querySelectorAll<HTMLElement>('.slide.i2')) {
-    const [fireC, netC, aiC] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i2-pic'));
+    const fireC = s.querySelector<HTMLCanvasElement>('canvas.i2-firepic')!, [netC, aiC] = Array.from(s.querySelectorAll<HTMLCanvasElement>('canvas.i2-pic'));
+    const [fireBtn, aiBtn] = Array.from(s.querySelectorAll<HTMLButtonElement>('[data-simbtn]'));
     const fire = wildfire();
     let seed = 2026;
     fire.plant(seed);
@@ -313,33 +392,74 @@ const answers = [
         return k === TREE ? greens[shade[i]] : k === BURNING ? flames[Math.min(2, Math.floor(fire.burnt(i) * 3))] : k === BURNT ? ash : sand;
       });
     };
-    const run = ticker(s, 12, () => fire.step(), paintFire);
-    sim(s.querySelector<HTMLButtonElement>('[data-simbtn]')!, 1, {
-      reset() { run.play(false); fire.plant(seed); paintFire(); },
-      play() { run.play(true); },
+    const burn = ticker(s, 12, () => fire.step(), paintFire);
+    sim(fireBtn, 2, {
+      reset() { burn.play(false); fire.plant(seed); paintFire(); },
+      play() { burn.play(true); },
       reroll() { seed = (Math.random() * 4294967296) >>> 0; },
     });
-    slide(s, { leave() { run.play(false); } });
     onSize(fireC, paintFire);
 
     onSize(netC, () => {
       const st = stage(netC); if (!st) return;
       const eta = clamp.eta, top = Math.max(...eta), lo = parse(st.t.panel), hi = parse(st.t.accent);
       let most = 0; eta.forEach((v, i) => { if (v > eta[most]) most = i; });
-      drawClampNet(st, (i) => css(mix(lo, hi, eta[i] / top)), most);
+      drawVillage(st, (i) => css(mix(lo, hi, eta[i] / top)), most);
     });
 
-    onSize(aiC, () => {
+    // the neural network: a new input every cycle, passed on layer by layer; while a layer passes it on, a dot runs along
+    // every link, as large as what that link carries (ink when it adds, grey when it takes away); a node fills as far as
+    // it fires, one that a ReLU stops stays empty; the largest output is ringed
+    const LAYERS = [5, 7, 7, 7, 3], net = perceptron(LAYERS, 11), IN = 0.5, HOP = 0.6, REST = 1, CYCLE = IN + HOP * (LAYERS.length - 1) + REST;
+    let tau = 0, vals: number[][] = net.forward(LAYERS.map(() => 0)).map((l) => l.map(() => 0)), inputs = makeRng(5);
+    const newInput = () => { vals = net.forward(Array.from({ length: LAYERS[0] }, () => inputs())); };
+    const paintAI = () => {
       const st = stage(aiC); if (!st) return;
-      const { ctx, t } = st, layers = [5, 7, 7, 7, 3], rnd = makeRng(11);
-      const pos = layers.map((m, l) => Array.from({ length: m }, (_, k) => [70 + (l * (st.w - 140)) / (layers.length - 1), st.h / 2 + (k - (m - 1) / 2) * 86] as const));
+      const { ctx, t } = st, lo = parse(t.panel), ink = parse(t.ink), R = 24;
+      const pos = LAYERS.map((m, l) => Array.from({ length: m }, (_, k) => [70 + (l * (st.w - 140)) / (LAYERS.length - 1), st.h / 2 + (k - (m - 1) / 2) * 86] as const));
+      const arrive = (l: number) => (l === 0 ? 0 : IN + HOP * l), shown = (l: number) => tau >= arrive(l);
       ctx.lineWidth = 1.5; ctx.strokeStyle = t.line; ctx.beginPath();
-      for (let l = 0; l + 1 < layers.length; l++) for (const [x1, y1] of pos[l]) for (const [x2, y2] of pos[l + 1]) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
+      for (let l = 0; l + 1 < LAYERS.length; l++) for (const [x1, y1] of pos[l]) for (const [x2, y2] of pos[l + 1]) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
       ctx.stroke();
-      for (const layer of pos) for (const [x, y] of layer) {
-        ctx.beginPath(); ctx.arc(x, y, 24, 0, 2 * Math.PI); ctx.fillStyle = rnd() < 0.45 ? t.ink : t.panel; ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
+      // the layer passing its values on: a dot on every link, sized by |w · x| against the largest of that layer
+      const l = Math.floor((tau - IN) / HOP);
+      if (tau >= IN && l >= 0 && l < LAYERS.length - 1) {
+        const u = (tau - IN - l * HOP) / HOP, carry = net.W[l].map((row) => row.map((w, i) => w * vals[l][i]));
+        const big = Math.max(1e-9, ...carry.flat().map(Math.abs));
+        carry.forEach((row, j) => row.forEach((c, i) => {
+          const m = Math.abs(c) / big; if (m < 0.04) return;
+          const [x1, y1] = pos[l][i], [x2, y2] = pos[l + 1][j], x = x1 + (x2 - x1) * u, y = y1 + (y2 - y1) * u, col = c > 0 ? t.ink : t.muted;
+          // the link lit behind its signal, then the signal itself
+          ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x, y); ctx.lineWidth = 1 + 4 * m; ctx.strokeStyle = col; ctx.stroke(); ctx.globalAlpha = 1;
+          ctx.beginPath(); ctx.arc(x, y, 3 + 9 * Math.sqrt(m), 0, 2 * Math.PI); ctx.fillStyle = col; ctx.fill();
+        }));
       }
+      const last = LAYERS.length - 1, best = vals[last].indexOf(Math.max(...vals[last]));
+      pos.forEach((layer, li) => {
+        const top = Math.max(1e-9, ...vals[li]);
+        layer.forEach(([x, y], k) => {
+          const v = shown(li) ? vals[li][k] / top : 0;
+          ctx.beginPath(); ctx.arc(x, y, R, 0, 2 * Math.PI); ctx.fillStyle = css(mix(lo, ink, v)); ctx.fill();
+          ctx.lineWidth = 3; ctx.strokeStyle = t.ink; ctx.stroke();
+          if (li === last && k === best && shown(last)) { ctx.beginPath(); ctx.arc(x, y, R + 10, 0, 2 * Math.PI); ctx.lineWidth = 6; ctx.strokeStyle = t.danger; ctx.stroke(); }
+        });
+      });
+    };
+    const think = ticker(s, 30, () => { tau += 1 / 30; if (tau >= CYCLE) { tau = 0; newInput(); } }, paintAI);
+    const blank = () => { tau = 0; inputs = makeRng(5); vals = vals.map((l) => l.map(() => 0)); };
+    sim(aiBtn, 4, {
+      reset() { think.play(false); blank(); paintAI(); },
+      play() { if (!vals[0].some(Boolean)) newInput(); think.play(true); },
+    });
+    onSize(aiC, paintAI);
+
+    slide(s, {
+      // a direction that leaves the slide stops; the fire picks up again when a step back returns to it
+      set(b: number, how: How) {
+        if (b !== 2) burn.play(false); else if (how === 'prev' && fireBtn.dataset.run) burn.play(true);
+        if (b < 4) think.play(false);
+      },
+      leave() { burn.play(false); think.play(false); },
     });
   }
 

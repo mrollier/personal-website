@@ -35,8 +35,9 @@ const code = out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 if (/\bimport\s*\(/.test(code)) throw new Error('the deck bundle still has a dynamic import, which a file:// page cannot load');
 html = html.replace('</body>', `<script>${code}</script>\n</body>`);
 
-// Images and videos.
-html = html.replace(/(<(?:img|video)[^>]*\ssrc=")([^"]+)"/g, (m, pre, u) => (local(u) ? `${pre}${dataUri(u)}"` : m));
+// Images and videos; of each clip only the WebM, which the laptop's Firefox plays (the MP4 is for iPhones on the site).
+html = html.replace(/<source src="[^"]+\.mp4[^"]*"[^>]*>/g, '');
+html = html.replace(/(<(?:img|video|source)[^>]*\ssrc=")([^"]+)"/g, (m, pre, u) => (local(u) ? `${pre}${dataUri(u)}"` : m));
 
 const left = [...html.matchAll(/(?:src|href)="(\/[^"]*)"/g)].map((m) => m[1]);
 if (left.length) throw new Error(`still pointing at the site: ${left.join(', ')}`);

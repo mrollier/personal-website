@@ -67,7 +67,8 @@
 .slide .illus { right: calc(150 * var(--u)); text-align: right; max-width: 45%; } /* clear of the slide counter */
 
 /* Builds: appear from their step on, and vanish from theirs; data-b-only="1 2" shows only at those builds. */
-.slide [data-b], .slide [data-b-only] { transition: opacity 0.35s ease; }
+/* they fade in; going they vanish at once (visibility does not wait for a fade), and no fade is left running on them */
+.slide [data-b]:where(.on:not(.off)), .slide [data-b-only]:where(.on) { transition: opacity 0.35s ease; }
 .slide [data-b]:not(.on), .slide [data-b-off].off, .slide [data-b-only]:not(.on) { opacity: 0; visibility: hidden; }
 
 /* Our own results, always in this one box, so the room learns what it means. */
@@ -136,6 +137,10 @@
 
 /* ── presenting: one slide, as large as the window allows ── */
 html.deck-on { overflow: hidden; overscroll-behavior: none; }
+/* an iPhone has no fullscreen for a page: the page behind stays scrollable, so a swipe up hides the browser's bars */
+@media (pointer: coarse) { html.deck-on { overflow: auto; } }
+/* a phone in landscape shows the page's own background beside the notch: the slide's there too */
+html.deck-on, html.deck-on body { background: #fce8cf; }
 .deck.full {
   position: fixed; inset: 0; z-index: 100; background: var(--bg);
   display: grid; place-items: center; overflow: hidden;
@@ -145,7 +150,8 @@ html.deck-on { overflow: hidden; overscroll-behavior: none; }
 .deck::backdrop { background: var(--bg); }
 .deck.presenting [role="tabpanel"], .deck.presenting .block { display: contents !important; }
 .deck.presenting .slide:not(.current), .deck.presenting .cardbar, .deck.presenting .intro, .deck.presenting .say { display: none !important; }
-.deck.presenting .slide.current { width: min(100vw, calc(100vh * 16 / 9)); border: 0; }
+/* dvh: on a phone, vh is the height without the browser's bars, and the slide would run under them */
+.deck.presenting .slide.current { width: min(100vw, calc(100vh * 16 / 9)); width: min(100vw, calc(100dvh * 16 / 9)); border: 0; }
 
 .hud { display: none; }
 .deck.presenting .hud {

@@ -8,9 +8,8 @@ const groups: [string, string][] = [
   ['review', 'Under review'],
   ['writing', 'In progress'],
 ];
-const by = (s: string) => pubs.filter((p) => p.data.status === s).sort((a, b) => b.data.year - a.data.year);
+const by = (s: string) => pubs.filter((p) => p.data.status === s).sort((a, b) => b.data.year - a.data.year || (b.data.month ?? 0) - (a.data.month ?? 0));
 const bold = (a: string) => a.replace('M. Rollier', '<strong>M. Rollier</strong>');
-const link = (p: (typeof pubs)[number]) => (p.data.doi ? `https://doi.org/${p.data.doi}` : p.data.url);
 const talks = [
   ['2026', 'ACRI & AUTOMATA, Ghent (co-organiser, proceedings co-editor)', 'The MACCA-GW groundwater flow model'],
   ['2025', 'Conference on Complex Systems, Siena', 'Impact maximisation: a network automaton perspective'],
@@ -42,11 +41,12 @@ const talks = [
         <ul class="pubs">
           {list.map((p) => (
             <li>
-              {link(p) ? <a href={link(p)}>{p.data.title}</a> : p.data.title}
+              {p.data.doi ? <a href={`https://doi.org/${p.data.doi}`}>{p.data.title}</a> : p.data.title}
               <div class="meta" set:html={bold(p.data.authors)} />
               <div class="meta">
                 {p.data.venue}, {p.data.year}
-                {p.data.doi && p.data.url && <> · <a href={p.data.url}>preprint</a></>}
+                {p.data.url && <> · <a href={p.data.url}>preprint</a></>}
+                {p.data.code && <> · <a href={p.data.code}>code</a></>}
                 {p.data.demo && <> · <a href={p.data.demo}>interactive demo</a></>}
               </div>
               {p.data.summary && <p>{p.data.summary}</p>}

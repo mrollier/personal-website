@@ -23,8 +23,8 @@ problem that world considers most pressing and the one my background lets me con
 the choice was more or less made for me.
 
 So I joined formally, helped build EA Ghent, went to the conferences, read the books. Near the
-end of my PhD I took the next steps seriously: the BlueDot Technical AI Safety course, and a
-place in the [Iliad Intensive](https://www.iliad.ac/intensive) in San Francisco. I'm excited about what's next.
+end of my PhD I took the next steps seriously: the BlueDot Technical AI Safety course, and now
+the [Iliad Intensive](https://www.iliad.ac/intensive) in San Francisco.
 
 ## Interests
 
@@ -34,8 +34,8 @@ proximity is worth using.
 
 ## So far
 
-- Accepted into the [Iliad Intensive](https://www.iliad.ac/intensive), a full-time taught course on
-  foundational alignment research, in October in San Francisco.
+- In San Francisco for the [Iliad Intensive](https://www.iliad.ac/intensive), a full-time taught course on
+  foundational alignment research, October 2026.
 - Board member of [Effective Altruism Ghent](https://eabelgium.org/groups/ghent/) since 2025, where I host and organise
   events including *Powerful AI is coming. How do we get it right?* and *Your Career as a Force for Good*.
 - Cohort student in the [BlueDot](https://bluedot.org/) Technical AI Safety course, August to September 2026.

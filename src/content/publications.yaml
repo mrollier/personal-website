@@ -1,34 +1,37 @@
-# One entry per paper. status: published | accepted | review | writing. Link: doi preferred, url for arXiv/preprint. demo: its page on this site.
+# One entry per paper. status: published | accepted | review | writing. Link: doi preferred, url for arXiv/preprint, code for a repository. demo: its page on this site.
 - id: life-on-graphs
   title: "Essential metrics for Life on graphs"
   authors: "M. Rollier, L. C. de Oliveira, O. M. Bruno, J. M. Baetens"
   venue: "Physica D: Nonlinear Phenomena 483, 134950"
   year: 2025
+  month: 12
   type: A1
   doi: 10.1016/j.physd.2025.134950
   url: https://arxiv.org/abs/2506.21226
   summary: "The Game of Life generalised to arbitrary networks. A few simple metrics predict how it behaves, well enough to synchronise a firing squad nine times out of ten."
   demo: /demos/life-on-graphs/
-- id: ca-taxonomy
-  title: "A comprehensive taxonomy of cellular automata"
-  authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"
-  venue: "Communications in Nonlinear Science and Numerical Simulation 140, 108362"
-  year: 2025
-  type: A1
-  doi: 10.1016/j.cnsns.2024.108362
-  url: https://arxiv.org/abs/2401.08408
-  summary: "Five families of cellular automata defined in one place, with a map of which exotic-sounding variants are the same thing wearing a different hat."
-  demo: /demos/taxonomy/
 - id: cnn-classification
   title: "Convolutional neural networks for automated cellular automaton classification"
   authors: "M. Rollier, A. J. Daly, J. M. Baetens"
   venue: "Advances in Cellular Automata, vol. 2 (Springer), pp. 49–70"
   year: 2025
+  month: 6
   type: B2
   doi: 10.1007/978-3-031-81097-8_3
   url: https://arxiv.org/abs/2409.02740
   summary: "Earlier networks that sorted cellular automata by behaviour were quietly cheating by learning the local rule. Ours looks at the actual pattern and still gets it right nearly always."
   demo: /demos/cnn-classification/
+- id: ca-taxonomy
+  title: "A comprehensive taxonomy of cellular automata"
+  authors: "M. Rollier, K. M. C. Zielinski, A. J. Daly, O. M. Bruno, J. M. Baetens"
+  venue: "Communications in Nonlinear Science and Numerical Simulation 140, 108362"
+  year: 2025
+  month: 1
+  type: A1
+  doi: 10.1016/j.cnsns.2024.108362
+  url: https://arxiv.org/abs/2401.08408
+  summary: "Five families of cellular automata defined in one place, with a map of which exotic-sounding variants are the same thing wearing a different hat."
+  demo: /demos/taxonomy/
 - id: cnn-nonuniform
   title: "Efficient simulation of non-uniform cellular automata with a convolutional neural network"
   authors: "M. Rollier, A. J. Daly, O. M. Bruno, J. M. Baetens"
@@ -44,6 +47,7 @@
   authors: "T. W. Alleman, M. Rollier, J. Vergeynst, J. M. Baetens"
   venue: "Applied Mathematical Modelling 123, pp. 507–525"
   year: 2023
+  month: 11
   type: A1
   doi: 10.1016/j.apm.2023.06.027
   url: https://arxiv.org/abs/2207.03717
@@ -53,6 +57,7 @@
   authors: "M. Rollier, G. H. B. Miranda, J. Vergeynst, J. Meys, T. W. Alleman, J. M. Baetens"
   venue: "Mathematical Biosciences 360, 108957"
   year: 2023
+  month: 6
   type: A1
   doi: 10.1016/j.mbs.2022.108957
   url: https://arxiv.org/abs/2202.11528
@@ -83,6 +88,7 @@
   year: 2026
   type: A1
   status: writing
+  demo: /demos/thesis/#impact
   summary: "Which node matters most when you know nothing about the dynamics except that they are local and deterministic?"
 - id: shape-irregularity
   title: "Shape irregularity of Life-Like Network Automaton rules as an indicator of classification performance"
@@ -91,6 +97,8 @@
   year: 2026
   type: A1
   status: review
+  url: https://arxiv.org/abs/2610.10867
+  demo: /demos/thesis/#jaggedness
 - id: lyapunov-spectra
   title: "Exact Lyapunov spectra of affine cellular automata and the parity rule on networks"
   authors: "M. Rollier, J. M. Baetens"
@@ -98,7 +106,8 @@
   year: 2026
   type: A1
   status: review
-  url: https://github.com/mrollier/exact-lyapunov-spectra
+  code: https://github.com/mrollier/exact-lyapunov-spectra
+  demo: /demos/thesis/#defects
   summary: "For a linear rule you can write the whole chaos spectrum down by hand. Code to reproduce every figure is public."
 - id: acri-2026
   title: "Cellular Automata: 17th International Conference on Cellular Automata for Research and Industry, ACRI 2026, Ghent, Proceedings"

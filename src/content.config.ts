@@ -14,10 +14,12 @@ export const collections = {
       authors: z.string(),
       venue: z.string(),
       year: z.number(),
+      month: z.number().optional(), // orders papers within a year; the collection itself comes sorted by id
       type: z.enum(['A1', 'B2', 'B3', 'P1']),
       status: z.enum(['published', 'accepted', 'review', 'writing']).default('published'),
       doi: z.string().optional(),
       url: z.string().url().optional(),
+      code: z.string().url().optional(),
       summary: z.string().optional(),
       demo: z.string().optional(), // the page on this site that plays the paper out
     }),

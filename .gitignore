@@ -3,3 +3,4 @@ dist
 .astro
 _source
 .DS_Store
+.playwright-mcp
